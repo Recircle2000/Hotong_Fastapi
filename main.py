@@ -17,23 +17,23 @@ ROUTES = {
     "순환5_UP": "ASB288000286",  # 천안아산역 출발 (상행)
 
     # 810번
-    "810_DOWN": "ASB288000276",  # 호서대학교 출발 (하행)
-    "810_UP": "ASB288000091",  # 시외버스터미널 출발 (상행)
+   # "810_DOWN": "ASB288000276",  # 호서대학교 출발 (하행)
+   # "810_UP": "ASB288000091",  # 시외버스터미널 출발 (상행)
 
     # 820번
-    "820_DOWN": "ASB288000277",  # 호서대학교 출발 (하행)
-    "820_UP": "ASB288000092",  # 시외버스터미널 출발 (상행)
+    #"820_DOWN": "ASB288000277",  # 호서대학교 출발 (하행)
+    #"820_UP": "ASB288000092",  # 시외버스터미널 출발 (상행)
 
     # 821번
-    "821_DOWN": "ASB288000333",  # 호서대학교 출발 (하행)
-    "821_UP": "ASB288000332",  # 시외버스터미널 출발 (상행)
+    #"821_DOWN": "ASB288000333",  # 호서대학교 출발 (하행)
+    #"821_UP": "ASB288000332",  # 시외버스터미널 출발 (상행)
 
     # 1000번
-    "1000_DOWN": "ASB288000352",  # 호서대학교 출발 (하행)
-    "1000_UP": "ASB288000353",  # 탕정역 출발 (상행)
+    #"1000_DOWN": "ASB288000352",  # 호서대학교 출발 (하행)
+   # "1000_UP": "ASB288000353",  # 탕정역 출발 (상행)
 
     # 1001번
-    "1001_DOWN": "ASB288000358",  # 포스코 아파트 출발 (하행)
+    #"1001_UP": "ASB288000358",  # 포스코 아파트 출발 (상행)
 }
 
 # 데이터 저장소
@@ -61,10 +61,10 @@ async def fetch_bus_data(route_name, route_id):
 
 
 async def update_bus_data_periodically():
-    #while True:
+    while True:
         tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
         await asyncio.gather(*tasks)
-        #await asyncio.sleep(10)
+        await asyncio.sleep(5)
 
 
 @app.on_event("startup")
