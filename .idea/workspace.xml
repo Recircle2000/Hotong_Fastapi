@@ -5,8 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a0aad55f-622d-48a3-a4a2-357d2fdd7c97" name="변경" comment="db연동, 인증관리 추가">
-      <change afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/generate_secret_key.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/security.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/security.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,6 +57,7 @@
   "keyToString": {
     "FastAPI.gotohoseo_backend.executor": "Run",
     "Python.createDB.executor": "Run",
+    "Python.generate_secret_key.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
@@ -81,12 +87,14 @@
   </component>
   <component name="RunManager">
     <configuration name="gotohoseo_backend" type="Python.FastAPI">
+      <option name="additionalOptions" value="--reload --host 0.0.0.0 --port 8000" />
       <option name="file" value="$PROJECT_DIR$/main.py" />
       <module name="gotohoseo_backend" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
+      <option name="SDK_HOME" value="$PROJECT_DIR$/.venv/Scripts/python.exe" />
+      <option name="SDK_NAME" value="Python 3.13 (gotohoseo_backend)" />
       <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -124,7 +132,9 @@
       <workItem from="1740639449184" duration="1601000" />
       <workItem from="1740643274385" duration="21000" />
       <workItem from="1740643303427" duration="5000" />
-      <workItem from="1740653705463" duration="6059000" />
+      <workItem from="1740653705463" duration="6168000" />
+      <workItem from="1740659979765" duration="1129000" />
+      <workItem from="1740731455127" duration="11412000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -142,7 +152,15 @@
       <option name="project" value="LOCAL" />
       <updated>1740659729724</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="db연동, 인증관리 추가">
+      <option name="closed" value="true" />
+      <created>1740659860788</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1740659860788</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -176,7 +194,8 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/gotohoseo_backend$gotohoseo_backend.coverage" NAME="gotohoseo_backend 커버리지 결과" MODIFIED="1740659323546" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/gotohoseo_backend$generate_secret_key.coverage" NAME="generate_secret_key 커버리지 결과" MODIFIED="1740748452827" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/gotohoseo_backend$gotohoseo_backend.coverage" NAME="gotohoseo_backend 커버리지 결과" MODIFIED="1740750487189" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/gotohoseo_backend$createDB.coverage" NAME="createDB 커버리지 결과" MODIFIED="1740657977012" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

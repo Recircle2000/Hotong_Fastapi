@@ -13,7 +13,8 @@ class BusLocation(Base):
     __tablename__ = "bus_locations"
 
     id = Column(Integer, primary_key=True, index=True)
-    route_id = Column(String(255), ForeignKey("bus_routes.route_id"))
+    route_id = Column(String(255), ForeignKey("bus_routes.route_id"))  # ✅ 여기에 route_name 없음
     latitude = Column(Float)
     longitude = Column(Float)
     bus_number = Column(String(50))
+

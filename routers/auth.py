@@ -30,6 +30,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(email=user.email, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
+    db.refresh(new_user)  # Refresh to get the new user's ID and other fields
 
     return {"message": "User registered successfully"}
 
