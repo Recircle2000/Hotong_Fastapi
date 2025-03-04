@@ -77,11 +77,20 @@ async def fetch_bus_data(route_name, route_id):
 
 async def update_bus_data_periodically():
     while True:
-        tasks = []
-        for route_name, route_id in ROUTES.items():
-            tasks.append(fetch_bus_data(route_name, route_id))
-        await asyncio.gather(*tasks)
-        await asyncio.sleep(10)  # 10초마다 업데이트
+        lock_key = "bus_data_update_lock"
+        lock_ttl = 20  # 20초 동안 락 유지
+        lock_value = str(os.getpid())  # 현재 프로세스 ID 저장
+
+        # 🔥 Redis를 이용해 하나의 프로세스만 실행되도록 보장
+        if redis_client.set(lock_key, lock_value, ex=lock_ttl, nx=True):
+            print(f"✔ [PID {lock_value}] Bus data update started.")
+            tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
+            await asyncio.gather(*tasks)
+            redis_client.delete(lock_key)  # 작업 완료 후 락 해제
+        else:
+            print(f"❌ Another process is already updating bus data.")
+
+        await asyncio.sleep(10)  # 10초 후 다시 실행
 
 @router.on_event("startup")
 async def startup_event():
