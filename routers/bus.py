@@ -1,11 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 import asyncio
 import httpx
 import os
 import json
 from dotenv import load_dotenv
 import redis
-from urllib.parse import unquote
 
 router = APIRouter()
 
@@ -14,12 +13,13 @@ API_KEY = os.getenv("API_KEY")
 CITY_CODE = "34040"
 BASE_URL = "http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList"
 
+# 버스 노선 ID
 ROUTES = {
     # 순환5번
     #"순환5_DOWN": "ASB288000141",  # 호서대학교 출발 (하행)
     #"순환5_UP": "ASB288000286",    # 천안아산역 출발 (상행)
 
-    "900_UP":"ASB285000244", #900번 상행
+    "900_UP":"ASB285000244", #900번 상행 개발용
     "900_DOWN":"ASB285000245",#900번 하행
 
     # 810번
@@ -43,11 +43,16 @@ ROUTES = {
     # 기타 노선은 주석 처리되어 있음
 }
 
-# Redis 클라이언트 생성 (decode_responses=True로 문자열 반환)
-redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+# Redis 클라이언트
+redis_client = redis.Redis(host="192.168.45.87", port=6379, db=0, decode_responses=True)
+
+# 웹소켓 연결 관리
+active_connections = []
+
 
 def build_api_url(route_id):
     return f"{BASE_URL}?serviceKey={API_KEY}&cityCode={CITY_CODE}&routeId={route_id}&_type=json"
+
 
 async def fetch_bus_data(route_name, route_id):
     async with httpx.AsyncClient() as client:
@@ -55,47 +60,78 @@ async def fetch_bus_data(route_name, route_id):
             response = await client.get(build_api_url(route_id))
             response.raise_for_status()
             data = response.json()
-            print(f"Fetched data for {route_name}: {data}")
 
-            # 'items'가 비어 있으면 캐시 삭제 후 종료
+            # 데이터가 없는 경우 처리
             if not data["response"]["body"]["items"]:
                 print(f"No bus data available for {route_name}")
                 redis_client.delete(route_name)
                 return
 
-            # 정상적인 데이터가 있으면 'item' 필드를 가져옴
             items = data["response"]["body"]["items"]["item"]
-
-            # 응답이 단일 객체라면 리스트로 변환
             if isinstance(items, dict):
                 items = [items]
 
-            # Redis에 JSON 문자열로 저장, TTL은 10초 (필요에 따라 조정)
-            redis_client.setex(route_name, 10, json.dumps(items))
+            # Redis에 JSON 문자열로 저장 (TTL 60초)
+            redis_client.setex(route_name, 60, json.dumps(items))
         except Exception as e:
             print(f"Error fetching bus data for {route_name}: {e}")
 
+
 async def update_bus_data_periodically():
     while True:
-        lock_key = "bus_data_update_lock"
-        lock_ttl = 20  # 20초 동안 락 유지
-        lock_value = str(os.getpid())  # 현재 프로세스 ID 저장
+        print("버스 데이터 업데이트 시작")
+        tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
+        await asyncio.gather(*tasks)
 
-        # 🔥 Redis를 이용해 하나의 프로세스만 실행되도록 보장
-        if redis_client.set(lock_key, lock_value, ex=lock_ttl, nx=True):
-            print(f"✔ [PID {lock_value}] Bus data update started.")
-            tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
-            await asyncio.gather(*tasks)
-            redis_client.delete(lock_key)  # 작업 완료 후 락 해제
-        else:
-            print(f"❌ Another process is already updating bus data.")
+        # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
+        await broadcast_bus_data()
 
-        await asyncio.sleep(10)  # 10초 후 다시 실행
+        await asyncio.sleep(10)# 10초 주기
 
-@router.on_event("startup")
-async def startup_event():
-    asyncio.create_task(update_bus_data_periodically())
 
+async def broadcast_bus_data():
+    result = {}
+    for route_name in ROUTES.keys():
+        cached_data = redis_client.get(route_name)
+        if cached_data:
+            result[route_name] = json.loads(cached_data)
+
+    # 연결된 모든 클라이언트에게 데이터 전송
+    message = json.dumps(result)
+    for connection in active_connections:
+        try:
+            await connection.send_text(message)
+        except Exception as e:
+            print(f"❌ WebSocket 전송 오류: {e}")
+
+
+# 웹소켓 연결 관리
+async def connect_client(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    print(f"✅ 클라이언트 접속: {len(active_connections)}명")
+
+
+async def disconnect_client(websocket: WebSocket):
+    active_connections.remove(websocket)
+    print(f"❌ 클라이언트 접속 종료: {len(active_connections)}명")
+
+
+#WebSocket 엔드포인트
+@router.websocket("/ws/bus")
+async def websocket_endpoint(websocket: WebSocket):
+    await connect_client(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # 클라이언트에서 데이터를 받을 수 있음 (ping 등)
+    except WebSocketDisconnect:
+        await disconnect_client(websocket)
+    except Exception as e:
+        print(f"WebSocket 연결 오류: {e}")
+        await disconnect_client(websocket)
+
+
+# HTTP API 엔드포인트 (레거시)
 @router.get("/buses")
 async def get_all_buses():
     result = {}
@@ -110,7 +146,7 @@ async def get_all_buses():
 
 @router.get("/buses/{route_name}")
 async def get_bus_by_route(route_name: str):
-    # No need to decode the route name here as FastAPI handles URL decoding automatically
+    # 경로 이름 검증
     if route_name not in ROUTES:
         raise HTTPException(status_code=404, detail="Route not found")
 

@@ -1,6 +1,8 @@
+# main.py 수정
 from fastapi import FastAPI
 from routers import auth, bus
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
 
 app = FastAPI()
 
@@ -10,11 +12,15 @@ app.include_router(bus.router, tags=["Bus"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 도메인 허용 (보안이 중요하면 특정 도메인만 허용!)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(bus.update_bus_data_periodically())
 
 @app.get("/")
 def home():
