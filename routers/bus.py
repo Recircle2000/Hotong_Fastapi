@@ -19,8 +19,8 @@ ROUTES = {
     #"순환5_DOWN": "ASB288000141",  # 호서대학교 출발 (하행)
     #"순환5_UP": "ASB288000286",    # 천안아산역 출발 (상행)
 
-    "900_UP":"ASB285000244", #900번 상행 개발용
-    "900_DOWN":"ASB285000245",#900번 하행
+    "900_UP":"ASB285000245", #900번 상행 개발용
+    "900_DOWN":"ASB285000244",#900번 하행
 
     # 810번
    # "810_DOWN": "ASB288000276",  # 호서대학교 출발 (하행)
@@ -82,27 +82,31 @@ async def update_bus_data_periodically():
         print("버스 데이터 업데이트 시작")
         tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
         await asyncio.gather(*tasks)
-
         # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
         await broadcast_bus_data()
 
         await asyncio.sleep(10)# 10초 주기
 
 
-async def broadcast_bus_data():
+async def broadcast_bus_data(websocket: WebSocket = None):
     result = {}
     for route_name in ROUTES.keys():
         cached_data = redis_client.get(route_name)
         if cached_data:
             result[route_name] = json.loads(cached_data)
 
-    # 연결된 모든 클라이언트에게 데이터 전송
     message = json.dumps(result)
-    for connection in active_connections:
+    if websocket:
         try:
-            await connection.send_text(message)
+            await websocket.send_text(message)
         except Exception as e:
             print(f"❌ WebSocket 전송 오류: {e}")
+    else:
+        for connection in active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                print(f"❌ WebSocket 전송 오류: {e}")
 
 
 # 웹소켓 연결 관리
@@ -110,6 +114,8 @@ async def connect_client(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
     print(f"✅ 클라이언트 접속: {len(active_connections)}명")
+    await broadcast_bus_data(websocket)  # Send data to the newly connected client
+
 
 
 async def disconnect_client(websocket: WebSocket):
