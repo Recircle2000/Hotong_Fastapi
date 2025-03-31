@@ -85,7 +85,7 @@ async def update_bus_data_periodically():
         # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
         await broadcast_bus_data()
 
-        await asyncio.sleep(10)# 10초 주기
+        await asyncio.sleep(20)# 10초 주기
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
