@@ -1,6 +1,6 @@
 # main.py 수정
 from fastapi import FastAPI
-from routers import auth, bus
+from routers import auth, bus, notice
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 
@@ -9,6 +9,7 @@ app = FastAPI()
 # API 라우터 등록
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(bus.router, tags=["Bus"])
+app.include_router(notice.router, tags=["Notices"])
 #app.include_router(shuttle.router, prefix="/shuttle", tags=["Shuttle"])
 
 app.add_middleware(

@@ -6,3 +6,4 @@ Base = declarative_base()
 from .user import User
 from .bus import BusRoute, BusLocation
 from .shuttle import ShuttleStation, ShuttleRoute, ShuttleStationRoute
+from .notice import Notice
