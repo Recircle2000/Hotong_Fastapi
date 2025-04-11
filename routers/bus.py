@@ -44,7 +44,7 @@ ROUTES = {
 }
 
 # Redis 클라이언트
-redis_client = redis.Redis(host="192.168.45.87", port=6379, db=0, decode_responses=True)
+redis_client = redis.Redis(host="192.168.45.152", port=6379, db=0, decode_responses=True)
 
 # 웹소켓 연결 관리
 active_connections = []
