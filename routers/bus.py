@@ -5,6 +5,7 @@ import os
 import json
 from dotenv import load_dotenv
 import redis
+from utils.redis_client import redis_client, set_cache, get_cache, delete_cache, delete_pattern
 
 router = APIRouter()
 
@@ -43,8 +44,8 @@ ROUTES = {
     # 기타 노선은 주석 처리되어 있음
 }
 
-# Redis 클라이언트
-redis_client = redis.Redis(host="192.168.45.87", port=6379, db=0, decode_responses=True)
+# 버스 데이터 캐시 TTL (초)
+BUS_CACHE_TTL = 10
 
 # 웹소켓 연결 관리
 active_connections = []
@@ -64,15 +65,15 @@ async def fetch_bus_data(route_name, route_id):
             # 데이터가 없는 경우 처리
             if not data["response"]["body"]["items"]:
                 print(f"No bus data available for {route_name}")
-                redis_client.delete(route_name)
+                delete_cache(route_name)
                 return
 
             items = data["response"]["body"]["items"]["item"]
             if isinstance(items, dict):
                 items = [items]
 
-            # Redis에 JSON 문자열로 저장 (TTL 60초)
-            redis_client.setex(route_name, 60, json.dumps(items))
+            # Redis에 저장 (TTL BUS_CACHE_TTL 초)
+            set_cache(route_name, items, BUS_CACHE_TTL)
         except Exception as e:
             print(f"Error fetching bus data for {route_name}: {e}")
 
@@ -85,15 +86,15 @@ async def update_bus_data_periodically():
         # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
         await broadcast_bus_data()
 
-        await asyncio.sleep(20)# 10초 주기
+        await asyncio.sleep(10)# 10초 주기
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
     result = {}
     for route_name in ROUTES.keys():
-        cached_data = redis_client.get(route_name)
+        cached_data = get_cache(route_name)
         if cached_data:
-            result[route_name] = json.loads(cached_data)
+            result[route_name] = cached_data
 
     message = json.dumps(result)
     if websocket:
@@ -142,9 +143,9 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_all_buses():
     result = {}
     for route_name in ROUTES.keys():
-        cached_data = redis_client.get(route_name)
+        cached_data = get_cache(route_name)
         if cached_data:
-            result[route_name] = json.loads(cached_data)
+            result[route_name] = cached_data
         else:
             result[route_name] = None
     return {"buses": result}
@@ -156,7 +157,41 @@ async def get_bus_by_route(route_name: str):
     if route_name not in ROUTES:
         raise HTTPException(status_code=404, detail="Route not found")
 
-    cached_data = redis_client.get(route_name)
+    cached_data = get_cache(route_name)
     if not cached_data:
         raise HTTPException(status_code=404, detail="No bus data found for this route")
-    return {route_name: json.loads(cached_data)}
+    return {route_name: cached_data}
+
+@router.post("/cache/invalidate")
+async def invalidate_bus_cache(route_name: str = None):
+    """
+    버스 데이터 캐시를 무효화합니다.
+    
+    - route_name이 지정되면 해당 노선의 캐시만 삭제합니다.
+    - route_name이 None이면 모든 버스 노선의 캐시를 삭제합니다.
+    """
+    if route_name:
+        if route_name not in ROUTES:
+            raise HTTPException(status_code=404, detail="Route not found")
+        
+        success = delete_cache(route_name)
+        if success:
+            # 캐시 삭제 후 데이터 다시 가져오기
+            await fetch_bus_data(route_name, ROUTES[route_name])
+            return {"message": f"{route_name} 노선의 캐시가 무효화되었습니다."}
+        else:
+            return {"message": f"{route_name} 노선의 캐시가 존재하지 않습니다."}
+    else:
+        # 모든 버스 데이터 캐시 삭제
+        route_names = list(ROUTES.keys())
+        deleted_count = 0
+        
+        for name in route_names:
+            if delete_cache(name):
+                deleted_count += 1
+        
+        # 캐시 삭제 후 모든 데이터 다시 가져오기
+        tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
+        await asyncio.gather(*tasks)
+        
+        return {"message": f"{deleted_count}개 노선의 캐시가 무효화되었습니다."}
