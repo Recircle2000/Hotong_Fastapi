@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from routers import auth, bus, notice, shuttle
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+from utils.redis_client import redis_client
 
 app = FastAPI()
 
@@ -23,7 +24,23 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(bus.update_bus_data_periodically())
+    # Redis 연결 확인
+    try:
+        redis_client.ping()
+        print("Redis 서버 연결 성공")
+    except Exception as e:
+        print(f"Redis 서버 연결 실패: {e}")
 
 @app.get("/")
 def home():
     return {"message": "Welcome to University Transport Service"}
+
+@app.get("/health")
+def health_check():
+    # Redis 연결 상태 확인
+    redis_status = "healthy" if redis_client.ping() else "unhealthy"
+    
+    return {
+        "api": "healthy",
+        "redis": redis_status
+    }
