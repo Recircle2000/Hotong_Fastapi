@@ -24,6 +24,7 @@ class StationScheduleResponse(BaseModel):
     station_name: str
     arrival_time: time
     stop_order: int
+    schedule_type: str
 
     class Config:
         from_attributes = True
@@ -144,7 +145,8 @@ def get_station_schedules(
         Schedule.route_id,
         ShuttleStation.name.label('station_name'),
         ScheduleStop.arrival_time,
-        ScheduleStop.stop_order
+        ScheduleStop.stop_order,
+        Schedule.schedule_type
     ).join(
         ScheduleStop, Schedule.id == ScheduleStop.schedule_id
     ).join(
@@ -169,7 +171,8 @@ def get_station_schedules(
             "route_id": schedule.route_id,
             "station_name": schedule.station_name,
             "arrival_time": schedule.arrival_time.isoformat() if hasattr(schedule.arrival_time, 'isoformat') else schedule.arrival_time,
-            "stop_order": schedule.stop_order
+            "stop_order": schedule.stop_order,
+            "schedule_type": schedule.schedule_type
         } for schedule in schedules
     ]
     

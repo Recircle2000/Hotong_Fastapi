@@ -45,7 +45,7 @@ ROUTES = {
 }
 
 # 버스 데이터 캐시 TTL (초)
-BUS_CACHE_TTL = 10
+BUS_CACHE_TTL = 60
 
 # 웹소켓 연결 관리
 active_connections = []
@@ -86,7 +86,7 @@ async def update_bus_data_periodically():
         # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
         await broadcast_bus_data()
 
-        await asyncio.sleep(10)# 10초 주기
+        await asyncio.sleep(60)# 10초 주기
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
