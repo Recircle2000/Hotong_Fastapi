@@ -3,3 +3,10 @@
 .test
 .test3
 /.venv/
+
+# Docker
+.dockerignore
+docker-*.env
+
+# Volume data
+redis-data/
