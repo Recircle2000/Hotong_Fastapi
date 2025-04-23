@@ -132,4 +132,10 @@ def delete_notice(
     if db_notice:
         db.delete(db_notice)
         db.commit()
-    return RedirectResponse(url="/admin", status_code=303) 
+    return RedirectResponse(url="/admin", status_code=303)
+
+@router.get("/admin/shuttle")
+def admin_shuttle_page(request: Request):
+    if not require_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=303)
+    return templates.TemplateResponse("shuttle_admin.html", {"request": request}) 

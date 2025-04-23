@@ -1,0 +1,89 @@
+DELETE http://127.0.0.1:8000/notices/1
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+content-length: 0
+
+<> 2025-04-21T163822-3.404.json
+
+###
+
+PUT http://127.0.0.1:8000/notices/1
+Content-Type: application/json
+Content-Length: 114
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "title": "수정된 공지사항",
+  "content": "이 내용은 수정되었습니다.",
+  "is_pinned": false
+}
+
+<> 2025-04-21T163822-2.404.json
+
+###
+
+GET http://127.0.0.1:8000/notices/1
+Accept: application/json
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+<> 2025-04-21T163822-1.404.json
+
+###
+
+POST http://127.0.0.1:8000/notices/
+Content-Type: application/json
+Content-Length: 119
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "title": "테스트 공지사항",
+  "content": "이것은 테스트 공지사항입니다.",
+  "is_pinned": true
+}
+
+<> 2025-04-21T163822.201.json
+
+###
+
+GET http://127.0.0.1:8000/notices/latest
+Accept: application/json
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+<> 2025-04-21T163822-2.200.json
+
+###
+
+GET http://127.0.0.1:8000/notices/
+Accept: application/json
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+<> 2025-04-21T163822-1.200.json
+
+###
+
+GET http://127.0.0.1:8000/hello/User
+Accept: application/json
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+<> 2025-04-21T163822.404.json
+
+###
+
+GET http://127.0.0.1:8000
+Accept: application/json
+User-Agent: IntelliJ HTTP Client/PyCharm 2024.3.4
+Accept-Encoding: br, deflate, gzip, x-gzip
+
+<> 2025-04-21T163822.200.json
+
+###
+

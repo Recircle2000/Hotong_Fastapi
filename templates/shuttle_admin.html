@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>셔틀버스 시간표 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #6c757d;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --white: #ffffff;
+            --sidebar-width: 250px;
+            --header-height: 60px;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', Apple SD Gothic Neo, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* 레이아웃 */
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--dark);
+            color: var(--white);
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--white);
+            text-decoration: none;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            color: var(--white);
+        }
+
+        .nav-item::before {
+            margin-right: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        .nav-item-notice::before {
+            content: "📢";
+        }
+
+        .nav-item-users::before {
+            content: "👥";
+        }
+
+        .nav-item-settings::before {
+            content: "⚙️";
+        }
+        
+        .nav-item-shuttle::before {
+            content: "🚌";
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255,255,255,0.1);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logout-btn::before {
+            content: "🚪";
+            margin-right: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 메인 콘텐츠 */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: var(--transition);
+        }
+
+        /* 헤더 */
+        .header {
+            height: var(--header-height);
+            background: var(--white);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+
+        .mobile-toggle {
+            display: none;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            color: var(--dark);
+            cursor: pointer;
+        }
+
+        .mobile-toggle::before {
+            content: "☰";
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-name {
+            margin-right: 1rem;
+            font-weight: 500;
+        }
+
+        .user-icon::before {
+            content: "👤";
+            font-size: 1.2rem;
+        }
+        
+        /* 콘텐츠 영역 */
+        .content {
+            padding: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        #scheduleStops {
+            margin-top: 20px;
+        }
+        .stop-row {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .hidden {
+            display: none !important;
+        }
+        #loadingSpinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        /* 반응형 */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .sidebar.active + .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingSpinner" class="hidden" style="display:none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">로딩중...</span>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <!-- 사이드바 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-logo">호서교통 관리페이지</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin" class="nav-item nav-item-notice">
+                    공지사항 관리
+                </a>
+                <a href="/admin/shuttle" class="nav-item nav-item-shuttle active">
+                    셔틀버스 관리
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/admin/logout" class="logout-btn">
+                    로그아웃
+                </a>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="main-content">
+            <!-- 헤더 -->
+            <header class="header">
+                <button class="mobile-toggle" id="sidebarToggle">
+                </button>
+                <div class="user-info">
+                    <span class="user-name">관리자님</span>
+                    <span class="user-icon"></span>
+                </div>
+            </header>
+
+            <!-- 콘텐츠 영역 -->
+            <main class="content">
+                <div class="container mt-4">
+                    <h1 class="mb-4">셔틀버스 시간표 관리</h1>
+                    
+                    <!-- CSV 업로드 섹션 추가 -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>CSV 파일로 시간표 일괄 추가</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="csvUploadForm" class="mb-0">
+                                        <div class="row align-items-end">
+                                            <div class="col-md-8">
+                                                <div class="form-group mb-0">
+                                                    <label for="csvFile" class="form-label">CSV 파일 선택</label>
+                                                    <input type="file" id="csvFile" class="form-control" accept=".csv">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button type="submit" class="btn btn-primary w-100">업로드 및 처리</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>시간표 목록</h5>
+                                    <button id="deleteSelectedButton" class="btn btn-danger" style="display:none;">선택 삭제</button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <select id="routeSelect" class="form-select">
+                                                <option value="">노선 선택</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <select id="scheduleTypeSelect" class="form-select">
+                                                <option value="">일정 유형 선택</option>
+                                                <option value="Weekday">평일</option>
+                                                <option value="Saturday">토요일</option>
+                                                <option value="Holiday">공휴일(일요일)</option>
+                                                <option value="Special">특별</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button id="searchButton" class="btn btn-primary w-100">검색</button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th><input type="checkbox" id="selectAllSchedules"></th>
+                                                    <th>ID</th>
+                                                    <th>노선</th>
+                                                    <th>일정 유형</th>
+                                                    <th>기점 출발 시간</th>
+                                                    <th>종점 도착 시간</th>
+                                                    <th>작업</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="scheduleTableBody">
+                                                <!-- 시간표 데이터가 여기에 로드됩니다 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 id="formTitle">새 시간표 추가</h5>
+                                    <button id="resetFormButton" class="btn btn-secondary">양식 초기화</button>
+                                </div>
+                                <div class="card-body">
+                                    <form id="scheduleForm">
+                                        <input type="hidden" id="scheduleId" value="">
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="routeId">노선</label>
+                                                    <select id="routeId" class="form-select" required>
+                                                        <option value="">노선 선택</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="scheduleType">일정 유형</label>
+                                                    <select id="scheduleType" class="form-select" required>
+                                                        <option value="">유형 선택</option>
+                                                        <option value="Weekday">평일</option>
+                                                        <option value="Saturday">토요일</option>
+                                                        <option value="Holiday">공휴일</option>
+                                                        <option value="Special">특별</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="startTime">기점 출발 시간</label>
+                                                    <input type="time" id="startTime" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="endTime">종점 도착 시간</label>
+                                                    <input type="time" id="endTime" class="form-control" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row mt-4">
+                                            <div class="col-12">
+                                                <h5>정류장 정보</h5>
+                                                <button type="button" id="addStopButton" class="btn btn-outline-primary mb-3">정류장 추가</button>
+                                                
+                                                <div id="scheduleStops">
+                                                    <!-- 정류장 입력 필드가 여기에 동적으로 추가됩니다 -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row mt-4">
+                                            <div class="col-12">
+                                                <button type="submit" id="submitButton" class="btn btn-success">저장</button>
+                                                <button type="button" id="deleteButton" class="btn btn-danger hidden">삭제</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 정류장 행 템플릿 -->
+    <template id="stopRowTemplate">
+        <div class="stop-row">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>정류장</label>
+                        <select class="form-select station-select" required>
+                            <option value="">정류장 선택</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>도착 시간</label>
+                        <input type="time" class="form-control arrival-time" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>정류장 순서</label>
+                        <input type="number" class="form-control stop-order" required min="1">
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger remove-stop-button mb-2">삭제</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script>
+        // 사이드바 토글
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // API URL
+            const API_BASE_URL = '';
+            
+            // 요소 참조
+            const routeSelect = document.getElementById('routeSelect');
+            const routeIdSelect = document.getElementById('routeId');
+            const scheduleTypeSelect = document.getElementById('scheduleTypeSelect');
+            const searchButton = document.getElementById('searchButton');
+            const scheduleTableBody = document.getElementById('scheduleTableBody');
+            const scheduleForm = document.getElementById('scheduleForm');
+            const formTitle = document.getElementById('formTitle');
+            const scheduleId = document.getElementById('scheduleId');
+            const addStopButton = document.getElementById('addStopButton');
+            const scheduleStops = document.getElementById('scheduleStops');
+            const submitButton = document.getElementById('submitButton');
+            const deleteButton = document.getElementById('deleteButton');
+            const resetFormButton = document.getElementById('resetFormButton');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            // 초기 로딩 스피너 강제 숨김
+            loadingSpinner.classList.add('hidden');
+            loadingSpinner.style.display = 'none';
+            
+            // 로딩 상태 표시
+            function showLoading() {
+                loadingSpinner.style.display = 'flex';
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            function hideLoading() {
+                loadingSpinner.style.display = 'none';
+                loadingSpinner.classList.add('hidden');
+            }
+            
+            // 페이지 초기화
+            initPage();
+            
+            async function initPage() {
+                try {
+                    showLoading();
+                    
+                    // 노선 목록 로드
+                    await loadRoutes();
+                    
+                    // 정류장 목록 로드
+                    await loadStations();
+                } catch (error) {
+                    alert('페이지 초기화 중 오류가 발생했습니다: ' + error.message);
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 이벤트 리스너 등록
+            searchButton.addEventListener('click', searchSchedules);
+            addStopButton.addEventListener('click', () => addStopRow());
+            scheduleForm.addEventListener('submit', handleSubmit);
+            deleteButton.addEventListener('click', handleDelete);
+            resetFormButton.addEventListener('click', resetForm);
+            
+            // CSV 파일 업로드 폼 제출 이벤트
+            document.getElementById('csvUploadForm').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const fileInput = document.getElementById('csvFile');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    alert('파일을 선택해주세요.');
+                    return;
+                }
+                
+                if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+                    alert('CSV 파일만 업로드 가능합니다.');
+                    return;
+                }
+                
+                showLoading();
+                
+                try {
+                    // 파일 읽기
+                    const csvData = await readFile(file);
+                    
+                    try {
+                        // CSV 파싱
+                        Papa.parse(csvData, {
+                            complete: async function(results) {
+                                try {
+                                    await processCSVData(results.data);
+                                    alert('시간표가 성공적으로 추가되었습니다.');
+                                } catch (error) {
+                                    alert('CSV 데이터 처리 중 오류가 발생했습니다: ' + error.message);
+                                } finally {
+                                    hideLoading();
+                                }
+                            },
+                            error: function(error) {
+                                alert('CSV 파일을 파싱할 수 없습니다: ' + error.message);
+                                hideLoading();
+                            }
+                        });
+                    } catch (error) {
+                        alert('CSV 파싱 초기화 중 오류가 발생했습니다: ' + error.message);
+                        hideLoading();
+                    }
+                } catch (error) {
+                    alert('파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+                    hideLoading();
+                }
+            });
+            
+            // 노선 목록 로드
+            async function loadRoutes() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/shuttle/routes`);
+                    if (!response.ok) throw new Error('노선 데이터를 불러오는데 실패했습니다.');
+                    
+                    const routes = await response.json();
+                    
+                    // 검색 선택상자에 추가
+                    routeSelect.innerHTML = '<option value="">노선 선택</option>';
+                    routes.forEach(route => {
+                        const option = document.createElement('option');
+                        option.value = route.id;
+                        option.textContent = `${route.route_name} (${route.direction})`;
+                        routeSelect.appendChild(option);
+                    });
+                    
+                    // 폼 선택상자에 추가
+                    routeIdSelect.innerHTML = '<option value="">노선 선택</option>';
+                    routes.forEach(route => {
+                        const option = document.createElement('option');
+                        option.value = route.id;
+                        option.textContent = `${route.route_name} (${route.direction})`;
+                        routeIdSelect.appendChild(option);
+                    });
+                    
+                    return routes;
+                } catch (error) {
+                    alert('노선 데이터를 불러오는데 실패했습니다: ' + error.message);
+                    throw error;
+                }
+            }
+            
+            // 정류장 목록 저장 변수
+            let stationsList = [];
+            
+            // 정류장 목록 로드
+            async function loadStations() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/shuttle/stations`);
+                    if (!response.ok) throw new Error('정류장 데이터를 불러오는데 실패했습니다.');
+                    
+                    stationsList = await response.json();
+                    
+                    // 정류장 데이터 로드 후 초기 정류장 행 추가
+                    addStopRow();
+                    
+                    return stationsList;
+                } catch (error) {
+                    alert('정류장 데이터를 불러오는데 실패했습니다: ' + error.message);
+                    throw error;
+                }
+            }
+            
+            // 시간표 검색
+            async function searchSchedules() {
+                const routeId = routeSelect.value;
+                const scheduleType = scheduleTypeSelect.value;
+                
+                if (!routeId || !scheduleType) {
+                    alert('노선과 일정 유형을 모두 선택해주세요.');
+                    return;
+                }
+                
+                try {
+                    showLoading();
+                    
+                    const response = await fetch(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
+                    if (!response.ok) throw new Error('시간표 데이터를 불러오는데 실패했습니다.');
+                    
+                    const schedules = await response.json();
+                    
+                    displaySchedules(schedules);
+                } catch (error) {
+                    alert('시간표 데이터를 불러오는데 실패했습니다: ' + error.message);
+                    scheduleTableBody.innerHTML = '<tr><td colspan="6" class="text-center">시간표를 불러오는데 실패했습니다.</td></tr>';
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 시간표 표시
+            function displaySchedules(schedules) {
+                scheduleTableBody.innerHTML = '';
+                
+                schedules.forEach(schedule => {
+                    const row = document.createElement('tr');
+                    
+                    // 시간 형식 변환
+                    const startTime = formatTime(schedule.start_time);
+                    const endTime = formatTime(schedule.end_time);
+                    
+                    row.innerHTML = `
+                        <td><input type="checkbox" class="schedule-checkbox" data-id="${schedule.id}"></td>
+                        <td>${schedule.id}</td>
+                        <td>${getRouteName(schedule.route_id)}</td>
+                        <td>${translateScheduleType(schedule.schedule_type)}</td>
+                        <td>${startTime}</td>
+                        <td>${endTime}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary edit-button" data-id="${schedule.id}">수정</button>
+                            <button class="btn btn-sm btn-danger delete-button" data-id="${schedule.id}">삭제</button>
+                        </td>
+                    `;
+                    
+                    scheduleTableBody.appendChild(row);
+                });
+                
+                // 수정 버튼에 이벤트 리스너 추가
+                document.querySelectorAll('.edit-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const id = this.getAttribute('data-id');
+                        loadScheduleForEdit(id);
+                    });
+                });
+                
+                // 삭제 버튼에 이벤트 리스너 추가
+                document.querySelectorAll('.delete-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const id = this.getAttribute('data-id');
+                        if (confirm('이 시간표를 삭제하시겠습니까?')) {
+                            deleteSchedule(id);
+                        }
+                    });
+                });
+                
+                // 체크박스 이벤트 리스너 추가
+                updateCheckboxListeners();
+            }
+            
+            // 노선 이름 가져오기
+            function getRouteName(routeId) {
+                const option = routeSelect.querySelector(`option[value="${routeId}"]`);
+                return option ? option.textContent : `노선 ${routeId}`;
+            }
+            
+            // 일정 유형 번역
+            function translateScheduleType(type) {
+                const types = {
+                    'Weekday': '평일',
+                    'Saturday': '토요일',
+                    'Holiday': '공휴일(일요일)',
+                    'Special': '특별'
+                };
+                return types[type] || type;
+            }
+            
+            // 시간 형식 변환
+            function formatTime(timeStr) {
+                if (!timeStr) return '';
+                if (typeof timeStr === 'string') {
+                    // "HH:MM:SS" 형식인 경우
+                    return timeStr.substring(0, 5);
+                }
+                return timeStr;
+            }
+            
+            // 정류장 행 추가
+            function addStopRow(stationId = '', arrivalTime = '', stopOrder = '') {
+                try {
+                    if (!stationsList || stationsList.length === 0) {
+                        return;
+                    }
+                    
+                    const template = document.getElementById('stopRowTemplate');
+                    if (!template) {
+                        return;
+                    }
+                    
+                    const clone = document.importNode(template.content, true);
+                    
+                    const stationSelect = clone.querySelector('.station-select');
+                    const arrivalTimeInput = clone.querySelector('.arrival-time');
+                    const stopOrderInput = clone.querySelector('.stop-order');
+                    const removeButton = clone.querySelector('.remove-stop-button');
+                    
+                    // 정류장 목록 채우기
+                    stationsList.forEach(station => {
+                        const option = document.createElement('option');
+                        option.value = station.id;
+                        option.textContent = station.name;
+                        stationSelect.appendChild(option);
+                    });
+                    
+                    // 값이 있으면 설정
+                    if (stationId) stationSelect.value = stationId;
+                    if (arrivalTime) arrivalTimeInput.value = formatTime(arrivalTime);
+                    
+                    // 정류장 순서를 자동으로 설정
+                    if (stopOrder) {
+                        // 수정 모드일 경우 전달된 값 사용
+                        stopOrderInput.value = stopOrder;
+                    } else {
+                        // 추가 모드일 경우 현재 존재하는 정류장 행 수 + 1
+                        const currentStopRows = document.querySelectorAll('.stop-row');
+                        stopOrderInput.value = currentStopRows.length + 1;
+                    }
+                    
+                    // 삭제 버튼 이벤트
+                    removeButton.addEventListener('click', function() {
+                        this.closest('.stop-row').remove();
+                        
+                        // 삭제 후 나머지 정류장 순서 재정렬
+                        updateStopOrders();
+                    });
+                    
+                    scheduleStops.appendChild(clone);
+                } catch (error) {
+                    // 오류 핸들링
+                }
+            }
+            
+            // 정류장 순서 재정렬
+            function updateStopOrders() {
+                const stopRows = document.querySelectorAll('.stop-row');
+                stopRows.forEach((row, index) => {
+                    const orderInput = row.querySelector('.stop-order');
+                    orderInput.value = index + 1;
+                });
+            }
+            
+            // 수정을 위한 시간표 로드
+            async function loadScheduleForEdit(id) {
+                try {
+                    showLoading();
+                    
+                    // 1. 기본 시간표 정보 가져오기
+                    const routeId = routeSelect.value;
+                    const scheduleType = scheduleTypeSelect.value;
+                    
+                    if (!routeId || !scheduleType) {
+                        alert('현재 선택된 노선과 일정 유형으로 시간표를 불러올 수 없습니다.\n먼저 노선과 일정 유형을 선택하고 검색해주세요.');
+                        hideLoading();
+                        return;
+                    }
+                    
+                    const scheduleResponse = await fetch(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
+                    if (!scheduleResponse.ok) {
+                        throw new Error('시간표 정보를 불러오는데 실패했습니다. 상태: ' + scheduleResponse.status);
+                    }
+                    
+                    const schedules = await scheduleResponse.json();
+                    
+                    const schedule = schedules.find(s => s.id == id);
+                    
+                    if (!schedule) {
+                        throw new Error('해당 시간표를 찾을 수 없습니다. 다른 노선이나 일정 유형에 있을 수 있습니다.');
+                    }
+                    
+                    // 2. 정류장 정보 가져오기
+                    const stopsResponse = await fetch(`${API_BASE_URL}/shuttle/schedules/${id}/stops`);
+                    if (!stopsResponse.ok) {
+                        throw new Error('정류장 정보를 불러오는데 실패했습니다. 상태: ' + stopsResponse.status);
+                    }
+                    
+                    const stops = await stopsResponse.json();
+                    
+                    // 폼 설정
+                    formTitle.textContent = '시간표 수정';
+                    scheduleId.value = id;
+                    routeIdSelect.value = schedule.route_id;
+                    document.getElementById('scheduleType').value = schedule.schedule_type;
+                    document.getElementById('startTime').value = formatTime(schedule.start_time);
+                    document.getElementById('endTime').value = formatTime(schedule.end_time);
+                    
+                    // 기존 정류장 행 제거
+                    scheduleStops.innerHTML = '';
+                    
+                    // 정류장 행 추가
+                    stops.forEach(stop => {
+                        addStopRow(stop.station_id, stop.arrival_time, stop.stop_order);
+                    });
+                    
+                    // 삭제 버튼 표시
+                    deleteButton.classList.remove('hidden');
+                    
+                    // 폼으로 스크롤
+                    document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
+                } catch (error) {
+                    alert(error.message || '시간표 정보를 불러오는데 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 폼 제출 처리
+            async function handleSubmit(event) {
+                event.preventDefault();
+                
+                // 폼 데이터 수집
+                const id = scheduleId.value;
+                const routeId = routeIdSelect.value;
+                const scheduleType = document.getElementById('scheduleType').value;
+                const startTime = document.getElementById('startTime').value;
+                const endTime = document.getElementById('endTime').value;
+                
+                // 폼 검증
+                if (!routeId || !scheduleType || !startTime || !endTime) {
+                    alert('모든 필수 필드를 입력해주세요.');
+                    return;
+                }
+                
+                // 정류장 데이터 수집
+                const stops = [];
+                const stopRows = document.querySelectorAll('.stop-row');
+                
+                if (stopRows.length === 0) {
+                    alert('최소한 하나의 정류장을 추가해주세요.');
+                    return;
+                }
+                
+                for (const row of stopRows) {
+                    const stationId = row.querySelector('.station-select').value;
+                    const arrivalTime = row.querySelector('.arrival-time').value;
+                    const stopOrder = row.querySelector('.stop-order').value;
+                    
+                    if (!stationId || !arrivalTime || !stopOrder) {
+                        alert('모든 정류장 정보를 입력해주세요.');
+                        return;
+                    }
+                    
+                    stops.push({
+                        station_id: parseInt(stationId),
+                        arrival_time: arrivalTime,
+                        stop_order: parseInt(stopOrder)
+                    });
+                }
+                
+                // 요청 데이터 생성
+                const data = {
+                    route_id: parseInt(routeId),
+                    schedule_type: scheduleType,
+                    start_time: startTime,
+                    end_time: endTime,
+                    stops: stops
+                };
+                
+                try {
+                    showLoading();
+                    
+                    let response;
+                    let apiUrl;
+                    
+                    if (id) {
+                        // 수정
+                        apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
+                        response = await fetch(apiUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                    } else {
+                        // 추가
+                        apiUrl = `${API_BASE_URL}/shuttle/admin/schedules`;
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                    }
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '시간표 저장에 실패했습니다.');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    alert(id ? '시간표가 수정되었습니다.' : '새 시간표가 추가되었습니다.');
+                    resetForm();
+                    
+                    // 현재 검색된 시간표 다시 로드
+                    if (routeSelect.value && scheduleTypeSelect.value) {
+                        searchSchedules();
+                    }
+                } catch (error) {
+                    alert(error.message || '시간표 저장에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 삭제 처리
+            async function handleDelete() {
+                const id = scheduleId.value;
+                if (!id) return;
+                
+                if (!confirm('정말로 이 시간표를 삭제하시겠습니까?')) {
+                    return;
+                }
+                
+                try {
+                    showLoading();
+                    
+                    const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
+                    const response = await fetch(apiUrl, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '시간표 삭제에 실패했습니다.');
+                    }
+                    
+                    alert('시간표가 삭제되었습니다.');
+                    resetForm();
+                    
+                    // 현재 검색된 시간표 다시 로드
+                    if (routeSelect.value && scheduleTypeSelect.value) {
+                        searchSchedules();
+                    }
+                } catch (error) {
+                    alert(error.message || '시간표 삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 폼 초기화
+            function resetForm() {
+                formTitle.textContent = '새 시간표 추가';
+                scheduleId.value = '';
+                scheduleForm.reset();
+                scheduleStops.innerHTML = '';
+                deleteButton.classList.add('hidden');
+            }
+            
+            // 파일 읽기 함수
+            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsText(file);
+                });
+            }
+            
+            // CSV 데이터 처리 함수
+            async function processCSVData(data) {
+                // 첫 번째 행에서 노선 ID와 시간표 유형 추출
+                let routeId = null;
+                let scheduleType = null;
+                
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    if (row[0]?.trim() === 'routeID' && row[1]) {
+                        routeId = parseInt(row[1]);
+                    }
+                    if (row[3]?.trim() === 'schedule_type' && row[4]) {
+                        scheduleType = row[4].trim();
+                    }
+                    if (routeId && scheduleType) break;
+                }
+                
+                if (!routeId || !scheduleType) {
+                    throw new Error('CSV 파일에서 노선 ID 또는 시간표 유형을 찾을 수 없습니다.');
+                }
+                
+                // 정류장 ID와 도착 시간 추출
+                let stationIds = [];
+                let arrivalTimes = [];
+                
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    if (row[0]?.trim() === 'stationID') {
+                        // 정류장 ID 행 찾기 (첫 번째 열이 'stationID'인 행)
+                        for (let j = 1; j < row.length; j++) {
+                            if (row[j] && row[j].trim() !== '') {
+                                stationIds.push(parseInt(row[j]));
+                            }
+                        }
+                    } else if (stationIds.length > 0 && row[0]?.trim() === '' && row[1] && row[1].match(/^\d{1,2}:\d{2}$/)) {
+                        // 시간 행 찾기 (첫 번째 값이 비어있고 두 번째 값이 시간 형식인 행)
+                        const timeRow = [];
+                        for (let j = 1; j < Math.min(row.length, stationIds.length + 1); j++) {
+                            if (row[j] && row[j].trim() !== '') {
+                                timeRow.push(formatTimeForAPI(row[j].trim()));
+                            } else {
+                                timeRow.push(null);
+                            }
+                        }
+                        
+                        if (timeRow.length > 0 && timeRow.some(time => time !== null)) {
+                            arrivalTimes.push(timeRow);
+                        }
+                    }
+                }
+                
+                if (stationIds.length === 0 || arrivalTimes.length === 0) {
+                    throw new Error('CSV 파일에서 정류장 ID 또는 도착 시간을 찾을 수 없습니다.');
+                }
+                
+                // 스케줄 API에 맞는 형식으로 변환 
+                function transformScheduleData(scheduleData) {
+                    // 시간 형식 검증 및 변환
+                    const start_time = formatTimeForAPI(scheduleData.start_time);
+                    const end_time = formatTimeForAPI(scheduleData.end_time);
+                    
+                    // 유효성 검사
+                    if (!isValidTime(start_time) || !isValidTime(end_time)) {
+                        throw new Error(`유효하지 않은 시간 형식: 시작 시간(${start_time}) 또는 종료 시간(${end_time})`);
+                    }
+                    
+                    // 정류장 순서 확인 및 보정
+                    const stops = scheduleData.stops.map((stop, i) => {
+                        const arrival_time = formatTimeForAPI(stop.arrival_time);
+                        
+                        // 유효성 검사
+                        if (!isValidTime(arrival_time)) {
+                            throw new Error(`유효하지 않은 도착 시간 형식: 정류장 ${stop.station_id}의 시간(${arrival_time})`);
+                        }
+                        
+                        return {
+                            station_id: parseInt(stop.station_id),
+                            arrival_time: arrival_time,
+                            stop_order: i + 1  // 명시적으로 0부터 재정렬
+                        };
+                    });
+                    
+                    return {
+                        route_id: parseInt(scheduleData.route_id),
+                        schedule_type: scheduleData.schedule_type,
+                        start_time: start_time,
+                        end_time: end_time,
+                        stops: stops
+                    };
+                }
+
+                // 시간 문자열이 유효한지 확인 (HH:MM:SS 형식인지)
+                function isValidTime(timeStr) {
+                    // 정확히 HH:MM:SS 형식인지 확인 (시간은 00-23, 분과 초는 00-59)
+                    return /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/.test(timeStr);
+                }
+
+                // 각 시간표 행(arrivalTimes의 각 행)에 대해 시간표 생성
+                for (let i = 0; i < arrivalTimes.length; i++) {
+                    const times = arrivalTimes[i];
+                    
+                    // 시작 시간과 종료 시간 찾기 (첫 번째와 마지막 유효한 시간)
+                    let startTime = null;
+                    let endTime = null;
+                    
+                    for (let j = 0; j < times.length; j++) {
+                        if (times[j] && !startTime) {
+                            startTime = times[j];
+                        }
+                        if (times[j]) {
+                            endTime = times[j];
+                        }
+                    }
+                    
+                    if (!startTime || !endTime) {
+                        continue;
+                    }
+                    
+                    // 정류장 정보 구성
+                    const stops = [];
+                    
+                    for (let j = 0; j < stationIds.length; j++) {
+                        if (j < times.length && times[j]) {
+                            stops.push({
+                                station_id: stationIds[j],
+                                arrival_time: times[j],
+                                stop_order: j + 1
+                            });
+                        }
+                    }
+                    
+                    // 시간표 데이터 생성
+                    const rawScheduleData = {
+                        route_id: routeId,
+                        schedule_type: scheduleType,
+                        start_time: startTime,
+                        end_time: endTime,
+                        stops: stops
+                    };
+                    
+                    // API 형식으로 변환
+                    const scheduleData = transformScheduleData(rawScheduleData);
+                    
+                    try {
+                        // API 요청 전 데이터 유효성 검증
+                        if (!Array.isArray(scheduleData.stops) || scheduleData.stops.length === 0) {
+                            throw new Error('정류장 정보가 없습니다.');
+                        }
+                        
+                        const response = await fetch(`${API_BASE_URL}/shuttle/admin/schedules`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(scheduleData)
+                        });
+                        
+                        const responseText = await response.text();
+                        
+                        if (!response.ok) {
+                            let errorMessage = '알 수 없는 오류';
+                            try {
+                                const errorData = JSON.parse(responseText);
+                                if (typeof errorData.detail === 'string') {
+                                    errorMessage = errorData.detail;
+                                } else if (Array.isArray(errorData.detail)) {
+                                    errorMessage = errorData.detail.map(err => 
+                                        `${err.loc?.join('.') || ''}: ${err.msg || JSON.stringify(err)}`
+                                    ).join('\n');
+                                } else {
+                                    errorMessage = JSON.stringify(errorData.detail);
+                                }
+                            } catch (e) {
+                                errorMessage = responseText || `HTTP 오류: ${response.status}`;
+                            }
+                            throw new Error(errorMessage);
+                        }
+                    } catch (error) {
+                        throw new Error(`시간표 ${i+1} 저장 중 오류 발생: ${error.message}`);
+                    }
+                }
+
+                // 성공 처리
+                alert(`${arrivalTimes.length}개의 시간표가 성공적으로 추가되었습니다.`);
+
+                // 현재 선택된 노선과 일정 유형이 CSV 파일과 일치하면 목록 새로고침
+                if (routeSelect.value == routeId && scheduleTypeSelect.value == scheduleType) {
+                    searchSchedules();
+                } else {
+                    // 일치하지 않으면 노선과 일정 유형 선택을 CSV 파일 값으로 변경하고 검색
+                    routeSelect.value = routeId;
+                    scheduleTypeSelect.value = scheduleType;
+                    searchSchedules();
+                }
+
+                // 폼 초기화
+                fileInput.value = '';
+            }
+
+            // 시간 형식을 API에 맞게 변환 (HH:MM → HH:MM:SS)
+            function formatTimeForAPI(timeStr) {
+                if (!timeStr) return '';
+                
+                // 시간 형식 분석
+                const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+                if (!timeMatch) return timeStr;
+                
+                // 시, 분, 초 추출
+                let [_, hours, minutes, seconds] = timeMatch;
+                
+                // 시에 앞에 0 추가 (필요한 경우)
+                hours = hours.padStart(2, '0');
+                
+                // 초가 없는 경우 기본값 '00' 설정
+                seconds = seconds || '00';
+                
+                // HH:MM:SS 형식으로 반환
+                return `${hours}:${minutes}:${seconds}`;
+            }
+
+            // 체크박스 관련 이벤트 핸들러 추가
+            function updateCheckboxListeners() {
+                // 전체 선택 체크박스
+                const selectAllCheckbox = document.getElementById('selectAllSchedules');
+                const scheduleCheckboxes = document.querySelectorAll('.schedule-checkbox');
+                const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+                
+                // 전체 선택 체크박스 이벤트
+                selectAllCheckbox.addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    scheduleCheckboxes.forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                    updateDeleteButtonVisibility();
+                });
+                
+                // 개별 체크박스 이벤트
+                scheduleCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        updateDeleteButtonVisibility();
+                        
+                        // 모든 체크박스가 선택되었는지 확인
+                        const allChecked = Array.from(scheduleCheckboxes).every(cb => cb.checked);
+                        selectAllCheckbox.checked = allChecked;
+                    });
+                });
+                
+                // 초기 삭제 버튼 상태 업데이트
+                updateDeleteButtonVisibility();
+            }
+
+            // 삭제 버튼 표시 여부 업데이트
+            function updateDeleteButtonVisibility() {
+                const scheduleCheckboxes = document.querySelectorAll('.schedule-checkbox');
+                const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+                
+                // 선택된 체크박스가 있는지 확인
+                const hasChecked = Array.from(scheduleCheckboxes).some(cb => cb.checked);
+                deleteSelectedButton.style.display = hasChecked ? 'block' : 'none';
+            }
+
+            // 선택된 시간표 일괄 삭제 기능 추가
+            document.getElementById('deleteSelectedButton').addEventListener('click', function() {
+                const checkedBoxes = document.querySelectorAll('.schedule-checkbox:checked');
+                const ids = Array.from(checkedBoxes).map(checkbox => checkbox.getAttribute('data-id'));
+                
+                if (ids.length === 0) {
+                    alert('삭제할 시간표를 선택해주세요.');
+                    return;
+                }
+                
+                if (confirm(`선택한 ${ids.length}개의 시간표를 삭제하시겠습니까?`)) {
+                    deleteSelectedSchedules(ids);
+                }
+            });
+
+            // 선택된 시간표 일괄 삭제 함수
+            async function deleteSelectedSchedules(ids) {
+                if (!ids || ids.length === 0) return;
+                
+                try {
+                    showLoading();
+                    
+                    // 각 시간표 순차적으로 삭제
+                    for (const id of ids) {
+                        const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
+                        const response = await fetch(apiUrl, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || `시간표 ID ${id} 삭제 실패`);
+                        }
+                    }
+                    
+                    alert(`${ids.length}개의 시간표가 삭제되었습니다.`);
+                    
+                    // 현재 검색된 시간표 다시 로드
+                    if (routeSelect.value && scheduleTypeSelect.value) {
+                        searchSchedules();
+                    }
+                } catch (error) {
+                    alert(error.message || '시간표 삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 단일 시간표 삭제 함수
+            async function deleteSchedule(id) {
+                if (!id) return;
+                
+                try {
+                    showLoading();
+                    
+                    const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
+                    const response = await fetch(apiUrl, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '시간표 삭제에 실패했습니다.');
+                    }
+                    
+                    alert('시간표가 삭제되었습니다.');
+                    
+                    // 현재 검색된 시간표 다시 로드
+                    if (routeSelect.value && scheduleTypeSelect.value) {
+                        searchSchedules();
+                    }
+                } catch (error) {
+                    alert(error.message || '시간표 삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

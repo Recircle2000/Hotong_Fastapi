@@ -5,9 +5,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from utils.redis_client import redis_client
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey123!@#")
+
+# 정적 파일 폴더가 없는 경우 생성
+if not os.path.exists("static"):
+    os.makedirs("static")
+
+# 정적 파일 제공
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # API 라우터 등록
 app.include_router(auth.router, tags=["Authentication"])

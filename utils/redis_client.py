@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 
 # Redis 클라이언트 설정
 redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST'),
+    host='redis',
+    #host=os.getenv('REDIS_HOST'),
     password=os.getenv('REDIS_PASSWORD'),
     port=6379,
     db=0,
