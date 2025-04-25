@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>셔틀버스 시간표 관리</title>
+    <title>대시보드</title>
+    <!-- 구글 폰트 추가 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
             --primary: #4361ee;
@@ -30,12 +35,13 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', Apple SD Gothic Neo, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            font-family: 'Noto Sans KR', sans-serif;
             background: #f5f7fa;
             color: #333;
             line-height: 1.6;
+            word-break: keep-all;
         }
-        
+
         /* 레이아웃 */
         .wrapper {
             display: flex;
@@ -191,36 +197,258 @@
         .content {
             padding: 2rem;
         }
+
+        .page-title {
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            margin-bottom: 1.2rem;
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            margin-right: 0.5rem;
+        }
+
+        .section-title-upload::before {
+            content: "📤";
+        }
+
+        .section-title-list::before {
+            content: "📋";
+        }
         
+        .section-title-form::before {
+            content: "📝";
+        }
+        
+        .section-title-cache::before {
+            content: "🔄";
+        }
+
+        /* 폼 스타일 */
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
         .form-group {
+            flex: 1;
+            min-width: 200px;
             margin-bottom: 15px;
         }
-        #scheduleStops {
-            margin-top: 20px;
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark);
         }
-        .stop-row {
-            margin-bottom: 10px;
-            padding: 10px;
+
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
             border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
         }
-        .hidden {
-            display: none !important;
+
+        .form-control:focus, 
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
         }
+
+        /* 버튼 스타일 */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn::before {
+            margin-right: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .btn-success:hover {
+            background: #27ae60;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--white);
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: var(--white);
+        }
+        
+        .btn-warning:hover {
+            background: #d68910;
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+            color: var(--white);
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-add::before {
+            content: "➕";
+        }
+
+        .btn-edit::before {
+            content: "✏️";
+        }
+
+        .btn-delete::before {
+            content: "🗑️";
+        }
+        
+        .btn-upload::before {
+            content: "📤";
+        }
+        
+        .btn-reset::before {
+            content: "🔄";
+        }
+
+        /* 테이블 스타일 */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            color: var(--dark);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.6rem;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .table td {
+            padding: 0.6rem;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* 시간표 테이블 특정 스타일 */
+        #scheduleTableBody td {
+            padding: 0.5rem 0.6rem;
+            font-size: 0.9rem;
+        }
+        
+        #scheduleTableBody .btn-sm {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+        
+        /* 스피너 */
         #loadingSpinner {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.7);
+            background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
         }
         
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        /* 정류장 입력 관련 */
+        .stop-row {
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: var(--radius);
+            background-color: #f8f9fa;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         /* 반응형 */
         @media (max-width: 992px) {
             .sidebar {
@@ -242,12 +470,47 @@
             .sidebar.active + .main-content {
                 margin-left: 0;
             }
+            
+            .form-group {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 1.5rem 1rem;
+            }
+            
+            .header {
+                padding: 0 1rem;
+            }
+            
+            .table th, 
+            .table td {
+                padding: 0.75rem;
+            }
+            
+            .btn {
+                padding: 0.7rem 1.2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .page-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .btn-sm {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="loadingSpinner" class="hidden" style="display:none;">
-        <div class="spinner-border text-primary" role="status">
+    <div id="loadingSpinner" class="hidden">
+        <div class="spinner-border text-light" role="status">
             <span class="visually-hidden">로딩중...</span>
         </div>
     </div>
@@ -256,7 +519,7 @@
         <!-- 사이드바 -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <a href="#" class="sidebar-logo">호서교통 관리페이지</a>
+                <a href="#" class="sidebar-logo">호서교통 관리자</a>
             </div>
             <nav class="sidebar-nav">
                 <a href="/admin" class="nav-item nav-item-notice">
@@ -267,9 +530,9 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-                <a href="/admin/logout" class="logout-btn">
+                <button class="logout-btn" id="logoutButton">
                     로그아웃
-                </a>
+                </button>
             </div>
         </aside>
 
@@ -287,156 +550,144 @@
 
             <!-- 콘텐츠 영역 -->
             <main class="content">
-                <div class="container mt-4">
-                    <h1 class="mb-4">셔틀버스 시간표 관리</h1>
-                    
-                    <!-- CSV 업로드 섹션 추가 -->
-                    <div class="row mb-4">
-                        <div class="col">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5>CSV 파일로 시간표 일괄 추가</h5>
-                                </div>
-                                <div class="card-body">
-                                    <form id="csvUploadForm" class="mb-0">
-                                        <div class="row align-items-end">
-                                            <div class="col-md-8">
-                                                <div class="form-group mb-0">
-                                                    <label for="csvFile" class="form-label">CSV 파일 선택</label>
-                                                    <input type="file" id="csvFile" class="form-control" accept=".csv">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <button type="submit" class="btn btn-primary w-100">업로드 및 처리</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
+                <div class="page-title">
+                    <h1>셔틀버스 시간표 관리</h1>
+                </div>
+
+                <!-- CSV 업로드 섹션 -->
+                <div class="section">
+                    <div class="section-title section-title-upload">
+                        CSV 파일로 시간표 일괄 추가
+                    </div>
+                    <form id="csvUploadForm">
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 3;">
+                                <input type="file" id="csvFile" class="form-control" accept=".csv">
                             </div>
+                            <div class="form-group" style="flex: 1;">
+                                <button type="submit" class="btn btn-primary btn-upload w-100">업로드 및 처리</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 시간표 목록 -->
+                <div class="section">
+                    <div class="section-title section-title-list">
+                        시간표 목록
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <select id="routeSelect" class="form-select">
+                                <option value="">노선 선택</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select id="scheduleTypeSelect" class="form-select">
+                                <option value="">일정 유형 선택</option>
+                                <option value="Weekday">평일</option>
+                                <option value="Saturday">토요일</option>
+                                <option value="Holiday">공휴일(일요일)</option>
+                                <option value="Special">특별</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 0 0 auto; min-width: 150px;">
+                            <button id="searchButton" class="btn btn-primary w-100">검색</button>
                         </div>
                     </div>
                     
-                    <div class="row mb-4">
-                        <div class="col">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5>시간표 목록</h5>
-                                    <button id="deleteSelectedButton" class="btn btn-danger" style="display:none;">선택 삭제</button>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <select id="routeSelect" class="form-select">
-                                                <option value="">노선 선택</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <select id="scheduleTypeSelect" class="form-select">
-                                                <option value="">일정 유형 선택</option>
-                                                <option value="Weekday">평일</option>
-                                                <option value="Saturday">토요일</option>
-                                                <option value="Holiday">공휴일(일요일)</option>
-                                                <option value="Special">특별</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <button id="searchButton" class="btn btn-primary w-100">검색</button>
-                                        </div>
-                                    </div>
-                                    <div class="table-responsive">
-                                        <table class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th><input type="checkbox" id="selectAllSchedules"></th>
-                                                    <th>ID</th>
-                                                    <th>노선</th>
-                                                    <th>일정 유형</th>
-                                                    <th>기점 출발 시간</th>
-                                                    <th>종점 도착 시간</th>
-                                                    <th>작업</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="scheduleTableBody">
-                                                <!-- 시간표 데이터가 여기에 로드됩니다 -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+                        <button id="deleteSelectedButton" class="btn btn-danger btn-delete" style="display:none;">선택 항목 삭제</button>
                     </div>
                     
-                    <div class="row">
-                        <div class="col">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 id="formTitle">새 시간표 추가</h5>
-                                    <button id="resetFormButton" class="btn btn-secondary">양식 초기화</button>
-                                </div>
-                                <div class="card-body">
-                                    <form id="scheduleForm">
-                                        <input type="hidden" id="scheduleId" value="">
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="routeId">노선</label>
-                                                    <select id="routeId" class="form-select" required>
-                                                        <option value="">노선 선택</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="scheduleType">일정 유형</label>
-                                                    <select id="scheduleType" class="form-select" required>
-                                                        <option value="">유형 선택</option>
-                                                        <option value="Weekday">평일</option>
-                                                        <option value="Saturday">토요일</option>
-                                                        <option value="Holiday">공휴일</option>
-                                                        <option value="Special">특별</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="startTime">기점 출발 시간</label>
-                                                    <input type="time" id="startTime" class="form-control" required>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="endTime">종점 도착 시간</label>
-                                                    <input type="time" id="endTime" class="form-control" required>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row mt-4">
-                                            <div class="col-12">
-                                                <h5>정류장 정보</h5>
-                                                <button type="button" id="addStopButton" class="btn btn-outline-primary mb-3">정류장 추가</button>
-                                                
-                                                <div id="scheduleStops">
-                                                    <!-- 정류장 입력 필드가 여기에 동적으로 추가됩니다 -->
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row mt-4">
-                                            <div class="col-12">
-                                                <button type="submit" id="submitButton" class="btn btn-success">저장</button>
-                                                <button type="button" id="deleteButton" class="btn btn-danger hidden">삭제</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th width="5%"><input type="checkbox" id="selectAllSchedules"></th>
+                                    <th width="5%">ID</th>
+                                    <th width="20%">노선</th>
+                                    <th width="15%">일정 유형</th>
+                                    <th width="15%">기점 출발</th>
+                                    <th width="15%">종점 도착</th>
+                                    <th width="15%">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleTableBody">
+                                <!-- 시간표 데이터가 여기에 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 시간표 추가/수정 폼 -->
+                <div class="section">
+                    <div class="section-title section-title-form">
+                        <span id="formTitle">새 시간표 추가</span>
+                    </div>
+                    <form id="scheduleForm">
+                        <input type="hidden" id="scheduleId" value="">
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="routeId" class="form-label">노선</label>
+                                <select id="routeId" class="form-select" required>
+                                    <option value="">노선 선택</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="scheduleType" class="form-label">일정 유형</label>
+                                <select id="scheduleType" class="form-select" required>
+                                    <option value="">유형 선택</option>
+                                    <option value="Weekday">평일</option>
+                                    <option value="Saturday">토요일</option>
+                                    <option value="Holiday">공휴일</option>
+                                    <option value="Special">특별</option>
+                                </select>
                             </div>
                         </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startTime" class="form-label">기점 출발 시간</label>
+                                <input type="time" id="startTime" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="endTime" class="form-label">종점 도착 시간</label>
+                                <input type="time" id="endTime" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 2rem; margin-bottom: 1rem;">
+                            <h5>정류장 정보</h5>
+                            <button type="button" id="addStopButton" class="btn btn-primary btn-add mt-2 mb-3">정류장 추가</button>
+                        </div>
+                        
+                        <div id="scheduleStops">
+                            <!-- 정류장 입력 필드가 여기에 동적으로 추가됩니다 -->
+                        </div>
+                        
+                        <div class="form-row mt-4" style="justify-content: space-between;">
+                            <div>
+                                <button type="button" id="resetFormButton" class="btn btn-secondary btn-reset">양식 초기화</button>
+                            </div>
+                            <div>
+                                <button type="button" id="deleteButton" class="btn btn-danger btn-delete hidden">삭제</button>
+                                <button type="submit" id="submitButton" class="btn btn-success">저장</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 캐시 초기화 섹션 -->
+                <div class="section">
+                    <div class="section-title section-title-cache">
+                        캐시 관리
                     </div>
+                    <p class="mb-3">시간표 변경사항을 즉시 앱에 반영하려면 캐시를 초기화하세요.</p>
+                    <button id="clearCacheButton" class="btn btn-warning btn-reset">
+                        캐시 초기화
+                    </button>
                 </div>
             </main>
         </div>
@@ -445,29 +696,23 @@
     <!-- 정류장 행 템플릿 -->
     <template id="stopRowTemplate">
         <div class="stop-row">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>정류장</label>
-                        <select class="form-select station-select" required>
-                            <option value="">정류장 선택</option>
-                        </select>
-                    </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">정류장</label>
+                    <select class="form-select station-select" required>
+                        <option value="">정류장 선택</option>
+                    </select>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>도착 시간</label>
-                        <input type="time" class="form-control arrival-time" required>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">도착 시간</label>
+                    <input type="time" class="form-control arrival-time" required>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>정류장 순서</label>
-                        <input type="number" class="form-control stop-order" required min="1">
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">정류장 순서</label>
+                    <input type="number" class="form-control stop-order" required min="1">
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="button" class="btn btn-outline-danger remove-stop-button mb-2">삭제</button>
+                <div class="form-group" style="flex: 0 0 auto; min-width: 80px; display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-danger btn-sm remove-stop-button">삭제</button>
                 </div>
             </div>
         </div>
@@ -475,6 +720,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         // 사이드바 토글
         document.getElementById('sidebarToggle').addEventListener('click', function() {
@@ -501,6 +747,100 @@
             const resetFormButton = document.getElementById('resetFormButton');
             const loadingSpinner = document.getElementById('loadingSpinner');
             
+            // 인증 토큰 관리
+            let authToken = '';
+            
+            // 인증 토큰 가져오기 (세션 쿠키는 자동으로 전송됨)
+            async function getAuthToken() {
+                try {
+                    // 이미 토큰이 있으면 재사용
+                    if (authToken) return authToken;
+                    
+                    // 로컬 스토리지에서 토큰 확인
+                    const savedToken = localStorage.getItem('access_token');
+                    if (savedToken) {
+                        authToken = savedToken;
+                        return authToken;
+                    }
+                    
+                    // 토큰이 없는 경우 서버에서 새로운 토큰 요청
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.access_token) {
+                                authToken = data.access_token;
+                                localStorage.setItem('access_token', authToken);
+                                return authToken;
+                            }
+                        }
+                    } catch (tokenError) {
+                        console.error('토큰 새로고침 실패:', tokenError);
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.error('인증 토큰 가져오기 실패:', error);
+                    return null;
+                }
+            }
+            
+            // API 요청 도우미 함수 (인증 토큰 추가)
+            async function fetchWithAuth(url, options = {}) {
+                try {
+                    // 기본 옵션
+                    const baseOptions = {
+                        headers: {
+                            ...options.headers
+                        },
+                        credentials: 'include'
+                    };
+                    
+                    // 인증 토큰 가져와서 헤더에 추가 (로컬 스토리지에서 직접 가져옴)
+                    const savedToken = localStorage.getItem('access_token');
+                    if (savedToken) {
+                        baseOptions.headers['Authorization'] = `Bearer ${savedToken}`;
+                    }
+                    
+                    // 요청 보내기
+                    const response = await fetch(url, {
+                        ...options,
+                        ...baseOptions,
+                        headers: {
+                            ...baseOptions.headers,
+                            ...options.headers
+                        }
+                    });
+                    
+                    // 인증 오류인 경우 로그인 페이지로 리다이렉트
+                    if (response.status === 401) {
+                        if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+                            // 현재 URL을 저장하여 로그인 후 다시 이 페이지로 돌아오도록 합니다
+                            const redirectUrl = encodeURIComponent(window.location.pathname);
+                            window.location.href = `/admin/login?redirect=${redirectUrl}`;
+                        }
+                        throw new Error('인증이 필요합니다');
+                    }
+                    
+                    // 응답이 JSON이 아닌 경우 처리
+                    if (!response.headers.get('content-type')?.includes('application/json')) {
+                        if (!response.ok) {
+                            throw new Error(`API 오류: ${response.status} ${response.statusText}`);
+                        }
+                        return response;
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error('API 요청 오류:', error);
+                    throw error;
+                }
+            }
+            
             // 초기 로딩 스피너 강제 숨김
             loadingSpinner.classList.add('hidden');
             loadingSpinner.style.display = 'none';
@@ -523,15 +863,67 @@
                 try {
                     showLoading();
                     
+                    // 로그인 상태 확인
+                    await checkLoginStatus();
+                    
                     // 노선 목록 로드
                     await loadRoutes();
                     
                     // 정류장 목록 로드
                     await loadStations();
                 } catch (error) {
-                    alert('페이지 초기화 중 오류가 발생했습니다: ' + error.message);
+                    console.error('페이지 초기화 중 오류가 발생했습니다:', error);
+                    if (error.message === '인증 필요') {
+                        if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+                            window.location.href = '/admin/login';
+                        }
+                    } else {
+                        alert('페이지 초기화 중 오류가 발생했습니다: ' + error.message);
+                    }
                 } finally {
                     hideLoading();
+                }
+            }
+            
+            // 로그인 상태 확인
+            async function checkLoginStatus() {
+                try {
+                    // 세션 상태 확인 API 호출
+                    const response = await fetch(`${API_BASE_URL}/auth/session-status`, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    
+                    if (response.status === 401) {
+                        // 로그인 페이지로 리다이렉트
+                        console.error('로그인이 필요합니다.');
+                        window.location.href = '/admin/login?redirect=/admin/shuttle';
+                        throw new Error('인증 필요');
+                    }
+                    
+                    // 세션 유효한 경우 토큰 확인 및 갱신
+                    if (response.ok) {
+                        try {
+                            const tokenResponse = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
+                                method: 'POST',
+                                credentials: 'include'
+                            });
+                            
+                            if (tokenResponse.ok) {
+                                const data = await tokenResponse.json();
+                                if (data.access_token) {
+                                    authToken = data.access_token;
+                                    localStorage.setItem('access_token', authToken);
+                                    console.log('토큰이 성공적으로 갱신되었습니다.');
+                                }
+                            }
+                        } catch (tokenError) {
+                            console.error('토큰 갱신 실패:', tokenError);
+                        }
+                    }
+                } catch (error) {
+                    console.error('로그인 상태 확인 실패:', error);
+                    throw error;
                 }
             }
             
@@ -570,8 +962,10 @@
                         Papa.parse(csvData, {
                             complete: async function(results) {
                                 try {
-                                    await processCSVData(results.data);
-                                    alert('시간표가 성공적으로 추가되었습니다.');
+                                    // CSV 데이터 처리 - 성공 메시지는 함수 내에서만 표시하도록 수정
+                                    await processCSVData(results.data, true);
+                                    // 파일 입력 필드 초기화
+                                    document.getElementById('csvFile').value = '';
                                 } catch (error) {
                                     alert('CSV 데이터 처리 중 오류가 발생했습니다: ' + error.message);
                                 } finally {
@@ -596,7 +990,7 @@
             // 노선 목록 로드
             async function loadRoutes() {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/shuttle/routes`);
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/routes`);
                     if (!response.ok) throw new Error('노선 데이터를 불러오는데 실패했습니다.');
                     
                     const routes = await response.json();
@@ -632,7 +1026,7 @@
             // 정류장 목록 로드
             async function loadStations() {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/shuttle/stations`);
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/stations`);
                     if (!response.ok) throw new Error('정류장 데이터를 불러오는데 실패했습니다.');
                     
                     stationsList = await response.json();
@@ -660,7 +1054,14 @@
                 try {
                     showLoading();
                     
-                    const response = await fetch(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
+                    
+                    // 404 오류는 데이터가 없다는 의미이므로 오류 메시지 대신 빈 목록 표시
+                    if (response.status === 404) {
+                        displaySchedules([]);
+                        return;
+                    }
+                    
                     if (!response.ok) throw new Error('시간표 데이터를 불러오는데 실패했습니다.');
                     
                     const schedules = await response.json();
@@ -668,7 +1069,7 @@
                     displaySchedules(schedules);
                 } catch (error) {
                     alert('시간표 데이터를 불러오는데 실패했습니다: ' + error.message);
-                    scheduleTableBody.innerHTML = '<tr><td colspan="6" class="text-center">시간표를 불러오는데 실패했습니다.</td></tr>';
+                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center">시간표를 불러오는데 실패했습니다.</td></tr>';
                 } finally {
                     hideLoading();
                 }
@@ -677,6 +1078,12 @@
             // 시간표 표시
             function displaySchedules(schedules) {
                 scheduleTableBody.innerHTML = '';
+                
+                // 시간표가 없는 경우 처리
+                if (!schedules || schedules.length === 0) {
+                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center">이 노선과 일정 유형에 해당하는 시간표가 없습니다.</td></tr>';
+                    return;
+                }
                 
                 schedules.forEach(schedule => {
                     const row = document.createElement('tr');
@@ -829,7 +1236,7 @@
                         return;
                     }
                     
-                    const scheduleResponse = await fetch(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
+                    const scheduleResponse = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
                     if (!scheduleResponse.ok) {
                         throw new Error('시간표 정보를 불러오는데 실패했습니다. 상태: ' + scheduleResponse.status);
                     }
@@ -843,7 +1250,7 @@
                     }
                     
                     // 2. 정류장 정보 가져오기
-                    const stopsResponse = await fetch(`${API_BASE_URL}/shuttle/schedules/${id}/stops`);
+                    const stopsResponse = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules/${id}/stops`);
                     if (!stopsResponse.ok) {
                         throw new Error('정류장 정보를 불러오는데 실패했습니다. 상태: ' + stopsResponse.status);
                     }
@@ -939,7 +1346,7 @@
                     if (id) {
                         // 수정
                         apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
-                        response = await fetch(apiUrl, {
+                        response = await fetchWithAuth(apiUrl, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(data)
@@ -947,7 +1354,7 @@
                     } else {
                         // 추가
                         apiUrl = `${API_BASE_URL}/shuttle/admin/schedules`;
-                        response = await fetch(apiUrl, {
+                        response = await fetchWithAuth(apiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(data)
@@ -988,7 +1395,7 @@
                     showLoading();
                     
                     const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
-                    const response = await fetch(apiUrl, {
+                    const response = await fetchWithAuth(apiUrl, {
                         method: 'DELETE'
                     });
                     
@@ -1018,6 +1425,9 @@
                 scheduleForm.reset();
                 scheduleStops.innerHTML = '';
                 deleteButton.classList.add('hidden');
+                
+                // 초기 정류장 행 추가
+                addStopRow();
             }
             
             // 파일 읽기 함수
@@ -1031,7 +1441,10 @@
             }
             
             // CSV 데이터 처리 함수
-            async function processCSVData(data) {
+            async function processCSVData(data, showSuccessMessage = false) {
+                // 파일 입력 필드 참조 얻기
+                const csvFileInput = document.getElementById('csvFile');
+                
                 // 첫 번째 행에서 노선 ID와 시간표 유형 추출
                 let routeId = null;
                 let scheduleType = null;
@@ -1179,7 +1592,7 @@
                             throw new Error('정류장 정보가 없습니다.');
                         }
                         
-                        const response = await fetch(`${API_BASE_URL}/shuttle/admin/schedules`, {
+                        const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/admin/schedules`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(scheduleData)
@@ -1210,8 +1623,10 @@
                     }
                 }
 
-                // 성공 처리
-                alert(`${arrivalTimes.length}개의 시간표가 성공적으로 추가되었습니다.`);
+                // 성공 처리 - 매개변수에 따라 성공 메시지 표시 여부 결정
+                if (showSuccessMessage) {
+                    alert(`${arrivalTimes.length}개의 시간표가 성공적으로 추가되었습니다.`);
+                }
 
                 // 현재 선택된 노선과 일정 유형이 CSV 파일과 일치하면 목록 새로고침
                 if (routeSelect.value == routeId && scheduleTypeSelect.value == scheduleType) {
@@ -1223,8 +1638,8 @@
                     searchSchedules();
                 }
 
-                // 폼 초기화
-                fileInput.value = '';
+                // 폼 초기화 (fileInput 변수 대신 직접 엘리먼트 참조)
+                csvFileInput.value = '';
             }
 
             // 시간 형식을 API에 맞게 변환 (HH:MM → HH:MM:SS)
@@ -1314,7 +1729,7 @@
                     // 각 시간표 순차적으로 삭제
                     for (const id of ids) {
                         const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
-                        const response = await fetch(apiUrl, {
+                        const response = await fetchWithAuth(apiUrl, {
                             method: 'DELETE'
                         });
                         
@@ -1345,7 +1760,7 @@
                     showLoading();
                     
                     const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
-                    const response = await fetch(apiUrl, {
+                    const response = await fetchWithAuth(apiUrl, {
                         method: 'DELETE'
                     });
                     
@@ -1362,6 +1777,62 @@
                     }
                 } catch (error) {
                     alert(error.message || '시간표 삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 로그아웃 버튼 이벤트 설정
+            document.getElementById('logoutButton').addEventListener('click', function(e) {
+                e.preventDefault();
+                handleLogout();
+            });
+            
+            // 로그아웃 처리
+            async function handleLogout() {
+                try {
+                    // 로컬 저장소의 토큰 삭제
+                    localStorage.removeItem('access_token');
+                    authToken = '';
+                    
+                    // 서버 세션 로그아웃 요청
+                    await fetch(`${API_BASE_URL}/admin/logout`, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    
+                    // 로그인 페이지로 리다이렉트
+                    window.location.href = '/admin/login';
+                } catch (error) {
+                    console.error('로그아웃 중 오류 발생:', error);
+                    
+                    // 오류가 발생해도 로그인 페이지로 이동
+                    window.location.href = '/admin/login';
+                }
+            }
+
+            // 캐시 초기화 버튼 이벤트 설정
+            document.getElementById('clearCacheButton').addEventListener('click', function() {
+                clearCache();
+            });
+            
+            // 캐시 초기화 함수
+            async function clearCache() {
+                try {
+                    showLoading();
+                    
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/admin/clear-cache`, {
+                        method: 'POST'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '캐시 초기화에 실패했습니다.');
+                    }
+                    
+                    alert('캐시가 성공적으로 초기화되었습니다. 앱에서 변경사항이 즉시 반영됩니다.');
+                } catch (error) {
+                    alert(error.message || '캐시 초기화에 실패했습니다.');
                 } finally {
                     hideLoading();
                 }

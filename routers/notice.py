@@ -6,6 +6,7 @@ from datetime import datetime
 
 from database import get_db
 from models.notice import Notice
+from utils.security import get_current_admin
 
 router = APIRouter(
     prefix="/notices",
@@ -55,9 +56,9 @@ def get_notice(notice_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")
     return notice
 
-# 공지사항 생성
+# 공지사항 생성 (관리자 권한 필요)
 @router.post("/", response_model=NoticeResponse, status_code=status.HTTP_201_CREATED)
-def create_notice(notice: NoticeCreate, db: Session = Depends(get_db)):
+def create_notice(notice: NoticeCreate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
     db_notice = Notice(
         title=notice.title,
         content=notice.content,
@@ -68,9 +69,9 @@ def create_notice(notice: NoticeCreate, db: Session = Depends(get_db)):
     db.refresh(db_notice)
     return db_notice
 
-# 공지사항 수정
+# 공지사항 수정 (관리자 권한 필요)
 @router.put("/{notice_id}", response_model=NoticeResponse)
-def update_notice(notice_id: int, notice: NoticeUpdate, db: Session = Depends(get_db)):
+def update_notice(notice_id: int, notice: NoticeUpdate, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
     db_notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if db_notice is None:
         raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")
@@ -83,9 +84,9 @@ def update_notice(notice_id: int, notice: NoticeUpdate, db: Session = Depends(ge
     db.refresh(db_notice)
     return db_notice
 
-# 공지사항 삭제
+# 공지사항 삭제 (관리자 권한 필요)
 @router.delete("/{notice_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_notice(notice_id: int, db: Session = Depends(get_db)):
+def delete_notice(notice_id: int, db: Session = Depends(get_db), current_admin = Depends(get_current_admin)):
     db_notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if db_notice is None:
         raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다")

@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>호서교통 관리자</title>
+    <!-- 구글 폰트 추가 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #4361ee;
@@ -27,7 +31,7 @@
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', Apple SD Gothic Neo, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            font-family: 'Noto Sans KR', sans-serif;
             margin: 0; 
             background: #f5f7fa; 
             color: #333;
@@ -35,6 +39,7 @@
             flex-direction: column;
             min-height: 100vh;
             line-height: 1.6;
+            word-break: keep-all;
         }
 
         .login-page {
@@ -274,7 +279,7 @@
                     <p>관리자 계정으로 로그인하세요</p>
                 </div>
                 
-                <form method="post" action="/admin/login" class="login-form">
+                <form id="loginForm" class="login-form">
                     <div class="form-group">
                         <label class="form-label" for="email">이메일</label>
                         <div class="input-group">
@@ -291,22 +296,112 @@
                         </div>
                     </div>
                     
+                    <!-- 리다이렉트 URL을 위한 숨겨진 필드 추가 -->
+                    <input type="hidden" id="redirect" name="redirect" value="{{ redirect }}">
+                    
                     <button type="submit" class="btn">
                         로그인
                     </button>
                 </form>
                 
-                {% if error %}
-                <div class="error-alert">
+                <div id="errorMessage" class="error-alert" style="display: none;">
                     <p>{{ error }}</p>
                 </div>
-                {% endif %}
                 
                 <div class="login-footer">
-                    © 2023 호서교통 관리자 시스템
+                    © 호서교통 관리자 시스템
                 </div>
             </div>
         </main>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 에러 메시지가 있는 경우 표시
+            const error = "{{ error }}";
+            const errorElement = document.getElementById('errorMessage');
+            
+            if (error && error.trim() !== 'None' && error.trim() !== '') {
+                errorElement.style.display = 'flex';
+            }
+            
+            // URL 매개변수에서 리다이렉트 경로 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectParam = urlParams.get('redirect');
+            
+            // 리다이렉트 필드에 값 설정
+            if (redirectParam && redirectParam !== "None" && redirectParam.trim() !== "") {
+                document.getElementById('redirect').value = redirectParam;
+            } else {
+                document.getElementById('redirect').value = "/admin";
+            }
+            
+            // 로그인 폼 제출 처리
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const redirect = document.getElementById('redirect').value;
+                
+                if (!email || !password) {
+                    showError('이메일과 비밀번호를 모두 입력해주세요');
+                    return;
+                }
+                
+                try {
+                    // 일반 폼 제출 방식으로 처리 (리디렉션이 자동으로 처리됨)
+                    const formData = new FormData();
+                    formData.append('email', email);
+                    formData.append('password', password);
+                    if (redirect) {
+                        formData.append('redirect', redirect);
+                    }
+                    
+                    // 폼 제출
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/admin/login';
+                    
+                    // 이메일 필드 추가
+                    const emailField = document.createElement('input');
+                    emailField.type = 'hidden';
+                    emailField.name = 'email';
+                    emailField.value = email;
+                    form.appendChild(emailField);
+                    
+                    // 비밀번호 필드 추가
+                    const passwordField = document.createElement('input');
+                    passwordField.type = 'hidden';
+                    passwordField.name = 'password';
+                    passwordField.value = password;
+                    form.appendChild(passwordField);
+                    
+                    // 리다이렉트 필드 추가
+                    if (redirect) {
+                        const redirectField = document.createElement('input');
+                        redirectField.type = 'hidden';
+                        redirectField.name = 'redirect';
+                        redirectField.value = redirect;
+                        form.appendChild(redirectField);
+                    }
+                    
+                    // 폼을 문서에 추가하고 제출
+                    document.body.appendChild(form);
+                    form.submit();
+                } catch (error) {
+                    showError('로그인 중 오류가 발생했습니다');
+                    console.error('Login error:', error);
+                }
+            });
+            
+            // 에러 메시지 표시 함수
+            function showError(message) {
+                errorElement.querySelector('p').textContent = message;
+                errorElement.style.display = 'flex';
+            }
+        });
+    </script>
 </body>
 </html> 
