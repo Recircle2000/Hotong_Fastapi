@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from datetime import time
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from utils.security import get_current_admin
 
 from database import get_db
 from models.shuttle import Schedule, ScheduleStop, ShuttleStation, ShuttleRoute
@@ -280,24 +281,12 @@ def get_routes(
     
     return serialized_routes
 
-# 캐시 무효화를 위한 함수 (관리자 API로 추가할 수 있음)
-@router.post("/cache/invalidate")
-def invalidate_cache(pattern: str = "shuttle:*"):
-    """
-    특정 패턴의 셔틀 캐시를 무효화합니다.
-    예: 
-    - 모든 셔틀 캐시: shuttle:*
-    - 스케줄 캐시: shuttle:schedules:*
-    - 역 캐시: shuttle:stations:*
-    """
-    deleted_count = delete_pattern(pattern)
-    return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다."}
-
 # 관리자 API 엔드포인트 추가
 @router.post("/admin/schedules", status_code=201)
 def create_schedule(
     schedule_data: ScheduleCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
 ):
     # 1. 해당 route가 존재하는지 확인
     route = db.query(ShuttleRoute).filter(ShuttleRoute.id == schedule_data.route_id).first()
@@ -347,7 +336,8 @@ def create_schedule(
 def update_schedule(
     schedule_id: int,
     schedule_data: ScheduleUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
 ):
     # 1. 스케줄 존재 확인
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
@@ -407,7 +397,8 @@ def update_schedule(
 @router.delete("/admin/schedules/{schedule_id}")
 def delete_schedule(
     schedule_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
 ):
     # 1. 스케줄 존재 확인
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
@@ -430,6 +421,27 @@ def delete_schedule(
     delete_pattern(f"shuttle:schedule_stops:{schedule_id}")
     
     return {"message": "Schedule deleted successfully"}
+
+# 캐시 무효화를 위한 함수 (관리자 API로 추가할 수 있음)
+@router.post("/admin/clear-cache")
+def clear_shuttle_cache(current_admin = Depends(get_current_admin)):
+    """
+    모든 셔틀 캐시를 무효화합니다.
+    """
+    deleted_count = delete_pattern("shuttle:*")
+    return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다.", "success": True}
+
+@router.post("/cache/invalidate")
+def invalidate_cache(pattern: str = "shuttle:*", current_admin = Depends(get_current_admin)):
+    """
+    특정 패턴의 셔틀 캐시를 무효화합니다.
+    예: 
+    - 모든 셔틀 캐시: shuttle:*
+    - 스케줄 캐시: shuttle:schedules:*
+    - 역 캐시: shuttle:stations:*
+    """
+    deleted_count = delete_pattern(pattern)
+    return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다."}
 
 # 셔틀 시간표 관리 페이지 (이전 경로 - 이제 dashboard에서 처리)
 # @router.get("/admin/schedules", response_class=HTMLResponse)

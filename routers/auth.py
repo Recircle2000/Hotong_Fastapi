@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, Response, Body
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
-from utils.security import hash_password, verify_password, create_access_token
+from utils.security import hash_password, verify_password, create_access_token, get_current_user
 from pydantic import BaseModel
 from datetime import timedelta
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from typing import Optional
 
 router = APIRouter()
 
@@ -15,7 +18,7 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str
+    username: str
     password: str
 
 
@@ -35,12 +38,136 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return {"message": "User registered successfully"}
 
 
-# 로그인 API
+# 로그인 API (OAuth2 호환)
 @router.post("/login")
-def login(user: UserLogin, db: Session = Depends(get_db)):
-    user_record = db.query(User).filter(User.email == user.email).first()
-    if not user_record or not verify_password(user.password, user_record.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+async def login(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    # 요청 타입 확인
+    content_type = request.headers.get("Content-Type", "")
+    
+    # 폼 데이터 요청인 경우
+    if "application/x-www-form-urlencoded" in content_type:
+        form_data = await request.form()
+        username = form_data.get("email") or form_data.get("username")
+        password = form_data.get("password")
+        is_browser_form = True
+    # JSON 요청인 경우
+    elif "application/json" in content_type:
+        json_data = await request.json()
+        username = json_data.get("username")
+        password = json_data.get("password")
+        is_browser_form = False
+    # OAuth2 요청인 경우 (특수 처리)
+    elif "application/x-www-form-urlencoded" in content_type and request.query_params.get("grant_type") == "password":
+        form_data = await request.form()
+        username = form_data.get("username")
+        password = form_data.get("password")
+        is_browser_form = False
+    else:
+        # 다른 요청 타입은 지원하지 않음
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="지원하지 않는 요청 형식입니다"
+        )
+    
+    # 유효성 검사
+    if not username or not password:
+        if is_browser_form:
+            return RedirectResponse(
+                url="/admin/login?error=이메일과 비밀번호를 모두 입력해주세요", 
+                status_code=status.HTTP_303_SEE_OTHER
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이메일(아이디)와 비밀번호를 입력해주세요",
+            )
+    
+    # 사용자 인증
+    user_record = db.query(User).filter(User.email == username).first()
+    if not user_record or not verify_password(password, user_record.hashed_password):
+        if is_browser_form:
+            # 브라우저 로그인 실패 시 로그인 페이지로 리디렉션
+            return RedirectResponse(
+                url="/admin/login?error=로그인에 실패했습니다", 
+                status_code=status.HTTP_303_SEE_OTHER
+            )
+        else:
+            # API 로그인 실패 시 401 오류
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="아이디 또는 비밀번호가 틀렸습니다",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    
+    # 관리자 권한 체크 (브라우저 로그인의 경우)
+    if is_browser_form and not getattr(user_record, "is_admin", False):
+        return RedirectResponse(
+            url="/admin/login?error=관리자 권한이 없습니다", 
+            status_code=status.HTTP_303_SEE_OTHER
+        )
 
-    access_token = create_access_token(data={"sub": user.email}, expires_delta=timedelta(hours=2))
-    return {"access_token": access_token}
+    # JWT 토큰 생성
+    access_token = create_access_token(data={"sub": user_record.email}, expires_delta=timedelta(hours=2))
+    
+    # 세션 로그인 처리 (관리자 페이지용)
+    request.session["user_id"] = user_record.id
+    
+    # 브라우저 로그인 성공 시 관리자 페이지로 리디렉션
+    if is_browser_form:
+        return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+    
+    # API 로그인 성공 시 토큰 반환
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# 세션 상태 확인 API
+@router.get("/auth/session-status")
+async def check_session_status(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증이 필요합니다",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not getattr(user, "is_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증이 필요합니다",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return {"status": "authenticated", "user_id": user_id}
+
+
+# 토큰 갱신 API
+@router.post("/auth/token/refresh")
+async def refresh_token(request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증이 필요합니다",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not getattr(user, "is_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증이 필요합니다",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 새 액세스 토큰 생성
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(hours=2)
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}

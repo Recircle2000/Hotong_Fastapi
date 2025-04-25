@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a0aad55f-622d-48a3-a4a2-357d2fdd7c97" name="변경" comment="도커 추가">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/redis_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/redis_client.py" afterDir="false" />
-    </list>
+    <list default="true" id="a0aad55f-622d-48a3-a4a2-357d2fdd7c97" name="변경" comment="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -65,7 +62,7 @@
     "Python.generate_secret_key.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "develop",
     "last_opened_file_path": "C:/Users/user/PycharmProjects/gotohoseo_backend",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -188,6 +185,7 @@
       <workItem from="1745235997977" duration="2738000" />
       <workItem from="1745259839353" duration="11000" />
       <workItem from="1745297631625" duration="823000" />
+      <workItem from="1745394355158" duration="545000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -269,7 +267,15 @@
       <option name="project" value="LOCAL" />
       <updated>1744620169102</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가">
+      <option name="closed" value="true" />
+      <created>1745394594532</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1745394594532</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -308,7 +314,8 @@
     <MESSAGE value="공지사항 CRUD" />
     <MESSAGE value="셔틀버스 시간표 api 구현&#10;- 노선정보 간단조회&#10;- 해당 노선 상세조회&#10;- 정류장 지나가는 노선 시간 조회&#10;- 정류장 정보 조회&#10;- 노선 정보 조회" />
     <MESSAGE value="서버 응답시간 개선&#10;redis캐싱 적용&#10;안드로이드 공기계 서버(termux)기준&#10;캐싱전 - 평균 응답 시간: 0.7529초&#10;캐싱후 - 평균 응답 시간: 0.2428초" />
-    <option name="LAST_COMMIT_MESSAGE" value="서버 응답시간 개선&#10;redis캐싱 적용&#10;안드로이드 공기계 서버(termux)기준&#10;캐싱전 - 평균 응답 시간: 0.7529초&#10;캐싱후 - 평균 응답 시간: 0.2428초" />
+    <MESSAGE value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
+    <option name="LAST_COMMIT_MESSAGE" value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

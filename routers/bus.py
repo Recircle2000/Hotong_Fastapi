@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 import asyncio
 import httpx
 import os
@@ -6,6 +6,7 @@ import json
 from dotenv import load_dotenv
 import redis
 from utils.redis_client import redis_client, set_cache, get_cache, delete_cache, delete_pattern
+from utils.security import get_current_admin
 
 router = APIRouter()
 
@@ -163,7 +164,7 @@ async def get_bus_by_route(route_name: str):
     return {route_name: cached_data}
 
 @router.post("/cache/invalidate")
-async def invalidate_bus_cache(route_name: str = None):
+async def invalidate_bus_cache(route_name: str = None, current_admin = Depends(get_current_admin)):
     """
     버스 데이터 캐시를 무효화합니다.
     
