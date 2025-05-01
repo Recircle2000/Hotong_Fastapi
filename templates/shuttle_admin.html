@@ -585,10 +585,6 @@
                         <div class="form-group">
                             <select id="scheduleTypeSelect" class="form-select">
                                 <option value="">일정 유형 선택</option>
-                                <option value="Weekday">평일</option>
-                                <option value="Saturday">토요일</option>
-                                <option value="Holiday">공휴일(일요일)</option>
-                                <option value="Special">특별</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex: 0 0 auto; min-width: 150px;">
@@ -639,10 +635,6 @@
                                 <label for="scheduleType" class="form-label">일정 유형</label>
                                 <select id="scheduleType" class="form-select" required>
                                     <option value="">유형 선택</option>
-                                    <option value="Weekday">평일</option>
-                                    <option value="Saturday">토요일</option>
-                                    <option value="Holiday">공휴일</option>
-                                    <option value="Special">특별</option>
                                 </select>
                             </div>
                         </div>
@@ -677,6 +669,152 @@
                             </div>
                         </div>
                     </form>
+                </div>
+                
+                <!-- 일정 유형 관리 섹션 -->
+                <div class="section">
+                    <div class="section-title section-title-form">
+                        일정 유형 관리
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th width="20%">코드</th>
+                                    <th width="30%">이름</th>
+                                    <th width="20%">상태</th>
+                                    <th width="30%">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleTypeTableBody">
+                                <!-- 일정 유형 데이터가 여기에 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" id="addScheduleTypeButton" class="btn btn-primary btn-add">일정 유형 추가</button>
+                    </div>
+                    
+                    <!-- 일정 유형 추가/수정 모달 -->
+                    <div class="modal fade" id="scheduleTypeModal" tabindex="-1" aria-labelledby="scheduleTypeModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="scheduleTypeModalLabel">일정 유형 추가</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="scheduleTypeForm">
+                                        <input type="hidden" id="scheduleTypeAction" value="add">
+                                        <input type="hidden" id="currentScheduleType" value="">
+                                        
+                                        <div class="mb-3" id="scheduleTypeCodeGroup">
+                                            <label for="scheduleTypeCode" class="form-label">일정 유형 코드</label>
+                                            <input type="text" class="form-control" id="scheduleTypeCode" placeholder="Weekday, Holiday 등" required>
+                                            <div class="form-text">영문으로 입력하세요. 한번 설정하면 변경할 수 없습니다.</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="scheduleTypeName" class="form-label">일정 유형 이름</label>
+                                            <input type="text" class="form-control" id="scheduleTypeName" placeholder="평일, 공휴일 등" required>
+                                        </div>
+                                        
+                                        <div class="mb-3 form-check">
+                                            <input type="checkbox" class="form-check-input" id="scheduleTypeActive" checked>
+                                            <label class="form-check-label" for="scheduleTypeActive">활성화</label>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                    <button type="button" class="btn btn-primary" id="saveScheduleTypeButton">저장</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 일정 예외 관리 섹션 추가 -->
+                <div class="section">
+                    <div class="section-title section-title-form">
+                        일정 예외 관리
+                    </div>
+                    
+                    <p class="mb-3">특정 날짜에 다른 일정 유형을 적용하기 위한 예외 일정을 관리합니다.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="20%">기간</th>
+                                    <th width="20%">적용 일정 유형</th>
+                                    <th width="25%">사유</th>
+                                    <th width="15%">상태</th>
+                                    <th width="20%">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleExceptionTableBody">
+                                <!-- 일정 예외 데이터가 여기에 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" id="addScheduleExceptionButton" class="btn btn-primary btn-add">일정 예외 추가</button>
+                    </div>
+                    
+                    <!-- 일정 예외 추가/수정 모달 -->
+                    <div class="modal fade" id="scheduleExceptionModal" tabindex="-1" aria-labelledby="scheduleExceptionModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="scheduleExceptionModalLabel">일정 예외 추가</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="scheduleExceptionForm">
+                                        <input type="hidden" id="scheduleExceptionAction" value="add">
+                                        <input type="hidden" id="scheduleExceptionId" value="">
+                                        
+                                        <div class="mb-3">
+                                            <label for="exceptionStartDate" class="form-label">시작 날짜</label>
+                                            <input type="date" class="form-control" id="exceptionStartDate" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="exceptionEndDate" class="form-label">종료 날짜</label>
+                                            <input type="date" class="form-control" id="exceptionEndDate" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="exceptionScheduleType" class="form-label">적용할 일정 유형</label>
+                                            <select class="form-select" id="exceptionScheduleType" required>
+                                                <option value="">일정 유형 선택</option>
+                                                <!-- 일정 유형 옵션이 여기에 로드됩니다 -->
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="exceptionReason" class="form-label">사유</label>
+                                            <textarea class="form-control" id="exceptionReason" rows="3" placeholder="예외 일정 적용 사유를 입력하세요"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3 form-check">
+                                            <input type="checkbox" class="form-check-input" id="exceptionIsActivate" checked>
+                                            <label class="form-check-label" for="exceptionIsActivate">활성화</label>
+                                            <div class="form-text text-muted">비활성화된 예외 일정은 적용되지 않습니다.</div>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                    <button type="button" class="btn btn-primary" id="saveScheduleExceptionButton">저장</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- 캐시 초기화 섹션 -->
@@ -869,8 +1007,17 @@
                     // 노선 목록 로드
                     await loadRoutes();
                     
+                    // 일정 유형 목록 로드
+                    await loadScheduleTypes();
+                    
                     // 정류장 목록 로드
                     await loadStations();
+                    
+                    // 일정 유형 테이블 로드
+                    await loadScheduleTypeTable();
+                    
+                    // 일정 예외 테이블 로드
+                    await loadScheduleExceptionTable();
                 } catch (error) {
                     console.error('페이지 초기화 중 오류가 발생했습니다:', error);
                     if (error.message === '인증 필요') {
@@ -1020,6 +1167,47 @@
                 }
             }
             
+            // 일정 유형 목록 로드
+            async function loadScheduleTypes() {
+                try {
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
+                    if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
+                    
+                    const scheduleTypes = await response.json();
+                    
+                    // 검색 선택상자에 추가
+                    const scheduleTypeSelect = document.getElementById('scheduleTypeSelect');
+                    scheduleTypeSelect.innerHTML = '<option value="">일정 유형 선택</option>';
+                    scheduleTypes.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.schedule_type;
+                        option.textContent = `${type.schedule_type_name} ${type.is_activate ? '' : '(비활성화)'}`;
+                        if (!type.is_activate) {
+                            option.style.color = '#999';
+                        }
+                        scheduleTypeSelect.appendChild(option);
+                    });
+                    
+                    // 폼 선택상자에 추가
+                    const scheduleTypeFormSelect = document.getElementById('scheduleType');
+                    scheduleTypeFormSelect.innerHTML = '<option value="">유형 선택</option>';
+                    scheduleTypes.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.schedule_type;
+                        option.textContent = `${type.schedule_type_name} ${type.is_activate ? '' : '(비활성화)'}`;
+                        if (!type.is_activate) {
+                            option.style.color = '#999';
+                        }
+                        scheduleTypeFormSelect.appendChild(option);
+                    });
+                    
+                    return scheduleTypes;
+                } catch (error) {
+                    alert('일정 유형 데이터를 불러오는데 실패했습니다: ' + error.message);
+                    throw error;
+                }
+            }
+            
             // 정류장 목록 저장 변수
             let stationsList = [];
             
@@ -1138,13 +1326,24 @@
             
             // 일정 유형 번역
             function translateScheduleType(type) {
-                const types = {
-                    'Weekday': '평일',
-                    'Saturday': '토요일',
-                    'Holiday': '공휴일(일요일)',
-                    'Special': '특별'
-                };
-                return types[type] || type;
+                // 전역 변수에 일정 유형-이름 매핑 저장
+                if (!window.scheduleTypeMap) {
+                    window.scheduleTypeMap = {};
+                    const scheduleTypeSelect = document.getElementById('scheduleTypeSelect');
+                    Array.from(scheduleTypeSelect.options).forEach(option => {
+                        if (option.value) {
+                            // 옵션 텍스트에서 비활성화 표시 제거하고 순수 이름만 매핑
+                            let displayName = option.textContent;
+                            if (displayName.includes('(비활성화)')) {
+                                displayName = displayName.replace(' (비활성화)', '');
+                            }
+                            window.scheduleTypeMap[option.value] = displayName;
+                        }
+                    });
+                }
+                
+                // 매핑된 이름 반환 또는 원래 값 사용
+                return window.scheduleTypeMap[type] || type;
             }
             
             // 시간 형식 변환
@@ -1837,6 +2036,749 @@
                     hideLoading();
                 }
             }
+
+            // 일정 유형 테이블 로드
+            async function loadScheduleTypeTable() {
+                try {
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
+                    if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
+                    
+                    const scheduleTypes = await response.json();
+                    const tableBody = document.getElementById('scheduleTypeTableBody');
+                    tableBody.innerHTML = '';
+                    
+                    scheduleTypes.forEach(type => {
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${type.schedule_type}</td>
+                            <td>${type.schedule_type_name}</td>
+                            <td>
+                                <span class="badge ${type.is_activate ? 'bg-success' : 'bg-secondary'}">
+                                    ${type.is_activate ? '활성화' : '비활성화'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary edit-schedule-type-button" data-type="${type.schedule_type}">수정</button>
+                                <button class="btn btn-sm btn-danger delete-schedule-type-button" data-type="${type.schedule_type}">삭제</button>
+                            </td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // 이벤트 리스너 추가
+                    addScheduleTypeEventListeners();
+                    
+                } catch (error) {
+                    console.error('일정 유형 테이블 로드 실패:', error);
+                }
+            }
+            
+            // 일정 유형 이벤트 리스너 추가
+            function addScheduleTypeEventListeners() {
+                // 추가 버튼
+                document.getElementById('addScheduleTypeButton').addEventListener('click', () => {
+                    showScheduleTypeModal('add');
+                });
+                
+                // 저장 버튼
+                document.getElementById('saveScheduleTypeButton').addEventListener('click', saveScheduleType);
+                
+                // 수정 버튼들
+                document.querySelectorAll('.edit-schedule-type-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const scheduleType = this.getAttribute('data-type');
+                        showScheduleTypeModal('edit', scheduleType);
+                    });
+                });
+                
+                // 삭제 버튼들
+                document.querySelectorAll('.delete-schedule-type-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const scheduleType = this.getAttribute('data-type');
+                        deleteScheduleType(scheduleType);
+                    });
+                });
+            }
+            
+            // 페이지 스크롤 상태 초기화 (완전 강화된 버전)
+            function resetPageScrolling() {
+                console.log('페이지 스크롤 상태 완전 초기화');
+                
+                try {
+                    // 모든 모달 관련 요소 제거
+                    $('.modal').modal('hide');
+                    $('.modal-backdrop').remove();
+                    
+                    // 스크롤 재설정
+                    $('body').removeClass('modal-open');
+                    $('body').css({
+                        'overflow': '',
+                        'padding-right': ''
+                    });
+                    
+                    // body 강제 새로고침
+                    $('body').addClass('force-scroll-reset');
+                    setTimeout(() => {
+                        $('body').removeClass('force-scroll-reset');
+                    }, 10);
+                    
+                    console.log('스크롤 상태 초기화 성공');
+                } catch (e) {
+                    console.error('모달 초기화 중 오류:', e);
+                    
+                    // 백업 방법으로 직접 DOM 조작
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                }
+            }
+            
+            // 모달 초기화 - Bootstrap 이벤트 등록
+            function setupModals() {
+                // 모달이 닫히기 전에 실행
+                $(document).on('hide.bs.modal', '.modal', function(e) {
+                    console.log('모달 닫기 이벤트 발생:', e.target.id);
+                });
+                
+                // 모달이 완전히 닫힌 후 실행
+                $(document).on('hidden.bs.modal', '.modal', function(e) {
+                    console.log('모달 완전히 닫힘:', e.target.id);
+                    resetPageScrolling();
+                });
+                
+                // 모달이 열릴 때 실행
+                $(document).on('show.bs.modal', '.modal', function(e) {
+                    console.log('모달 열기:', e.target.id);
+                    
+                    // 이전에 열려있던 모달 정리
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open');
+                });
+                
+                // 취소 버튼에 이벤트 연결
+                $(document).on('click', '[data-bs-dismiss="modal"]', function() {
+                    const modalId = $(this).closest('.modal').attr('id');
+                    console.log(`모달 취소 버튼 클릭: ${modalId}`);
+                    
+                    // 모달 수동 닫기
+                    $(`#${modalId}`).modal('hide');
+                    
+                    // 즉시 스크롤 상태 초기화
+                    setTimeout(resetPageScrolling, 50);
+                });
+                
+                // ESC 키 이벤트 처리
+                $(document).on('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        console.log('ESC 키 감지됨');
+                        setTimeout(resetPageScrolling, 50);
+                    }
+                });
+            }
+            
+            // 일정 유형 모달 표시
+            async function showScheduleTypeModal(action, scheduleType = null) {
+                // 모달 표시 전 기존 모달 정리
+                resetPageScrolling();
+                
+                // 모달 요소
+                const modalElement = document.getElementById('scheduleTypeModal');
+                const form = document.getElementById('scheduleTypeForm');
+                const modalTitle = document.getElementById('scheduleTypeModalLabel');
+                const codeGroup = document.getElementById('scheduleTypeCodeGroup');
+                const codeInput = document.getElementById('scheduleTypeCode');
+                const nameInput = document.getElementById('scheduleTypeName');
+                const activeCheck = document.getElementById('scheduleTypeActive');
+                const actionInput = document.getElementById('scheduleTypeAction');
+                const currentTypeInput = document.getElementById('currentScheduleType');
+                
+                // 폼 초기화
+                form.reset();
+                actionInput.value = action;
+                
+                if (action === 'add') {
+                    modalTitle.textContent = '일정 유형 추가';
+                    codeGroup.style.display = 'block';
+                    codeInput.removeAttribute('disabled');
+                } else if (action === 'edit' && scheduleType) {
+                    modalTitle.textContent = '일정 유형 수정';
+                    codeGroup.style.display = 'none';
+                    codeInput.setAttribute('disabled', 'disabled');
+                    currentTypeInput.value = scheduleType;
+                    
+                    // 기존 데이터 로드
+                    try {
+                        showLoading();
+                        
+                        const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
+                        const scheduleTypes = await response.json();
+                        
+                        const typeData = scheduleTypes.find(t => t.schedule_type === scheduleType);
+                        
+                        if (typeData) {
+                            nameInput.value = typeData.schedule_type_name;
+                            activeCheck.checked = typeData.is_activate;
+                        }
+                        
+                        hideLoading();
+                    } catch (error) {
+                        hideLoading();
+                        alert('일정 유형 데이터를 불러오는데 실패했습니다.');
+                        return;
+                    }
+                }
+                
+                // jQuery로 모달 열기
+                $(modalElement).modal('show');
+            }
+            
+            // 일정 유형 저장
+            async function saveScheduleType() {
+                // 폼 요소
+                const form = document.getElementById('scheduleTypeForm');
+                const action = document.getElementById('scheduleTypeAction').value;
+                const currentType = document.getElementById('currentScheduleType').value;
+                const codeInput = document.getElementById('scheduleTypeCode');
+                const nameInput = document.getElementById('scheduleTypeName');
+                const activeCheck = document.getElementById('scheduleTypeActive');
+                
+                // 폼 검증
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                // 데이터 준비
+                let url, method, data;
+                
+                if (action === 'add') {
+                    url = `${API_BASE_URL}/shuttle/admin/schedule-types`;
+                    method = 'POST';
+                    data = {
+                        schedule_type: codeInput.value.trim(),
+                        schedule_type_name: nameInput.value.trim(),
+                        is_activate: activeCheck.checked
+                    };
+                } else if (action === 'edit') {
+                    url = `${API_BASE_URL}/shuttle/admin/schedule-types/${currentType}`;
+                    method = 'PUT';
+                    data = {
+                        schedule_type_name: nameInput.value.trim(),
+                        is_activate: activeCheck.checked
+                    };
+                }
+                
+                // API 요청
+                try {
+                    showLoading();
+                    
+                    const response = await fetchWithAuth(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.detail || '저장에 실패했습니다.');
+                    }
+                    
+                    // 성공 처리
+                    alert(action === 'add' ? '일정 유형이 추가되었습니다.' : '일정 유형이 수정되었습니다.');
+                    
+                    // jQuery로 모달 닫기
+                    $('#scheduleTypeModal').modal('hide');
+                    
+                    // 모달 닫고 스크롤 복원
+                    setTimeout(resetPageScrolling, 100);
+                    
+                    // 테이블 다시 로드
+                    await loadScheduleTypeTable();
+                    
+                    // 일정 유형 선택 드롭다운 다시 로드
+                    await loadScheduleTypes();
+                    
+                } catch (error) {
+                    alert(error.message || '저장에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 일정 유형 삭제
+            async function deleteScheduleType(scheduleType) {
+                if (!confirm(`일정 유형 '${scheduleType}'을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+                    return;
+                }
+                
+                try {
+                    showLoading();
+                    console.log(`일정 유형 삭제 시작 - 유형: ${scheduleType}`);
+                    
+                    const url = `${API_BASE_URL}/shuttle/admin/schedule-types/${scheduleType}`;
+                    console.log('삭제 요청 URL:', url);
+                    
+                    const response = await fetchWithAuth(url, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        let errorMessage = '삭제에 실패했습니다.';
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.detail || errorMessage;
+                        } catch (e) {
+                            console.error('오류 응답 파싱 실패:', e);
+                        }
+                        throw new Error(errorMessage);
+                    }
+                    
+                    // 성공 처리
+                    console.log('일정 유형 삭제 성공');
+                    alert('일정 유형이 삭제되었습니다.');
+                    
+                    // 스크롤 초기화 (백드롭이 남아있을 수 있음)
+                    resetPageScrolling();
+                    
+                    // 추가 처리: jQuery로 백드롭 강제 제거
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open').css('overflow', '');
+                    
+                    // 테이블 다시 로드
+                    await loadScheduleTypeTable();
+                    
+                    // 일정 유형 선택 드롭다운 다시 로드
+                    await loadScheduleTypes();
+                    
+                } catch (error) {
+                    console.error('일정 유형 삭제 실패:', error);
+                    alert(error.message || '삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 일정 예외 테이블 로드
+            async function loadScheduleExceptionTable() {
+                try {
+                    console.log('일정 예외 테이블 로드 시작');
+                    
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-exceptions`);
+                    if (!response.ok) throw new Error('일정 예외 데이터를 불러오는데 실패했습니다.');
+                    
+                    const exceptions = await response.json();
+                    console.log('가져온 일정 예외 목록:', exceptions);
+                    
+                    const tableBody = document.getElementById('scheduleExceptionTableBody');
+                    tableBody.innerHTML = '';
+                    
+                    if (exceptions.length === 0) {
+                        // 데이터가 없는 경우
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="5" class="text-center">등록된 일정 예외가 없습니다.</td>`;
+                        tableBody.appendChild(row);
+                    } else {
+                        exceptions.forEach(exception => {
+                            const row = document.createElement('tr');
+                            
+                            // 날짜 기간 포맷 변경
+                            const startDate = new Date(exception.start_date);
+                            const endDate = new Date(exception.end_date);
+                            
+                            // 시작 날짜와 종료 날짜가 같으면 하나만 표시
+                            let formattedDate;
+                            if (startDate.getTime() === endDate.getTime()) {
+                                formattedDate = `${startDate.getFullYear()}년 ${startDate.getMonth() + 1}월 ${startDate.getDate()}일`;
+                            } else {
+                                const formattedStartDate = `${startDate.getFullYear()}년 ${startDate.getMonth() + 1}월 ${startDate.getDate()}일`;
+                                const formattedEndDate = `${endDate.getFullYear()}년 ${endDate.getMonth() + 1}월 ${endDate.getDate()}일`;
+                                formattedDate = `${formattedStartDate} ~ ${formattedEndDate}`;
+                            }
+                            
+                            // 활성화 상태 배지 스타일 설정
+                            const statusBadge = exception.is_activate 
+                                ? '<span class="badge bg-success">활성화</span>' 
+                                : '<span class="badge bg-secondary">비활성화</span>';
+                            
+                            row.innerHTML = `
+                                <td>${formattedDate}</td>
+                                <td>${exception.schedule_type_name || exception.schedule_type}</td>
+                                <td>${exception.reason || '-'}</td>
+                                <td class="text-center">${statusBadge}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary edit-exception-button" data-id="${exception.id}">수정</button>
+                                    <button class="btn btn-sm btn-danger delete-exception-button" data-id="${exception.id}">삭제</button>
+                                </td>
+                            `;
+                            
+                            tableBody.appendChild(row);
+                        });
+                    }
+                    
+                    // 이벤트 리스너 추가
+                    addScheduleExceptionEventListeners();
+                    console.log('일정 예외 테이블 로드 완료');
+                    
+                } catch (error) {
+                    console.error('일정 예외 테이블 로드 실패:', error);
+                }
+            }
+            
+            // 일정 예외 이벤트 리스너 추가
+            function addScheduleExceptionEventListeners() {
+                console.log('일정 예외 이벤트 리스너 추가 시작');
+                
+                // 추가 버튼
+                document.getElementById('addScheduleExceptionButton').addEventListener('click', () => {
+                    console.log('일정 예외 추가 버튼 클릭');
+                    showScheduleExceptionModal('add');
+                });
+                
+                // 저장 버튼
+                document.getElementById('saveScheduleExceptionButton').addEventListener('click', saveScheduleException);
+                
+                // 수정 버튼들
+                document.querySelectorAll('.edit-exception-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const exceptionId = this.getAttribute('data-id');
+                        console.log('일정 예외 수정 버튼 클릭 - ID:', exceptionId);
+                        showScheduleExceptionModal('edit', exceptionId);
+                    });
+                });
+                
+                // 삭제 버튼들
+                document.querySelectorAll('.delete-exception-button').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const exceptionId = this.getAttribute('data-id');
+                        console.log('일정 예외 삭제 버튼 클릭 - ID:', exceptionId);
+                        deleteScheduleException(exceptionId);
+                    });
+                });
+                
+                console.log('일정 예외 이벤트 리스너 추가 완료');
+            }
+            
+            // 일정 예외 모달 표시
+            async function showScheduleExceptionModal(action, exceptionId = null) {
+                // 모달 표시 전 기존 모달 정리
+                resetPageScrolling();
+                
+                // 모달 요소
+                const modalElement = document.getElementById('scheduleExceptionModal');
+                const form = document.getElementById('scheduleExceptionForm');
+                const modalTitle = document.getElementById('scheduleExceptionModalLabel');
+                const startDateInput = document.getElementById('exceptionStartDate');
+                const endDateInput = document.getElementById('exceptionEndDate');
+                const typeSelect = document.getElementById('exceptionScheduleType');
+                const reasonInput = document.getElementById('exceptionReason');
+                const isActivateCheck = document.getElementById('exceptionIsActivate');
+                const actionInput = document.getElementById('scheduleExceptionAction');
+                const idInput = document.getElementById('scheduleExceptionId');
+                
+                // 폼 초기화
+                form.reset();
+                actionInput.value = action;
+                
+                // jQuery로 모달 직접 제어
+                try {
+                    // 일정 유형 선택 옵션 로드
+                    typeSelect.innerHTML = '<option value="">일정 유형 선택</option>';
+                    const scheduleTypes = await fetchScheduleTypes();
+                    scheduleTypes.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.schedule_type;
+                        option.textContent = `${type.schedule_type_name} ${type.is_activate ? '' : '(비활성화)'}`;
+                        typeSelect.appendChild(option);
+                    });
+                    
+                    if (action === 'add') {
+                        modalTitle.textContent = '일정 예외 추가';
+                        // 오늘 날짜를 기본값으로 설정
+                        const today = new Date();
+                        const yyyy = today.getFullYear();
+                        const mm = String(today.getMonth() + 1).padStart(2, '0');
+                        const dd = String(today.getDate()).padStart(2, '0');
+                        startDateInput.value = `${yyyy}-${mm}-${dd}`;
+                        endDateInput.value = `${yyyy}-${mm}-${dd}`;
+                        
+                        startDateInput.removeAttribute('disabled');
+                        endDateInput.removeAttribute('disabled');
+                        isActivateCheck.checked = true; // 기본값 활성화
+                    } else if (action === 'edit' && exceptionId) {
+                        modalTitle.textContent = '일정 예외 수정';
+                        idInput.value = exceptionId;
+                        
+                        console.log('일정 예외 수정 모달 열기 - ID:', exceptionId);
+                        
+                        // 기존 데이터 로드
+                        showLoading();
+                        console.log('일정 예외 데이터 로드 시도 중...');
+                        
+                        const url = `${API_BASE_URL}/shuttle/schedule-exceptions`;
+                        console.log('요청 URL:', url);
+                        
+                        const response = await fetchWithAuth(url);
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('API 응답 오류:', response.status, errorText);
+                            throw new Error(`API 오류: ${response.status} ${errorText}`);
+                        }
+                        
+                        const exceptions = await response.json();
+                        console.log('받은 데이터:', exceptions);
+                        
+                        const exceptionData = exceptions.find(e => e.id == exceptionId);
+                        console.log('찾은 예외 데이터:', exceptionData);
+                        
+                        if (exceptionData) {
+                            // 시작 날짜 설정
+                            const startDate = new Date(exceptionData.start_date);
+                            const startYyyy = startDate.getFullYear();
+                            const startMm = String(startDate.getMonth() + 1).padStart(2, '0');
+                            const startDd = String(startDate.getDate()).padStart(2, '0');
+                            startDateInput.value = `${startYyyy}-${startMm}-${startDd}`;
+                            
+                            // 종료 날짜 설정
+                            const endDate = new Date(exceptionData.end_date);
+                            const endYyyy = endDate.getFullYear();
+                            const endMm = String(endDate.getMonth() + 1).padStart(2, '0');
+                            const endDd = String(endDate.getDate()).padStart(2, '0');
+                            endDateInput.value = `${endYyyy}-${endMm}-${endDd}`;
+                            
+                            typeSelect.value = exceptionData.schedule_type;
+                            reasonInput.value = exceptionData.reason || '';
+                            isActivateCheck.checked = exceptionData.is_activate;
+                            
+                            console.log('폼에 데이터 설정 완료');
+                        } else {
+                            console.error('ID에 해당하는 예외 데이터를 찾을 수 없음:', exceptionId);
+                            throw new Error(`ID ${exceptionId}에 해당하는 예외 데이터를 찾을 수 없습니다.`);
+                        }
+                        
+                        hideLoading();
+                    }
+                    
+                    // jQuery로 모달 열기
+                    $(modalElement).modal('show');
+                    
+                } catch (error) {
+                    hideLoading();
+                    console.error('일정 예외 모달 표시 실패:', error);
+                    alert(`일정 예외 데이터를 불러오는데 실패했습니다: ${error.message}`);
+                }
+            }
+            
+            // 일정 유형 데이터 가져오기
+            async function fetchScheduleTypes() {
+                try {
+                    const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
+                    if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
+                    
+                    return await response.json();
+                } catch (error) {
+                    console.error('일정 유형 데이터 로드 실패:', error);
+                    return [];
+                }
+            }
+            
+            // 일정 예외 저장
+            async function saveScheduleException() {
+                // 폼 요소
+                const form = document.getElementById('scheduleExceptionForm');
+                const action = document.getElementById('scheduleExceptionAction').value;
+                const exceptionId = document.getElementById('scheduleExceptionId').value;
+                const startDateInput = document.getElementById('exceptionStartDate');
+                const endDateInput = document.getElementById('exceptionEndDate');
+                const typeSelect = document.getElementById('exceptionScheduleType');
+                const reasonInput = document.getElementById('exceptionReason');
+                const isActivateCheck = document.getElementById('exceptionIsActivate');
+                
+                console.log('일정 예외 저장 시작', {
+                    action, 
+                    exceptionId,
+                    startDate: startDateInput.value,
+                    endDate: endDateInput.value,
+                    scheduleType: typeSelect.value,
+                    reason: reasonInput.value,
+                    isActivate: isActivateCheck.checked
+                });
+                
+                // 폼 검증
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                // 날짜 검증
+                const startDate = new Date(startDateInput.value);
+                const endDate = new Date(endDateInput.value);
+                
+                if (startDate > endDate) {
+                    alert('시작 날짜는 종료 날짜보다 이전이어야 합니다.');
+                    return;
+                }
+                
+                // 데이터 준비
+                let url, method, data;
+                
+                if (action === 'add') {
+                    url = `${API_BASE_URL}/shuttle/admin/schedule-exceptions`;
+                    method = 'POST';
+                    data = {
+                        start_date: startDateInput.value,
+                        end_date: endDateInput.value,
+                        schedule_type: typeSelect.value,
+                        reason: reasonInput.value.trim() || null,
+                        is_activate: isActivateCheck.checked
+                    };
+                } else if (action === 'edit') {
+                    url = `${API_BASE_URL}/shuttle/admin/schedule-exceptions/${exceptionId}`;
+                    method = 'PUT';
+                    data = {
+                        start_date: startDateInput.value,
+                        end_date: endDateInput.value,
+                        schedule_type: typeSelect.value,
+                        reason: reasonInput.value.trim() || null,
+                        is_activate: isActivateCheck.checked
+                    };
+                }
+                
+                // API 요청
+                try {
+                    showLoading();
+                    
+                    console.log('예외 일정 저장 요청:', {url, method, data});
+                    
+                    const response = await fetchWithAuth(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('저장 실패 응답:', errorData);
+                        throw new Error(errorData.detail || '저장에 실패했습니다.');
+                    }
+                    
+                    // 성공 처리
+                    alert(action === 'add' ? '일정 예외가 추가되었습니다.' : '일정 예외가 수정되었습니다.');
+                    
+                    // jQuery로 모달 닫기
+                    $('#scheduleExceptionModal').modal('hide');
+                    
+                    // 모달 닫고 스크롤 복원
+                    setTimeout(resetPageScrolling, 100);
+                    
+                    // 테이블 다시 로드
+                    await loadScheduleExceptionTable();
+                    
+                } catch (error) {
+                    console.error('예외 일정 저장 실패:', error);
+                    alert(error.message || '저장에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            // 일정 예외 삭제
+            async function deleteScheduleException(exceptionId) {
+                if (!confirm(`이 일정 예외를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+                    return;
+                }
+                
+                try {
+                    showLoading();
+                    console.log(`일정 예외 삭제 시작 - ID: ${exceptionId}`);
+                    
+                    const url = `${API_BASE_URL}/shuttle/admin/schedule-exceptions/${exceptionId}`;
+                    console.log('삭제 요청 URL:', url);
+                    
+                    const response = await fetchWithAuth(url, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        let errorMessage = '삭제에 실패했습니다.';
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.detail || errorMessage;
+                        } catch (e) {
+                            console.error('오류 응답 파싱 실패:', e);
+                        }
+                        throw new Error(errorMessage);
+                    }
+                    
+                    // 성공 처리
+                    console.log('일정 예외 삭제 성공');
+                    alert('일정 예외가 삭제되었습니다.');
+                    
+                    // 스크롤 초기화 (백드롭이 남아있을 수 있음)
+                    resetPageScrolling();
+                    
+                    // 테이블 다시 로드
+                    await loadScheduleExceptionTable();
+                    
+                } catch (error) {
+                    console.error('일정 예외 삭제 실패:', error);
+                    alert(error.message || '삭제에 실패했습니다.');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 페이지 로드 시 이벤트도 추가
+            document.addEventListener('DOMContentLoaded', function() {
+                // 페이지 초기 상태 초기화 (이전에 남아있을 수 있는 모달 백드롭 등 제거)
+                setTimeout(resetPageScrolling, 100);
+                
+                // jQuery가 로드되지 않은 경우 폴백
+                if (typeof jQuery === 'undefined') {
+                    console.warn('jQuery가 로드되지 않았습니다. 폴백 방법을 사용합니다.');
+                    
+                    // CSS 스타일 추가 (강제 스크롤 초기화용)
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .force-scroll-reset {
+                            overflow: auto !important;
+                        }
+                        body.modal-open {
+                            overflow: auto !important;
+                            padding-right: 0 !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                } else {
+                    // CSS 스타일 추가 (jQuery 사용)
+                    $('<style>')
+                        .text(`
+                            .force-scroll-reset {
+                                overflow: auto !important;
+                            }
+                            body.modal-open {
+                                overflow: auto !important;
+                                padding-right: 0 !important;
+                            }
+                        `)
+                        .appendTo('head');
+                }
+                
+                // 일정 예외 추가 버튼
+                const addScheduleExceptionButton = document.getElementById('addScheduleExceptionButton');
+                if (addScheduleExceptionButton) {
+                    addScheduleExceptionButton.addEventListener('click', () => {
+                        showScheduleExceptionModal('add');
+                    });
+                }
+                
+                // 모달 관련 이벤트 처리 초기화
+                setupModals();
+                
+                console.log('페이지 초기화 완료');
+            });
         });
     </script>
 </body>
