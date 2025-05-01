@@ -4,8 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a0aad55f-622d-48a3-a4a2-357d2fdd7c97" name="변경" comment="api호출에 jwt토큰 적용&#10;대시보드 디자인 개선">
+    <list default="true" id="a0aad55f-622d-48a3-a4a2-357d2fdd7c97" name="변경" comment="버스 시간표 데이터 추가">
+      <change afterPath="$PROJECT_DIR$/tools/holidayskrTest.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,6 +65,7 @@
     &quot;Python.auto_busrouteinfo.executor&quot;: &quot;Run&quot;,
     &quot;Python.createDB.executor&quot;: &quot;Run&quot;,
     &quot;Python.generate_secret_key.executor&quot;: &quot;Run&quot;,
+    &quot;Python.holidayskrTest.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
@@ -191,6 +195,9 @@
       <workItem from="1745592740208" duration="99000" />
       <workItem from="1745668185746" duration="5000" />
       <workItem from="1745709356788" duration="6000" />
+      <workItem from="1745914602651" duration="1113000" />
+      <workItem from="1745942877711" duration="3570000" />
+      <workItem from="1746078811529" duration="226000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -288,7 +295,23 @@
       <option name="project" value="LOCAL" />
       <updated>1745592823208</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="버스 데이터 업데이트 로직 개선 및 시간표 로드 기능 추가">
+      <option name="closed" value="true" />
+      <created>1745914621088</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1745914621088</updated>
+    </task>
+    <task id="LOCAL-00014" summary="버스 시간표 데이터 추가">
+      <option name="closed" value="true" />
+      <created>1745914637869</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1745914637869</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -329,7 +352,9 @@
     <MESSAGE value="서버 응답시간 개선&#10;redis캐싱 적용&#10;안드로이드 공기계 서버(termux)기준&#10;캐싱전 - 평균 응답 시간: 0.7529초&#10;캐싱후 - 평균 응답 시간: 0.2428초" />
     <MESSAGE value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
     <MESSAGE value="api호출에 jwt토큰 적용&#10;대시보드 디자인 개선" />
-    <option name="LAST_COMMIT_MESSAGE" value="api호출에 jwt토큰 적용&#10;대시보드 디자인 개선" />
+    <MESSAGE value="버스 데이터 업데이트 로직 개선 및 시간표 로드 기능 추가" />
+    <MESSAGE value="버스 시간표 데이터 추가" />
+    <option name="LAST_COMMIT_MESSAGE" value="버스 시간표 데이터 추가" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -351,5 +376,6 @@
     <SUITE FILE_PATH="coverage/gotohoseo_backend$createDB.coverage" NAME="createDB 커버리지 결과" MODIFIED="1740657977012" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/gotohoseo_backend$gotohoseo_backend.coverage" NAME="gotohoseo_backend 커버리지 결과" MODIFIED="1745239277012" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/gotohoseo_backend$auto_busrouteinfo.coverage" NAME="auto_busrouteinfo 커버리지 결과" MODIFIED="1743436893427" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
+    <SUITE FILE_PATH="coverage/gotohoseo_backend$holidayskrTest.coverage" NAME="holidayskrTest 커버리지 결과" MODIFIED="1746078978065" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tools" />
   </component>
 </project>
