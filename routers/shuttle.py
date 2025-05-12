@@ -118,6 +118,17 @@ class ScheduleUpdate(BaseModel):
     end_time: time | None = None
     stops: List[ScheduleStopCreate] | None = None
 
+class StationSchedulesByDateResponse(BaseModel):
+    schedule_type: str
+    schedule_type_name: str
+    date: date
+    station_id: int
+    station_name: str
+    schedules: List[StationScheduleResponse]
+
+    class Config:
+        from_attributes = True
+
 @router.get("/schedules")
 def get_schedules(
     route_id: int,
@@ -974,4 +985,134 @@ def delete_schedule_exception(
         )
     
     return {"message": f"예외 일정 ID {exception_id}가 삭제되었습니다."}
+
+@router.get("/stations/{station_id}/schedules-by-date", response_model=StationSchedulesByDateResponse)
+def get_station_schedules_by_date(
+    station_id: int,
+    date: date,
+    db: Session = Depends(get_db)
+):
+    # 1. 날짜를 요일에 따라 기본 일정 유형 결정
+    weekday = date.weekday()  # 0=월요일, 6=일요일
+    
+    if weekday == 5:  # 토요일
+        schedule_type = "Saturday"
+    elif weekday == 6:  # 일요일
+        schedule_type = "Holiday"
+    else:  # 평일
+        schedule_type = "Weekday"
+    
+    # 2. 공휴일 확인 (holidayskr 라이브러리 사용)
+    from holidayskr import is_holiday
+    date_str = date.strftime('%Y-%m-%d')
+    if is_holiday(date_str):
+        schedule_type = "Holiday"
+    
+    # 휴일/평일 처리 결과 임시 저장
+    base_schedule_type = schedule_type
+    
+    # 3. 일정 예외 확인
+    schedule_exception = db.query(ScheduleException).filter(
+        ScheduleException.start_date <= date,
+        ScheduleException.end_date >= date
+    ).first()
+    
+    # 일정 예외가 있고 활성화된 경우에만 해당 일정 유형 사용
+    if schedule_exception:
+        # 예외 일정 타입의 활성화 여부 확인
+        exception_type_active = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == schedule_exception.schedule_type,
+            ScheduleType.is_activate == True
+        ).first()
+        
+        # ScheduleException 자체의 is_activate도 확인
+        if exception_type_active and schedule_exception.is_activate:
+            schedule_type = schedule_exception.schedule_type
+        else:
+            # 비활성화된 예외는 무시하고 기본 일정 타입 사용
+            schedule_type = base_schedule_type
+    
+    # schedule_type이 활성화되어 있는지 확인
+    schedule_type_info = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type
+    ).first()
+    
+    if not schedule_type_info or not schedule_type_info.is_activate:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Schedule type '{schedule_type}' is not active for date {date}"
+        )
+    
+    # 정류장 이름 가져오기
+    station = db.query(ShuttleStation).filter(
+        ShuttleStation.id == station_id
+    ).first()
+    
+    if not station:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Station with id {station_id} not found"
+        )
+    
+    # 4. 캐시 키 생성 (일정 유형 이름 포함)
+    cache_key = f"shuttle:station_schedules_by_date:{station_id}:{date}:{schedule_type}:{schedule_type_info.schedule_type_name}"
+    
+    # 캐시 확인
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+    
+    # 캐시가 없는 경우 DB에서 조회
+    schedules = db.query(
+        Schedule.id.label('schedule_id'),
+        Schedule.route_id,
+        ShuttleStation.name.label('station_name'),
+        ScheduleStop.arrival_time,
+        ScheduleStop.stop_order,
+        Schedule.schedule_type
+    ).join(
+        ScheduleStop, Schedule.id == ScheduleStop.schedule_id
+    ).join(
+        ShuttleStation, ScheduleStop.station_id == ShuttleStation.id
+    ).filter(
+        ScheduleStop.station_id == station_id,
+        Schedule.schedule_type == schedule_type
+    ).order_by(
+        Schedule.route_id,
+        Schedule.start_time,
+        ScheduleStop.stop_order
+    ).all()
+
+    if not schedules:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No schedules found for station {station_id} on {date} (type: {schedule_type})"
+        )
+    
+    # SQLAlchemy Result 객체를 사전 리스트로 변환
+    schedules_list = [
+        {
+            "schedule_id": schedule.schedule_id,
+            "route_id": schedule.route_id,
+            "station_name": schedule.station_name,
+            "arrival_time": schedule.arrival_time.isoformat() if hasattr(schedule.arrival_time, 'isoformat') else schedule.arrival_time,
+            "stop_order": schedule.stop_order,
+            "schedule_type": schedule.schedule_type
+        } for schedule in schedules
+    ]
+    
+    # 결과에 사용된 일정 유형 정보 추가
+    response = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_info.schedule_type_name,
+        "date": date,
+        "station_id": station_id,
+        "station_name": station.name,
+        "schedules": schedules_list
+    }
+    
+    # 캐시에 저장
+    set_cache(cache_key, response)
+    
+    return response
 
