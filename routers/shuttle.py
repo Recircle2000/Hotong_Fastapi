@@ -1083,25 +1083,21 @@ def get_station_schedules_by_date(
         ScheduleStop.stop_order
     ).all()
 
-    if not schedules:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No schedules found for station {station_id} on {date} (type: {schedule_type})"
-        )
+    # 스케줄이 있으면 변환, 없으면 빈 배열
+    schedules_list = []
+    if schedules:
+        schedules_list = [
+            {
+                "schedule_id": schedule.schedule_id,
+                "route_id": schedule.route_id,
+                "station_name": schedule.station_name,
+                "arrival_time": schedule.arrival_time.isoformat() if hasattr(schedule.arrival_time, 'isoformat') else schedule.arrival_time,
+                "stop_order": schedule.stop_order,
+                "schedule_type": schedule.schedule_type
+            } for schedule in schedules
+        ]
     
-    # SQLAlchemy Result 객체를 사전 리스트로 변환
-    schedules_list = [
-        {
-            "schedule_id": schedule.schedule_id,
-            "route_id": schedule.route_id,
-            "station_name": schedule.station_name,
-            "arrival_time": schedule.arrival_time.isoformat() if hasattr(schedule.arrival_time, 'isoformat') else schedule.arrival_time,
-            "stop_order": schedule.stop_order,
-            "schedule_type": schedule.schedule_type
-        } for schedule in schedules
-    ]
-    
-    # 결과에 사용된 일정 유형 정보 추가
+    # 결과에 사용된 일정 유형 정보 추가 (스케줄 여부와 상관없이)
     response = {
         "schedule_type": schedule_type,
         "schedule_type_name": schedule_type_info.schedule_type_name,
