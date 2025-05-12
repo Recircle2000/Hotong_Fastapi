@@ -10,3 +10,5 @@ docker-*.env
 
 # Volume data
 redis-data/
+
+.cursor/

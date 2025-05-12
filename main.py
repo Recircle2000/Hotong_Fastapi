@@ -7,6 +7,7 @@ from utils.redis_client import redis_client
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from database import engine
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey123!@#")
@@ -42,6 +43,14 @@ async def startup_event():
         print("Redis 서버 연결 성공")
     except Exception as e:
         print(f"Redis 서버 연결 실패: {e}")
+    
+    # 데이터베이스 연결 확인
+    try:
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        print("데이터베이스 연결 성공")
+    except Exception as e:
+        print(f"데이터베이스 연결 실패: {e}")
 
 @app.get("/")
 def home():
@@ -52,7 +61,16 @@ def health_check():
     # Redis 연결 상태 확인
     redis_status = "healthy" if redis_client.ping() else "unhealthy"
     
+    # 데이터베이스 연결 상태 확인
+    db_status = "healthy"
+    try:
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+    except Exception:
+        db_status = "unhealthy"
+    
     return {
         "api": "healthy",
-        "redis": redis_status
+        "redis": redis_status,
+        "database": db_status
     }

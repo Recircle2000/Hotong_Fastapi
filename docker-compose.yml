@@ -10,6 +10,8 @@ services:
     env_file:
       - .env
     restart: always
+    environment:
+      TZ: Asia/Seoul
 
   redis:
     image: redis:7-alpine
@@ -19,6 +21,8 @@ services:
     volumes:
       - redis-data:/data
     restart: always
+    environment:
+      TZ: Asia/Seoul
 
 volumes:
   redis-data: 

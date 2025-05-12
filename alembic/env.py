@@ -1,12 +1,24 @@
 from logging.config import fileConfig
-
+import logging
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, create_engine
 from models import Base
+import os
+from dotenv import load_dotenv
+import urllib.parse
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# .env 파일에서 환경 변수 로드
+load_dotenv()
+DB_URL = os.getenv("DATABASE_URL")
+logger.info(f"원본 DB_URL: {DB_URL}")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -37,9 +49,9 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # URL에서 직접 context를 구성
     context.configure(
-        url=url,
+        url=DB_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -57,19 +69,29 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
+    try:
+        # URL을 직접 사용하여 엔진 생성
+        # 이미 URL 인코딩이 되어 있으므로 그대로 사용
+        engine = create_engine(
+            DB_URL,
+            pool_size=10, 
+            max_overflow=20,
+            pool_recycle=3600,
+            pool_pre_ping=True
         )
+        
+        logger.info("SQLAlchemy 엔진 생성됨")
+        
+        with engine.connect() as connection:
+            context.configure(
+                connection=connection, target_metadata=target_metadata
+            )
 
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.run_migrations()
+    except Exception as e:
+        logger.error(f"마이그레이션 오류: {e}")
+        raise
 
 
 if context.is_offline_mode():

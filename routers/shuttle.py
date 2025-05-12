@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
-from datetime import time
+from datetime import time, date
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from utils.security import get_current_admin
 
 from database import get_db
 from models.shuttle import Schedule, ScheduleStop, ShuttleStation, ShuttleRoute
+from models.schedule_types import ScheduleType, ScheduleException
 from utils.redis_client import get_cache, set_cache, delete_pattern
 from utils.serializer import serialize_models
 
@@ -46,6 +47,49 @@ class StationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ScheduleTypeResponse(BaseModel):
+    schedule_type: str
+    schedule_type_name: str
+    is_activate: bool
+
+    class Config:
+        from_attributes = True
+
+class ScheduleTypeCreate(BaseModel):
+    schedule_type: str
+    schedule_type_name: str
+    is_activate: bool = True
+
+class ScheduleTypeUpdate(BaseModel):
+    schedule_type_name: str | None = None
+    is_activate: bool | None = None
+
+class ScheduleExceptionResponse(BaseModel):
+    id: int
+    start_date: date
+    end_date: date
+    schedule_type: str
+    reason: str | None
+    schedule_type_name: str | None = None  # 클라이언트에서 표시하기 위해 추가
+    is_activate: bool
+
+    class Config:
+        from_attributes = True
+
+class ScheduleExceptionCreate(BaseModel):
+    start_date: date
+    end_date: date
+    schedule_type: str
+    reason: str | None = None
+    is_activate: bool = True
+
+class ScheduleExceptionUpdate(BaseModel):
+    start_date: date | None = None
+    end_date: date | None = None
+    schedule_type: str | None = None
+    reason: str | None = None
+    is_activate: bool | None = None
+
 class RouteResponse(BaseModel):
     id: int
     route_name: str
@@ -73,6 +117,17 @@ class ScheduleUpdate(BaseModel):
     start_time: time | None = None
     end_time: time | None = None
     stops: List[ScheduleStopCreate] | None = None
+
+class StationSchedulesByDateResponse(BaseModel):
+    schedule_type: str
+    schedule_type_name: str
+    date: date
+    station_id: int
+    station_name: str
+    schedules: List[StationScheduleResponse]
+
+    class Config:
+        from_attributes = True
 
 @router.get("/schedules")
 def get_schedules(
@@ -105,6 +160,97 @@ def get_schedules(
     set_cache(cache_key, serialized_schedules)
     
     return serialized_schedules
+
+@router.get("/schedules-by-date")
+def get_schedules_by_date(
+    route_id: int,
+    date: date,
+    db: Session = Depends(get_db)
+):
+    # 1. 날짜를 요일에 따라 기본 일정 유형 결정
+    weekday = date.weekday()  # 0=월요일, 6=일요일
+    
+    if weekday == 5:  # 토요일
+        schedule_type = "Saturday"
+    elif weekday == 6:  # 일요일
+        schedule_type = "Holiday"
+    else:  # 평일
+        schedule_type = "Weekday"
+    
+    # 2. 공휴일 확인 (holidayskr 라이브러리 사용)
+    from holidayskr import is_holiday
+    date_str = date.strftime('%Y-%m-%d')
+    if is_holiday(date_str):
+        schedule_type = "Holiday"
+    
+    # 휴일/평일 처리 결과 임시 저장
+    base_schedule_type = schedule_type
+    
+    # 3. 일정 예외 확인
+    schedule_exception = db.query(ScheduleException).filter(
+        ScheduleException.start_date <= date,
+        ScheduleException.end_date >= date
+    ).first()
+    
+    # 일정 예외가 있고 활성화된 경우에만 해당 일정 유형 사용
+    if schedule_exception:
+        # 예외 일정 타입의 활성화 여부 확인
+        exception_type_active = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == schedule_exception.schedule_type,
+            ScheduleType.is_activate == True
+        ).first()
+        
+        # ScheduleException 자체의 is_activate도 확인
+        if exception_type_active and schedule_exception.is_activate:
+            schedule_type = schedule_exception.schedule_type
+        else:
+            # 비활성화된 예외는 무시하고 기본 일정 타입 사용
+            schedule_type = base_schedule_type
+    
+    # schedule_type이 활성화되어 있는지 확인
+    schedule_type_info = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type
+    ).first()
+    
+    if not schedule_type_info or not schedule_type_info.is_activate:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Schedule type '{schedule_type}' is not active for date {date}"
+        )
+    
+    # 4. 최종 결정된 일정 유형으로 스케줄 조회
+    # 캐시 키 생성 (일정 유형 이름 포함)
+    cache_key = f"shuttle:schedules-by-date:{route_id}:{date}:{schedule_type}:{schedule_type_info.schedule_type_name}"
+    
+    # 캐시 확인
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+    
+    # 캐시가 없는 경우 DB에서 조회
+    schedules = db.query(Schedule).filter(
+        Schedule.route_id == route_id,
+        Schedule.schedule_type == schedule_type
+    ).all()
+
+    if not schedules:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No schedules found for route {route_id} on {date} (type: {schedule_type})"
+        )
+    
+    # 결과에 사용된 일정 유형 정보 추가
+    result = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_info.schedule_type_name,
+        "date": date,
+        "schedules": serialize_models(schedules)
+    }
+    
+    # 캐시에 저장
+    set_cache(cache_key, result)
+    
+    return result
 
 @router.get("/schedules/{schedule_id}/stops", response_model=List[ScheduleStopResponse])
 def get_schedule_stops(
@@ -281,6 +427,160 @@ def get_routes(
     
     return serialized_routes
 
+@router.get("/schedule-types", response_model=List[ScheduleTypeResponse])
+def get_schedule_types(db: Session = Depends(get_db)):
+    # 캐시 없이 DB에서 직접 조회
+    schedule_types = db.query(ScheduleType).all()
+    
+    # 결과를 직렬화
+    serialized_schedule_types = serialize_models(schedule_types)
+    
+    return serialized_schedule_types
+
+@router.post("/admin/schedule-types", response_model=ScheduleTypeResponse)
+def create_schedule_type(
+    schedule_type_data: ScheduleTypeCreate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 이미 존재하는지 확인
+    existing = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type_data.schedule_type
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"일정 유형 코드 '{schedule_type_data.schedule_type}'가 이미 존재합니다."
+        )
+    
+    # 이름도 중복 확인
+    existing_name = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type_name == schedule_type_data.schedule_type_name
+    ).first()
+    
+    if existing_name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"일정 유형 이름 '{schedule_type_data.schedule_type_name}'이 이미 존재합니다."
+        )
+    
+    # 새 일정 유형 생성
+    new_schedule_type = ScheduleType(**schedule_type_data.dict())
+    db.add(new_schedule_type)
+    
+    try:
+        db.commit()
+        db.refresh(new_schedule_type)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"일정 유형 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    return new_schedule_type
+
+@router.put("/admin/schedule-types/{schedule_type}", response_model=ScheduleTypeResponse)
+def update_schedule_type(
+    schedule_type: str,
+    schedule_type_data: ScheduleTypeUpdate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 일정 유형 존재 확인
+    db_schedule_type = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type
+    ).first()
+    
+    if not db_schedule_type:
+        raise HTTPException(
+            status_code=404,
+            detail=f"일정 유형 '{schedule_type}'을 찾을 수 없습니다."
+        )
+    
+    # 이름 중복 확인 (이름이 변경된 경우)
+    if schedule_type_data.schedule_type_name and schedule_type_data.schedule_type_name != db_schedule_type.schedule_type_name:
+        existing_name = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type_name == schedule_type_data.schedule_type_name
+        ).first()
+        
+        if existing_name:
+            raise HTTPException(
+                status_code=400,
+                detail=f"일정 유형 이름 '{schedule_type_data.schedule_type_name}'이 이미 존재합니다."
+            )
+    
+    # 업데이트할 데이터 설정
+    if schedule_type_data.schedule_type_name:
+        db_schedule_type.schedule_type_name = schedule_type_data.schedule_type_name
+    if schedule_type_data.is_activate is not None:
+        db_schedule_type.is_activate = schedule_type_data.is_activate
+    
+    try:
+        db.commit()
+        db.refresh(db_schedule_type)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"일정 유형 업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    return db_schedule_type
+
+@router.delete("/admin/schedule-types/{schedule_type}")
+def delete_schedule_type(
+    schedule_type: str,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 일정 유형 존재 확인
+    db_schedule_type = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type
+    ).first()
+    
+    if not db_schedule_type:
+        raise HTTPException(
+            status_code=404,
+            detail=f"일정 유형 '{schedule_type}'을 찾을 수 없습니다."
+        )
+    
+    # 관련 일정 있는지 확인
+    schedules = db.query(Schedule).filter(
+        Schedule.schedule_type == schedule_type
+    ).count()
+    
+    if schedules > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"이 일정 유형을 사용하는 {schedules}개의 일정이 있어 삭제할 수 없습니다. 대신 비활성화하세요."
+        )
+    
+    # 예외 일정 있는지 확인
+    exceptions = db.query(ScheduleException).filter(
+        ScheduleException.schedule_type == schedule_type
+    ).count()
+    
+    if exceptions > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"이 일정 유형을 사용하는 {exceptions}개의 예외 일정이 있어 삭제할 수 없습니다. 먼저 예외 일정을 삭제하세요."
+        )
+    
+    # 삭제 진행
+    try:
+        db.delete(db_schedule_type)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"일정 유형 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    return {"message": f"일정 유형 '{schedule_type}'이 삭제되었습니다."}
+
 # 관리자 API 엔드포인트 추가
 @router.post("/admin/schedules", status_code=201)
 def create_schedule(
@@ -452,4 +752,363 @@ def invalidate_cache(pattern: str = "shuttle:*", current_admin = Depends(get_cur
 # @router.get("/admin", response_class=HTMLResponse)
 # async def get_shuttle_admin_main(request: Request):
 #     return templates.TemplateResponse("shuttle_admin.html", {"request": request})
+
+@router.get("/schedule-exceptions", response_model=List[ScheduleExceptionResponse])
+def get_schedule_exceptions(db: Session = Depends(get_db)):
+    # 캐시 없이 DB에서 직접 조회
+    exceptions = db.query(
+        ScheduleException.id,
+        ScheduleException.start_date,
+        ScheduleException.end_date,
+        ScheduleException.schedule_type,
+        ScheduleException.reason,
+        ScheduleType.schedule_type_name,
+        ScheduleException.is_activate
+    ).join(
+        ScheduleType, 
+        ScheduleException.schedule_type == ScheduleType.schedule_type
+    ).order_by(
+        ScheduleException.start_date.desc()
+    ).all()
+    
+    # 결과를 직렬화
+    result = []
+    for exc in exceptions:
+        result.append({
+            "id": exc.id,
+            "start_date": exc.start_date,
+            "end_date": exc.end_date,
+            "schedule_type": exc.schedule_type,
+            "reason": exc.reason,
+            "schedule_type_name": exc.schedule_type_name,
+            "is_activate": exc.is_activate
+        })
+    
+    return result
+
+@router.post("/admin/schedule-exceptions", response_model=ScheduleExceptionResponse)
+def create_schedule_exception(
+    exception_data: ScheduleExceptionCreate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 일정 유형이 존재하는지 확인
+    schedule_type = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == exception_data.schedule_type
+    ).first()
+    
+    if not schedule_type:
+        raise HTTPException(
+            status_code=404,
+            detail=f"일정 유형 '{exception_data.schedule_type}'을 찾을 수 없습니다."
+        )
+    
+    # 날짜 유효성 검사
+    if exception_data.start_date > exception_data.end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="시작 날짜는 종료 날짜보다 이전이어야 합니다."
+        )
+    
+    # 기간이 겹치는 예외가 있는지 확인
+    overlapping = db.query(ScheduleException).filter(
+        ScheduleException.start_date <= exception_data.end_date,
+        ScheduleException.end_date >= exception_data.start_date
+    ).first()
+    
+    if overlapping:
+        raise HTTPException(
+            status_code=400,
+            detail=f"선택한 기간과 겹치는 예외 일정이 이미 존재합니다."
+        )
+    
+    # 새 예외 일정 생성
+    new_exception = ScheduleException(**exception_data.dict())
+    db.add(new_exception)
+    
+    try:
+        db.commit()
+        db.refresh(new_exception)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"예외 일정 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    # 예외 일정과 일정 유형 이름 함께 반환
+    response = {
+        "id": new_exception.id,
+        "start_date": new_exception.start_date,
+        "end_date": new_exception.end_date,
+        "schedule_type": new_exception.schedule_type,
+        "reason": new_exception.reason,
+        "schedule_type_name": schedule_type.schedule_type_name,
+        "is_activate": new_exception.is_activate
+    }
+    
+    return response
+
+@router.put("/admin/schedule-exceptions/{exception_id}", response_model=ScheduleExceptionResponse)
+def update_schedule_exception(
+    exception_id: int,
+    exception_data: ScheduleExceptionUpdate,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 예외 일정이 존재하는지 확인
+    exception = db.query(ScheduleException).filter(
+        ScheduleException.id == exception_id
+    ).first()
+    
+    if not exception:
+        raise HTTPException(
+            status_code=404,
+            detail=f"예외 일정 ID {exception_id}를 찾을 수 없습니다."
+        )
+    
+    # 수정할 데이터 준비
+    update_data = {}
+    
+    # 날짜 업데이트 (둘 다 제공된 경우에만 검증)
+    start_date = exception_data.start_date or exception.start_date
+    end_date = exception_data.end_date or exception.end_date
+    
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="시작 날짜는 종료 날짜보다 이전이어야 합니다."
+        )
+    
+    # 업데이트 대상이 아닌 기존 예외와 기간이 겹치는지 확인
+    if exception_data.start_date or exception_data.end_date:
+        overlapping = db.query(ScheduleException).filter(
+            ScheduleException.id != exception_id,
+            ScheduleException.start_date <= end_date,
+            ScheduleException.end_date >= start_date
+        ).first()
+        
+        if overlapping:
+            raise HTTPException(
+                status_code=400,
+                detail=f"선택한 기간과 겹치는 예외 일정이 이미 존재합니다."
+            )
+    
+    # 시작 날짜 업데이트
+    if exception_data.start_date:
+        exception.start_date = exception_data.start_date
+    
+    # 종료 날짜 업데이트
+    if exception_data.end_date:
+        exception.end_date = exception_data.end_date
+    
+    # 일정 유형 변경 시 존재하는지 확인
+    schedule_type_name = None
+    if exception_data.schedule_type:
+        schedule_type = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == exception_data.schedule_type
+        ).first()
+        
+        if not schedule_type:
+            raise HTTPException(
+                status_code=404,
+                detail=f"일정 유형 '{exception_data.schedule_type}'을 찾을 수 없습니다."
+            )
+        
+        exception.schedule_type = exception_data.schedule_type
+        schedule_type_name = schedule_type.schedule_type_name
+    
+    # 이유 업데이트
+    if exception_data.reason is not None:
+        exception.reason = exception_data.reason
+    
+    # 상태 업데이트
+    if exception_data.is_activate is not None:
+        exception.is_activate = exception_data.is_activate
+    
+    try:
+        db.commit()
+        db.refresh(exception)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"예외 일정 업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    # 현재 일정 유형 이름 가져오기
+    if not schedule_type_name:
+        schedule_type = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == exception.schedule_type
+        ).first()
+        schedule_type_name = schedule_type.schedule_type_name if schedule_type else None
+    
+    # 응답 준비
+    response = {
+        "id": exception.id,
+        "start_date": exception.start_date,
+        "end_date": exception.end_date,
+        "schedule_type": exception.schedule_type,
+        "reason": exception.reason,
+        "schedule_type_name": schedule_type_name,
+        "is_activate": exception.is_activate
+    }
+    
+    return response
+
+@router.delete("/admin/schedule-exceptions/{exception_id}")
+def delete_schedule_exception(
+    exception_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_current_admin)
+):
+    # 예외 일정이 존재하는지 확인
+    exception = db.query(ScheduleException).filter(
+        ScheduleException.id == exception_id
+    ).first()
+    
+    if not exception:
+        raise HTTPException(
+            status_code=404,
+            detail=f"예외 일정 ID {exception_id}를 찾을 수 없습니다."
+        )
+    
+    # 삭제 진행
+    try:
+        db.delete(exception)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"예외 일정 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+    
+    return {"message": f"예외 일정 ID {exception_id}가 삭제되었습니다."}
+
+@router.get("/stations/{station_id}/schedules-by-date", response_model=StationSchedulesByDateResponse)
+def get_station_schedules_by_date(
+    station_id: int,
+    date: date,
+    db: Session = Depends(get_db)
+):
+    # 1. 날짜를 요일에 따라 기본 일정 유형 결정
+    weekday = date.weekday()  # 0=월요일, 6=일요일
+    
+    if weekday == 5:  # 토요일
+        schedule_type = "Saturday"
+    elif weekday == 6:  # 일요일
+        schedule_type = "Holiday"
+    else:  # 평일
+        schedule_type = "Weekday"
+    
+    # 2. 공휴일 확인 (holidayskr 라이브러리 사용)
+    from holidayskr import is_holiday
+    date_str = date.strftime('%Y-%m-%d')
+    if is_holiday(date_str):
+        schedule_type = "Holiday"
+    
+    # 휴일/평일 처리 결과 임시 저장
+    base_schedule_type = schedule_type
+    
+    # 3. 일정 예외 확인
+    schedule_exception = db.query(ScheduleException).filter(
+        ScheduleException.start_date <= date,
+        ScheduleException.end_date >= date
+    ).first()
+    
+    # 일정 예외가 있고 활성화된 경우에만 해당 일정 유형 사용
+    if schedule_exception:
+        # 예외 일정 타입의 활성화 여부 확인
+        exception_type_active = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == schedule_exception.schedule_type,
+            ScheduleType.is_activate == True
+        ).first()
+        
+        # ScheduleException 자체의 is_activate도 확인
+        if exception_type_active and schedule_exception.is_activate:
+            schedule_type = schedule_exception.schedule_type
+        else:
+            # 비활성화된 예외는 무시하고 기본 일정 타입 사용
+            schedule_type = base_schedule_type
+    
+    # schedule_type이 활성화되어 있는지 확인
+    schedule_type_info = db.query(ScheduleType).filter(
+        ScheduleType.schedule_type == schedule_type
+    ).first()
+    
+    if not schedule_type_info or not schedule_type_info.is_activate:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Schedule type '{schedule_type}' is not active for date {date}"
+        )
+    
+    # 정류장 이름 가져오기
+    station = db.query(ShuttleStation).filter(
+        ShuttleStation.id == station_id
+    ).first()
+    
+    if not station:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Station with id {station_id} not found"
+        )
+    
+    # 4. 캐시 키 생성 (일정 유형 이름 포함)
+    cache_key = f"shuttle:station_schedules_by_date:{station_id}:{date}:{schedule_type}:{schedule_type_info.schedule_type_name}"
+    
+    # 캐시 확인
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+    
+    # 캐시가 없는 경우 DB에서 조회
+    schedules = db.query(
+        Schedule.id.label('schedule_id'),
+        Schedule.route_id,
+        ShuttleStation.name.label('station_name'),
+        ScheduleStop.arrival_time,
+        ScheduleStop.stop_order,
+        Schedule.schedule_type
+    ).join(
+        ScheduleStop, Schedule.id == ScheduleStop.schedule_id
+    ).join(
+        ShuttleStation, ScheduleStop.station_id == ShuttleStation.id
+    ).filter(
+        ScheduleStop.station_id == station_id,
+        Schedule.schedule_type == schedule_type
+    ).order_by(
+        Schedule.route_id,
+        Schedule.start_time,
+        ScheduleStop.stop_order
+    ).all()
+
+    # 스케줄이 있으면 변환, 없으면 빈 배열
+    schedules_list = []
+    if schedules:
+        schedules_list = [
+            {
+                "schedule_id": schedule.schedule_id,
+                "route_id": schedule.route_id,
+                "station_name": schedule.station_name,
+                "arrival_time": schedule.arrival_time.isoformat() if hasattr(schedule.arrival_time, 'isoformat') else schedule.arrival_time,
+                "stop_order": schedule.stop_order,
+                "schedule_type": schedule.schedule_type
+            } for schedule in schedules
+        ]
+    
+    # 결과에 사용된 일정 유형 정보 추가 (스케줄 여부와 상관없이)
+    response = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_info.schedule_type_name,
+        "date": date,
+        "station_id": station_id,
+        "station_name": station.name,
+        "schedules": schedules_list
+    }
+    
+    # 캐시에 저장
+    set_cache(cache_key, response)
+    
+    return response
 
