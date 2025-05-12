@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/shuttle.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/shuttle.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,11 +81,12 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="FastAPI.fastAPI" />
       <item itemvalue="HTTP 요청.test_main 내 전체" />
+      <item itemvalue="FastAPI.fastAPI" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="HTTP 요청.test_main 내 전체" />
         <item itemvalue="HTTP 요청.test_main 내 전체" />
       </list>
     </recent_temporary>
@@ -110,6 +110,7 @@
       <workItem from="1746963824345" duration="89000" />
       <workItem from="1746963942500" duration="1092000" />
       <workItem from="1747036313300" duration="665000" />
+      <workItem from="1747047477124" duration="6000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -125,10 +126,21 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
     <MESSAGE value="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가" />
+    <MESSAGE value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
+    <option name="LAST_COMMIT_MESSAGE" value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

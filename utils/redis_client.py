@@ -14,7 +14,7 @@ redis_client = redis.Redis(
 )
 
 # 캐시 만료 시간 (초)
-CACHE_TTL = 60 * 60  # 1시간
+CACHE_TTL = 60 * 60 * 24 # 24시간
 
 def set_cache(key: str, data: Any, expire: int = CACHE_TTL) -> bool:
     """

@@ -54,7 +54,7 @@ MAIN_ROUTES = ["순환5_DOWN", "순환5_UP"]
 SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821_UP", "1000_DOWN", "1000_UP"]
 
 # 버스 데이터 캐시 TTL (초)
-BUS_CACHE_TTL = 13
+BUS_CACHE_TTL = 5
 
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 15)  # 오전 6시 15분
@@ -142,10 +142,10 @@ def should_check_route(route_name):
                     else:
                         status_msg = f"출발 후 {int(abs(time_diff_minutes))}분 경과"
                     
-                    print(f"[{route_name}] 🚍 운행 중: 출발 시간 {departure_time} ({status_msg})")
+                    #print(f"[{route_name}] 🚍 운행 중: 출발 시간 {departure_time} ({status_msg})")
                     return True
             except Exception as e:
-                print(f"[{route_name}] ⚠️ 시간 계산 오류: {e} (출발시간: {departure_time})")
+                #print(f"[{route_name}] ⚠️ 시간 계산 오류: {e} (출발시간: {departure_time})")
                 continue
         return False
     
@@ -160,7 +160,7 @@ async def fetch_bus_data(route_name, route_id):
         # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
         if get_cache(route_name):
             delete_cache(route_name)
-            print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
+           # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
         return
         
     async with httpx.AsyncClient() as client:
@@ -194,7 +194,7 @@ async def update_bus_data_periodically():
         # 매 업데이트마다 시간표 변경 확인
         bus_timetable = load_bus_timetable()
         
-        print(f"\n===== 버스 데이터 업데이트 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====")
+       # print(f"\n===== 버스 데이터 업데이트 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====")
         tasks = []
         
         # 모든 노선에 대해 체크 필요성 판단
@@ -215,7 +215,7 @@ async def update_bus_data_periodically():
         else:
             print("현재 체크할 노선이 없습니다")
         print(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
-        await asyncio.sleep(13)  # 13초 주기
+        await asyncio.sleep(5)  # 5초 주기
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
