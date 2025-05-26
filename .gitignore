@@ -11,4 +11,7 @@ docker-*.env
 # Volume data
 redis-data/
 
+#nginx
+nginx/
+
 .cursor/
