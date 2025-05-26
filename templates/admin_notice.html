@@ -489,6 +489,21 @@
             color: var(--secondary);
         }
 
+        .badge-primary {
+            background: rgba(67, 97, 238, 0.15);
+            color: var(--primary);
+        }
+
+        .badge-info {
+            background: rgba(23, 162, 184, 0.15);
+            color: #17a2b8;
+        }
+
+        .badge-warning {
+            background: rgba(243, 156, 18, 0.15);
+            color: var(--warning);
+        }
+
         /* 모달 */
         .modal-backdrop {
             display: none;
@@ -733,8 +748,9 @@
                             <thead>
                                 <tr>
                                     <th width="5%">ID</th>
-                                    <th width="20%">제목</th>
-                                    <th width="40%">내용</th>
+                                    <th width="15%">제목</th>
+                                    <th width="10%">유형</th>
+                                    <th width="35%">내용</th>
                                     <th width="10%">상태</th>
                                     <th width="15%">작성일</th>
                                     <th width="10%">관리</th>
@@ -744,8 +760,23 @@
                                 {% for notice in notices %}
                                 <tr>
                                     <td>{{ notice.id }}</td>
-                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}">{{ notice.title }}</td>
-                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}">
+                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">{{ notice.title }}</td>
+                                    <td>
+                                        {% if notice.notice_type %}
+                                            {% if notice.notice_type.value == 'App' %}
+                                            <span class="badge badge-primary">앱</span>
+                                            {% elif notice.notice_type.value == 'update' %}
+                                            <span class="badge badge-info">업데이트</span>
+                                            {% elif notice.notice_type.value == 'shuttle' %}
+                                            <span class="badge badge-warning">셔틀버스</span>
+                                            {% elif notice.notice_type.value == 'citybus' %}
+                                            <span class="badge badge-success">시내버스</span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="badge badge-primary">앱</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">
                                         {{ notice.content }}
                                     </td>
                                     <td>
@@ -762,7 +793,8 @@
                                                     data-id="{{ notice.id }}"
                                                     data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}"
                                                     data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}"
-                                                    data-pinned="{{ notice.is_pinned }}">
+                                                    data-pinned="{{ notice.is_pinned }}"
+                                                    data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">
                                                 수정
                                             </button>
                                             <button class="btn btn-danger btn-sm btn-delete delete-btn" 
@@ -795,6 +827,15 @@
                 <div class="form-group" style="margin-bottom: 1rem;">
                     <label class="form-label" for="createTitle">제목</label>
                     <input type="text" id="createTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력하세요" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="form-label" for="createType">유형</label>
+                    <select id="createType" name="notice_type" class="form-control" required>
+                        <option value="App">앱</option>
+                        <option value="update">업데이트</option>
+                        <option value="shuttle">셔틀버스</option>
+                        <option value="citybus">시내버스</option>
+                    </select>
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem;">
                     <label class="form-label" for="createContent">내용</label>
@@ -832,6 +873,15 @@
                     <input type="text" id="editTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력하세요" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="form-label" for="editType">유형</label>
+                    <select id="editType" name="notice_type" class="form-control" required>
+                        <option value="App">앱</option>
+                        <option value="update">업데이트</option>
+                        <option value="shuttle">셔틀버스</option>
+                        <option value="citybus">시내버스</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
                     <label class="form-label" for="editContent">내용</label>
                     <textarea id="editContent" name="content" class="form-control" placeholder="공지사항 내용을 입력하세요" rows="4" required></textarea>
                 </div>
@@ -862,7 +912,10 @@
             <h3 id="detailTitle" class="notice-title"></h3>
             <div class="notice-info">
                 <span id="detailDate"></span>
-                <span id="detailStatus"></span>
+                <div>
+                    <span id="detailType"></span>
+                    <span id="detailStatus"></span>
+                </div>
             </div>
             <div id="detailContent" class="notice-content"></div>
         </div>
@@ -891,10 +944,36 @@
         });
         
         // 공지사항 상세 보기 모달 열기
-        function showNoticeDetail(title, content, date, isPinned) {
+        function showNoticeDetail(title, content, date, isPinned, type) {
             document.getElementById('detailTitle').textContent = title;
             document.getElementById('detailContent').textContent = content;
             document.getElementById('detailDate').textContent = '작성일: ' + date;
+            
+            // 유형 표시
+            let typeText = '';
+            let typeClass = '';
+            switch(type) {
+                case 'App':
+                    typeText = '앱';
+                    typeClass = 'badge badge-primary';
+                    break;
+                case 'update':
+                    typeText = '업데이트';
+                    typeClass = 'badge badge-info';
+                    break;
+                case 'shuttle':
+                    typeText = '셔틀버스';
+                    typeClass = 'badge badge-warning';
+                    break;
+                case 'citybus':
+                    typeText = '시내버스';
+                    typeClass = 'badge badge-success';
+                    break;
+                default:
+                    typeText = '앱';
+                    typeClass = 'badge badge-primary';
+            }
+            document.getElementById('detailType').innerHTML = `<span class="${typeClass}">${typeText}</span> `;
             
             const statusText = isPinned === 'True' ? '상단고정' : '일반';
             const statusClass = isPinned === 'True' ? 'badge badge-success' : 'badge badge-secondary';
@@ -914,7 +993,8 @@
                 const content = this.getAttribute('data-content');
                 const date = this.getAttribute('data-date');
                 const isPinned = this.getAttribute('data-pinned');
-                showNoticeDetail(title, content, date, isPinned);
+                const type = this.getAttribute('data-type');
+                showNoticeDetail(title, content, date, isPinned, type);
             });
         });
         
@@ -925,11 +1005,13 @@
                 const title = this.getAttribute('data-title');
                 const content = this.getAttribute('data-content');
                 const isPinned = this.getAttribute('data-pinned') === 'True';
+                const type = this.getAttribute('data-type');
                 
                 document.getElementById('editForm').action = `/admin/update/${id}`;
                 document.getElementById('editTitle').value = title;
                 document.getElementById('editContent').value = content;
                 document.getElementById('editPinned').checked = isPinned;
+                document.getElementById('editType').value = type;
                 
                 editModal.style.display = 'block';
                 modalBackdrop.style.display = 'block';

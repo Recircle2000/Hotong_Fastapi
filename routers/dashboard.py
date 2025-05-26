@@ -21,11 +21,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 @router.get("/apis")
 async def get_api_list(request: Request):
+    """
+    모든 API 엔드포인트 목록을 반환합니다.
+    """
     openapi_schema = request.app.openapi()
     return openapi_schema["paths"]
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
+    """
+    API 대시보드 페이지를 제공합니다.
+    모든 API 엔드포인트와 설명을 HTML 테이블로 표시합니다.
+    """
     openapi_schema = request.app.openapi()
     paths = openapi_schema["paths"]
     html = """
@@ -58,6 +65,10 @@ async def dashboard(request: Request):
 
 @router.get("/admin/login")
 def admin_login_page(request: Request, error: str = None, redirect: str = None):
+    """
+    관리자 로그인 페이지를 제공합니다.
+    이미 로그인된 경우 관리자 페이지로 리다이렉트합니다.
+    """
     # 이미 로그인된 경우 리다이렉트
     if request.session.get("user_id"):
         return RedirectResponse(url="/admin", status_code=303)
@@ -75,6 +86,11 @@ def admin_login(
     password: str = Form(...),
     redirect: str = Form(None)
 ):
+    """
+    관리자 로그인 처리를 수행합니다.
+    성공 시 지정된 리다이렉트 URL 또는 관리자 페이지로 리다이렉트합니다.
+    실패 시 오류 메시지와 함께 로그인 페이지로 이동합니다.
+    """
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse("admin_login.html", {"request": request, "error": "로그인 실패: 아이디 또는 비밀번호가 올바르지 않습니다."})
@@ -102,6 +118,10 @@ def admin_login(
 
 @router.get("/admin/logout")
 def admin_logout(request: Request):
+    """
+    관리자 로그아웃을 처리합니다.
+    세션을 초기화하고 로그인 페이지로 리다이렉트합니다.
+    """
     request.session.clear()
     return RedirectResponse(url="/admin/login", status_code=303)
 
@@ -111,6 +131,10 @@ async def get_admin_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+    """
+    세션 또는 JWT 토큰을 통한 관리자 인증을 처리합니다.
+    인증 실패 시 401 오류를 반환합니다.
+    """
     # 1. 세션 인증 확인
     user_id = request.session.get("user_id")
     if user_id:
@@ -143,6 +167,10 @@ async def admin_page(
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
+    """
+    관리자 메인 페이지(공지사항 관리)를 제공합니다.
+    관리자 인증이 필요합니다.
+    """
     notices = db.query(Notice).order_by(Notice.is_pinned.desc(), Notice.created_at.desc()).all()
     return templates.TemplateResponse("admin_notice.html", {"request": request, "notices": notices})
 
@@ -151,13 +179,27 @@ async def create_notice(
     request: Request,
     title: str = Form(...),
     content: str = Form(...),
+    notice_type: str = Form("App"),
     is_pinned: str = Form(None),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
+    """
+    새 공지사항을 생성합니다.
+    관리자 인증이 필요합니다.
+    """
+    from models.notice import NoticeType
+    
+    # notice_type 문자열을 enum으로 변환
+    try:
+        notice_type_enum = NoticeType(notice_type)
+    except ValueError:
+        notice_type_enum = NoticeType.APP
+    
     db_notice = Notice(
         title=title,
         content=content,
+        notice_type=notice_type_enum,
         is_pinned=bool(is_pinned),
         created_at=datetime.now()
     )
@@ -171,14 +213,28 @@ async def update_notice(
     notice_id: int,
     title: str = Form(...),
     content: str = Form(...),
+    notice_type: str = Form("App"),
     is_pinned: str = Form(None),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
+    """
+    기존 공지사항을 수정합니다.
+    관리자 인증이 필요합니다.
+    """
+    from models.notice import NoticeType
+    
+    # notice_type 문자열을 enum으로 변환
+    try:
+        notice_type_enum = NoticeType(notice_type)
+    except ValueError:
+        notice_type_enum = NoticeType.APP
+    
     db_notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if db_notice:
         db_notice.title = title
         db_notice.content = content
+        db_notice.notice_type = notice_type_enum
         db_notice.is_pinned = bool(is_pinned)
         db.commit()
     return RedirectResponse(url="/admin", status_code=303)
@@ -190,6 +246,10 @@ async def delete_notice(
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
+    """
+    공지사항을 삭제합니다.
+    관리자 인증이 필요합니다.
+    """
     db_notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if db_notice:
         db.delete(db_notice)
@@ -201,4 +261,8 @@ async def admin_shuttle_page(
     request: Request,
     current_admin = Depends(get_admin_user)
 ):
+    """
+    셔틀 관리 페이지를 제공합니다.
+    관리자 인증이 필요합니다.
+    """
     return templates.TemplateResponse("shuttle_admin.html", {"request": request}) 
