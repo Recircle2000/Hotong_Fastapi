@@ -97,11 +97,11 @@ def should_check_route(route_name):
     now = datetime.now().time()
     
     # 주요 노선(순환5번, 1000번)은 운행 시간 내에만 체크
-    if route_name in MAIN_ROUTES:
-        is_check = MAIN_ROUTES_START_TIME <= now <= MAIN_ROUTES_END_TIME
-        if not is_check:
-            print(f"[{route_name}] 주요 노선 운행 시간 외: {now} (운행시간: {MAIN_ROUTES_START_TIME}-{MAIN_ROUTES_END_TIME})")
-        return is_check
+    # if route_name in MAIN_ROUTES:
+    #     is_check = MAIN_ROUTES_START_TIME <= now <= MAIN_ROUTES_END_TIME
+    #     if not is_check:
+    #         print(f"[{route_name}] 주요 노선 운행 시간 외: {now} (운행시간: {MAIN_ROUTES_START_TIME}-{MAIN_ROUTES_END_TIME})")
+    #     return is_check
     
     # 시간표 기반 노선들
     if route_name in SCHEDULED_ROUTES and route_name in bus_timetable:
@@ -180,7 +180,7 @@ async def fetch_bus_data(route_name, route_id):
 
             # Redis에 저장 (TTL BUS_CACHE_TTL 초)
             set_cache(route_name, items, BUS_CACHE_TTL)
-            print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
+            #print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
         except Exception as e:
             print(f"[{route_name}] API 호출 오류: {e}")
 
@@ -275,6 +275,10 @@ async def disconnect_client(websocket: WebSocket):
 #WebSocket 엔드포인트
 @router.websocket("/ws/bus")
 async def websocket_endpoint(websocket: WebSocket):
+    """
+    버스 위치 정보를 실시간으로 제공하는 WebSocket 엔드포인트입니다.
+    클라이언트가 연결하면 주기적으로 최신 버스 위치 데이터를 전송합니다.
+    """
     await connect_client(websocket)
     try:
         while True:
@@ -295,6 +299,9 @@ async def websocket_endpoint(websocket: WebSocket):
 # HTTP API 엔드포인트 (레거시)
 @router.get("/buses")
 async def get_all_buses():
+    """
+    운행 중인 모든 버스 노선의 버스 위치 정보를 조회합니다.
+    """
     result = {}
     for route_name in ROUTES.keys():
         cached_data = get_cache(route_name)
@@ -307,6 +314,9 @@ async def get_all_buses():
 
 @router.get("/buses/{route_name}")
 async def get_bus_by_route(route_name: str):
+    """
+    특정 노선의 운행 중인 버스 위치 정보를 조회합니다.
+    """
     # 경로 이름 검증
     if route_name not in ROUTES:
         raise HTTPException(status_code=404, detail="Route not found")
@@ -349,3 +359,24 @@ async def invalidate_bus_cache(route_name: str = None, current_admin = Depends(g
         await asyncio.gather(*tasks)
         
         return {"message": f"{deleted_count}개 노선의 캐시가 무효화되었습니다."}
+
+# 캐시 무효화를 위한 함수 (관리자 API로 추가할 수 있음)
+@router.post("/admin/clear-cache")
+def clear_shuttle_cache(current_admin = Depends(get_current_admin)):
+    """
+    모든 셔틀 캐시를 무효화합니다.
+    """
+    deleted_count = delete_pattern("*")
+    return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다.", "success": True}
+
+@router.post("/cache/invalidate")
+def invalidate_cache(pattern: str = "*", current_admin = Depends(get_current_admin)):
+    """
+    특정 패턴의 셔틀 캐시를 무효화합니다.
+    예: 
+    - 모든 셔틀 캐시: *
+    - 스케줄 캐시: schedules:*
+    - 역 캐시: stations:*
+    """
+    deleted_count = delete_pattern(pattern)
+    return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다."}

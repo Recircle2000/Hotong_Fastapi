@@ -25,6 +25,10 @@ class UserLogin(BaseModel):
 # 회원가입 API
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    """
+    새로운 사용자를 등록합니다.
+    이미 등록된 이메일인 경우 400 오류를 반환합니다.
+    """
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -44,6 +48,10 @@ async def login(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    """
+    사용자 인증을 수행하고 JWT 토큰을 발급합니다.
+    폼 데이터나 JSON 데이터로 요청할 수 있으며, 브라우저 폼 요청의 경우 성공 시 관리자 페이지로 리다이렉트합니다.
+    """
     # 요청 타입 확인
     content_type = request.headers.get("Content-Type", "")
     
@@ -126,6 +134,10 @@ async def login(
 # 세션 상태 확인 API
 @router.get("/auth/session-status")
 async def check_session_status(request: Request, db: Session = Depends(get_db)):
+    """
+    현재 세션의 인증 상태를 확인합니다.
+    인증되지 않은 경우 401 오류를 반환합니다.
+    """
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(
@@ -148,6 +160,10 @@ async def check_session_status(request: Request, db: Session = Depends(get_db)):
 # 토큰 갱신 API
 @router.post("/auth/token/refresh")
 async def refresh_token(request: Request, db: Session = Depends(get_db)):
+    """
+    세션 기반으로 새 JWT 토큰을 발급합니다.
+    인증되지 않은 경우 401 오류를 반환합니다.
+    """
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(
