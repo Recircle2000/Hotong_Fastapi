@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서버 모니터링 - 관리자</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #343a40;
+            color: white;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-item::before {
+            margin-right: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        .nav-item-notice::before {
+            content: "📢";
+        }
+
+        .nav-item-shuttle::before {
+            content: "🚌";
+        }
+
+        .nav-item-monitor::before {
+            content: "📊";
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .logout-btn::before {
+            content: "🚪";
+            margin-right: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-toggle {
+            display: none;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            border: 1px solid #e1e5e9;
+        }
+
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-healthy {
+            background-color: #48bb78;
+        }
+
+        .status-warning {
+            background-color: #ed8936;
+        }
+
+        .status-critical {
+            background-color: #f56565;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #ed8936, #dd6b20);
+        }
+
+        .progress-fill.critical {
+            background: linear-gradient(90deg, #f56565, #e53e3e);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        .process-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .process-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 0.85rem;
+        }
+
+        .process-name {
+            flex: 1;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .process-cpu, .process-memory {
+            width: 60px;
+            text-align: right;
+            color: #666;
+        }
+
+        .logs-container {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .error-message {
+            color: #f56565;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .table-sizes {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .table-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <!-- 사이드바 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-logo">호서교통 관리자</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin" class="nav-item nav-item-notice">
+                    공지사항 관리
+                </a>
+                <a href="/admin/shuttle" class="nav-item nav-item-shuttle">
+                    셔틀버스 관리
+                </a>
+                <a href="/admin/monitor" class="nav-item nav-item-monitor active">
+                    서버 모니터링
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/admin/logout" class="logout-btn">
+                    로그아웃
+                </a>
+            </div>
+        </aside>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="main-content">
+            <div class="header">
+                <button class="mobile-toggle" id="sidebarToggle"></button>
+                <h1>🖥️ 서버 모니터링 대시보드</h1>
+            </div>
+
+    <div class="container">
+        <div class="auto-refresh">
+            <label class="switch">
+                <input type="checkbox" id="autoRefresh" checked>
+                <span class="slider"></span>
+            </label>
+            <span>자동 새로고침 (5초)</span>
+            <button class="refresh-btn" onclick="refreshAll()">수동 새로고침</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- 시스템 정보 -->
+            <div class="card">
+                <h3>💻 시스템 정보</h3>
+                <div id="systemInfo">
+                    <div class="metric">
+                        <span class="metric-label">CPU 사용률</span>
+                        <span class="metric-value" id="cpuPercent">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="cpuProgress"></div>
+                    </div>
+                    
+                    <div class="metric">
+                        <span class="metric-label">메모리 사용량</span>
+                        <span class="metric-value" id="memoryUsage">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="memoryProgress"></div>
+                    </div>
+                    
+                    <div class="metric">
+                        <span class="metric-label">스왑 메모리</span>
+                        <span class="metric-value" id="swapUsage">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="swapProgress"></div>
+                    </div>
+                    
+                    <div class="metric">
+                        <span class="metric-label">디스크 사용률</span>
+                        <span class="metric-value" id="diskPercent">-</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="diskProgress"></div>
+                    </div>
+                    
+                    <div class="metric">
+                        <span class="metric-label">CPU 코어 수</span>
+                        <span class="metric-value" id="cpuCount">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 애플리케이션 정보 -->
+            <div class="card">
+                <h3>🚀 애플리케이션 정보</h3>
+                <div id="appInfo">
+                    <div class="metric">
+                        <span class="metric-label">프로세스 ID</span>
+                        <span class="metric-value" id="processId">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">메모리 사용량</span>
+                        <span class="metric-value" id="appMemory">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">CPU 사용률</span>
+                        <span class="metric-value" id="appCpu">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">스레드 수</span>
+                        <span class="metric-value" id="threadCount">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">실행 시간</span>
+                        <span class="metric-value" id="uptime">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">초당 API 호출</span>
+                        <span class="metric-value" id="apiCallsPerSecond">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 API 호출</span>
+                        <span class="metric-value" id="totalApiCalls">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 데이터베이스 정보 -->
+            <div class="card">
+                <h3>🗄️ 데이터베이스 정보</h3>
+                <div id="dbInfo">
+                    <div class="metric">
+                        <span class="metric-label">활성 연결</span>
+                        <span class="metric-value" id="dbConnections">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 쿼리 수</span>
+                        <span class="metric-value" id="totalQueries">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">느린 쿼리</span>
+                        <span class="metric-value" id="slowQueries">-</span>
+                    </div>
+                    <div class="table-sizes" id="tableSizes"></div>
+                </div>
+            </div>
+
+            <!-- Redis 정보 -->
+            <div class="card">
+                <h3>📦 Redis 정보</h3>
+                <div id="redisInfo">
+                    <div class="metric">
+                        <span class="metric-label">메모리 사용량</span>
+                        <span class="metric-value" id="redisMemory">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">연결된 클라이언트</span>
+                        <span class="metric-value" id="redisClients">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">초당 작업 수</span>
+                        <span class="metric-value" id="redisOps">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">히트율</span>
+                        <span class="metric-value" id="redisHitRate">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">실행 시간</span>
+                        <span class="metric-value" id="redisUptime">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 상위 프로세스 -->
+            <div class="card">
+                <h3>⚡ 상위 프로세스</h3>
+                <div class="process-list" id="processList">
+                    <div class="process-item">
+                        <div class="process-name">로딩 중...</div>
+                        <div class="process-cpu">CPU</div>
+                        <div class="process-memory">MEM</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API 통계 -->
+            <div class="card">
+                <h3>🌐 API 통계</h3>
+                <div id="apiStats">
+                    <div class="metric">
+                        <span class="metric-label">초당 요청 수</span>
+                        <span class="metric-value" id="apiRequestsPerSecond">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">분당 요청 수</span>
+                        <span class="metric-value" id="apiRequestsPerMinute">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">성공 요청</span>
+                        <span class="metric-value" id="apiSuccessRequests">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">클라이언트 오류</span>
+                        <span class="metric-value" id="apiClientErrors">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">서버 오류</span>
+                        <span class="metric-value" id="apiServerErrors">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CPU 사용률 차트 -->
+            <div class="card">
+                <h3>📊 CPU 사용률 추이</h3>
+                <div class="chart-container">
+                    <canvas id="cpuChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로그 -->
+        <div class="card">
+            <h3>📝 최근 로그</h3>
+            <div class="logs-container" id="logsContainer">
+                로그를 불러오는 중...
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshEnabled = true;
+        let refreshInterval;
+        let cpuChart;
+        let cpuData = [];
+        let timeLabels = [];
+
+        // 차트 초기화
+        function initChart() {
+            const ctx = document.getElementById('cpuChart').getContext('2d');
+            cpuChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'CPU 사용률 (%)',
+                        data: cpuData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 바이트를 읽기 쉬운 형태로 변환
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 시간을 읽기 쉬운 형태로 변환
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) {
+                return `${days}일 ${hours}시간 ${minutes}분`;
+            } else if (hours > 0) {
+                return `${hours}시간 ${minutes}분`;
+            } else {
+                return `${minutes}분`;
+            }
+        }
+
+        // 진행률 바 업데이트
+        function updateProgressBar(elementId, percentage) {
+            const element = document.getElementById(elementId);
+            element.style.width = percentage + '%';
+            
+            // 색상 변경
+            element.className = 'progress-fill';
+            if (percentage > 80) {
+                element.classList.add('critical');
+            } else if (percentage > 60) {
+                element.classList.add('warning');
+            }
+        }
+
+        // 시스템 정보 업데이트
+        async function updateSystemInfo() {
+            try {
+                const response = await fetch('/admin/monitor/api/system-info');
+                const data = await response.json();
+                
+                document.getElementById('cpuPercent').textContent = data.cpu.percent.toFixed(1) + '%';
+                document.getElementById('memoryUsage').textContent = 
+                    `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`;
+                document.getElementById('diskPercent').textContent = data.disk.percent.toFixed(1) + '%';
+                document.getElementById('cpuCount').textContent = data.cpu.count + '개';
+                
+                // 스왑 메모리 정보 업데이트
+                if (data.swap && data.swap.total > 0) {
+                    document.getElementById('swapUsage').textContent = 
+                        `${formatBytes(data.swap.used)} / ${formatBytes(data.swap.total)}`;
+                    updateProgressBar('swapProgress', data.swap.percent);
+                } else {
+                    document.getElementById('swapUsage').textContent = '사용 안함';
+                    updateProgressBar('swapProgress', 0);
+                }
+                
+                updateProgressBar('cpuProgress', data.cpu.percent);
+                updateProgressBar('memoryProgress', data.memory.percent);
+                updateProgressBar('diskProgress', data.disk.percent);
+                
+                // CPU 차트 데이터 업데이트
+                const now = new Date().toLocaleTimeString();
+                cpuData.push(data.cpu.percent);
+                timeLabels.push(now);
+                
+                // 최대 20개 데이터 포인트 유지
+                if (cpuData.length > 20) {
+                    cpuData.shift();
+                    timeLabels.shift();
+                }
+                
+                cpuChart.update();
+                
+                // 프로세스 목록 업데이트
+                const processList = document.getElementById('processList');
+                processList.innerHTML = '';
+                
+                data.top_processes.forEach(proc => {
+                    const item = document.createElement('div');
+                    item.className = 'process-item';
+                    item.innerHTML = `
+                        <div class="process-name">${proc.name} (${proc.pid})</div>
+                        <div class="process-cpu">${proc.cpu_percent.toFixed(1)}%</div>
+                        <div class="process-memory">${proc.memory_percent.toFixed(1)}%</div>
+                    `;
+                    processList.appendChild(item);
+                });
+                
+            } catch (error) {
+                console.error('시스템 정보 업데이트 실패:', error);
+            }
+        }
+
+        // 애플리케이션 정보 업데이트
+        async function updateAppInfo() {
+            try {
+                const response = await fetch('/admin/monitor/api/application-info');
+                const data = await response.json();
+                
+                document.getElementById('processId').textContent = data.process_id;
+                document.getElementById('appMemory').textContent = formatBytes(data.memory.rss);
+                document.getElementById('appCpu').textContent = data.cpu_percent.toFixed(1) + '%';
+                document.getElementById('threadCount').textContent = data.num_threads + '개';
+                document.getElementById('uptime').textContent = formatUptime(data.uptime_seconds);
+                
+                // API 통계 업데이트
+                if (data.api_stats) {
+                    document.getElementById('apiCallsPerSecond').textContent = 
+                        data.api_stats.requests_per_second + '/s';
+                    document.getElementById('totalApiCalls').textContent = 
+                        data.api_stats.total_requests.toLocaleString();
+                } else {
+                    document.getElementById('apiCallsPerSecond').textContent = '0/s';
+                    document.getElementById('totalApiCalls').textContent = '0';
+                }
+                
+            } catch (error) {
+                console.error('애플리케이션 정보 업데이트 실패:', error);
+            }
+        }
+
+        // 데이터베이스 정보 업데이트
+        async function updateDbInfo() {
+            try {
+                const response = await fetch('/admin/monitor/api/database-info');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('dbInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                    return;
+                }
+                
+                document.getElementById('dbConnections').textContent = 
+                    `${data.connections.active} / ${data.connections.max}`;
+                document.getElementById('totalQueries').textContent = 
+                    data.queries.total.toLocaleString();
+                document.getElementById('slowQueries').textContent = 
+                    data.queries.slow.toLocaleString();
+                
+                // 테이블 크기 정보
+                const tableSizes = document.getElementById('tableSizes');
+                tableSizes.innerHTML = '<div style="font-weight: 600; margin-bottom: 0.5rem;">테이블 크기 (MB)</div>';
+                
+                data.table_sizes.forEach(table => {
+                    const item = document.createElement('div');
+                    item.className = 'table-item';
+                    item.innerHTML = `
+                        <span>${table.name}</span>
+                        <span>${table.size_mb} MB</span>
+                    `;
+                    tableSizes.appendChild(item);
+                });
+                
+            } catch (error) {
+                console.error('데이터베이스 정보 업데이트 실패:', error);
+            }
+        }
+
+        // Redis 정보 업데이트
+        async function updateRedisInfo() {
+            try {
+                const response = await fetch('/admin/monitor/api/redis-info');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('redisInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                    return;
+                }
+                
+                document.getElementById('redisMemory').textContent = data.memory.used_memory_human;
+                document.getElementById('redisClients').textContent = data.connections.connected_clients + '개';
+                document.getElementById('redisOps').textContent = data.stats.instantaneous_ops_per_sec + '/s';
+                document.getElementById('redisHitRate').textContent = data.stats.hit_rate + '%';
+                document.getElementById('redisUptime').textContent = formatUptime(data.uptime);
+                
+            } catch (error) {
+                console.error('Redis 정보 업데이트 실패:', error);
+            }
+        }
+
+        // 로그 업데이트
+        async function updateLogs() {
+            try {
+                const response = await fetch('/admin/monitor/api/logs?lines=50');
+                const data = await response.json();
+                
+                const logsContainer = document.getElementById('logsContainer');
+                if (data.error) {
+                    logsContainer.textContent = data.error;
+                } else {
+                    logsContainer.textContent = data.logs.join('');
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+                
+            } catch (error) {
+                console.error('로그 업데이트 실패:', error);
+            }
+        }
+
+        // API 통계 업데이트
+        async function updateApiStats() {
+            try {
+                const response = await fetch('/admin/monitor/api/application-info');
+                const data = await response.json();
+                
+                if (data.api_stats) {
+                    const stats = data.api_stats;
+                    document.getElementById('apiRequestsPerSecond').textContent = stats.requests_per_second + '/s';
+                    document.getElementById('apiRequestsPerMinute').textContent = stats.requests_per_minute + '/min';
+                    document.getElementById('apiSuccessRequests').textContent = stats.success_requests.toLocaleString();
+                    document.getElementById('apiClientErrors').textContent = stats.client_errors.toLocaleString();
+                    document.getElementById('apiServerErrors').textContent = stats.server_errors.toLocaleString();
+                } else {
+                    document.getElementById('apiRequestsPerSecond').textContent = '0/s';
+                    document.getElementById('apiRequestsPerMinute').textContent = '0/min';
+                    document.getElementById('apiSuccessRequests').textContent = '0';
+                    document.getElementById('apiClientErrors').textContent = '0';
+                    document.getElementById('apiServerErrors').textContent = '0';
+                }
+                
+            } catch (error) {
+                console.error('API 통계 업데이트 실패:', error);
+            }
+        }
+
+        // 모든 정보 새로고침
+        async function refreshAll() {
+            await Promise.all([
+                updateSystemInfo(),
+                updateAppInfo(),
+                updateDbInfo(),
+                updateRedisInfo(),
+                updateLogs(),
+                updateApiStats()
+            ]);
+        }
+
+        // 자동 새로고침 토글
+        document.getElementById('autoRefresh').addEventListener('change', function() {
+            autoRefreshEnabled = this.checked;
+            
+            if (autoRefreshEnabled) {
+                refreshInterval = setInterval(refreshAll, 5000);
+            } else {
+                clearInterval(refreshInterval);
+            }
+        });
+
+        // 사이드바 토글
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            refreshAll();
+            
+            // 자동 새로고침 시작
+            refreshInterval = setInterval(refreshAll, 5000);
+        });
+    </script>
+</body>
+</html> 

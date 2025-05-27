@@ -1,6 +1,6 @@
 # main.py 수정
 from fastapi import FastAPI
-from routers import auth, bus, notice, shuttle, dashboard
+from routers import auth, bus, notice, shuttle, dashboard, admin_monitor
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from utils.redis_client import redis_client
@@ -8,8 +8,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from database import engine
+from utils.api_monitor import APIMonitorMiddleware
+import utils.api_monitor as api_monitor_module
 
 app = FastAPI()
+
+# API 모니터링 미들웨어 추가
+app.add_middleware(APIMonitorMiddleware)
+
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey123!@#")
 
 # 정적 파일 폴더가 없는 경우 생성
@@ -25,6 +31,7 @@ app.include_router(bus.router, tags=["Bus"])
 app.include_router(notice.router, tags=["Notices"])
 app.include_router(shuttle.router, prefix="/shuttle", tags=["Shuttle"])
 app.include_router(dashboard.router)
+app.include_router(admin_monitor.router, tags=["Admin Monitor"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +44,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(bus.update_bus_data_periodically())
+    
+    # API 모니터링 미들웨어 확인
+    if api_monitor_module.api_monitor:
+        print("API 모니터링 미들웨어 초기화 성공")
+    else:
+        print("API 모니터링 미들웨어 초기화 실패")
+    
     # Redis 연결 확인
     try:
         redis_client.ping()
