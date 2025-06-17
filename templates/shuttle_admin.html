@@ -808,6 +808,27 @@
                                             <textarea class="form-control" id="exceptionReason" rows="3" placeholder="예외 일정 적용 사유를 입력하세요"></textarea>
                                         </div>
                                         
+                                        <div class="mb-3">
+                                            <label class="form-label">포함할 요일 및 공휴일</label>
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeWeekday" checked>
+                                                <label class="form-check-label" for="exceptionIncludeWeekday">평일 포함</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeSaturday">
+                                                <label class="form-check-label" for="exceptionIncludeSaturday">토요일 포함</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeSunday">
+                                                <label class="form-check-label" for="exceptionIncludeSunday">일요일 포함</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeHoliday">
+                                                <label class="form-check-label" for="exceptionIncludeHoliday">공휴일 포함</label>
+                                            </div>
+                                            <div class="form-text text-muted">체크된 요일/공휴일에도 이 예외 일정이 적용됩니다.</div>
+                                        </div>
+                                        
                                         <div class="mb-3 form-check">
                                             <input type="checkbox" class="form-check-input" id="exceptionIsActivate" checked>
                                             <label class="form-check-label" for="exceptionIsActivate">활성화</label>
@@ -2481,6 +2502,10 @@
                 const endDateInput = document.getElementById('exceptionEndDate');
                 const typeSelect = document.getElementById('exceptionScheduleType');
                 const reasonInput = document.getElementById('exceptionReason');
+                const includeWeekdayCheck = document.getElementById('exceptionIncludeWeekday');
+                const includeSaturdayCheck = document.getElementById('exceptionIncludeSaturday');
+                const includeSundayCheck = document.getElementById('exceptionIncludeSunday');
+                const includeHolidayCheck = document.getElementById('exceptionIncludeHoliday');
                 const isActivateCheck = document.getElementById('exceptionIsActivate');
                 const actionInput = document.getElementById('scheduleExceptionAction');
                 const idInput = document.getElementById('scheduleExceptionId');
@@ -2513,6 +2538,10 @@
                         
                         startDateInput.removeAttribute('disabled');
                         endDateInput.removeAttribute('disabled');
+                        includeWeekdayCheck.checked = true; // 기본값 포함
+                        includeSaturdayCheck.checked = false; // 기본값 비포함
+                        includeSundayCheck.checked = false; // 기본값 비포함
+                        includeHolidayCheck.checked = false; // 기본값 비포함
                         isActivateCheck.checked = true; // 기본값 활성화
                     } else if (action === 'edit' && exceptionId) {
                         modalTitle.textContent = '일정 예외 수정';
@@ -2557,6 +2586,10 @@
                             
                             typeSelect.value = exceptionData.schedule_type;
                             reasonInput.value = exceptionData.reason || '';
+                            includeWeekdayCheck.checked = exceptionData.include_weekday !== undefined ? exceptionData.include_weekday : true;
+                            includeSaturdayCheck.checked = exceptionData.include_saturday || false;
+                            includeSundayCheck.checked = exceptionData.include_sunday || false;
+                            includeHolidayCheck.checked = exceptionData.include_holiday || false;
                             isActivateCheck.checked = exceptionData.is_activate;
                             
                             console.log('폼에 데이터 설정 완료');
@@ -2601,6 +2634,10 @@
                 const endDateInput = document.getElementById('exceptionEndDate');
                 const typeSelect = document.getElementById('exceptionScheduleType');
                 const reasonInput = document.getElementById('exceptionReason');
+                const includeWeekdayCheck = document.getElementById('exceptionIncludeWeekday');
+                const includeSaturdayCheck = document.getElementById('exceptionIncludeSaturday');
+                const includeSundayCheck = document.getElementById('exceptionIncludeSunday');
+                const includeHolidayCheck = document.getElementById('exceptionIncludeHoliday');
                 const isActivateCheck = document.getElementById('exceptionIsActivate');
                 
                 console.log('일정 예외 저장 시작', {
@@ -2610,6 +2647,10 @@
                     endDate: endDateInput.value,
                     scheduleType: typeSelect.value,
                     reason: reasonInput.value,
+                    includeWeekday: includeWeekdayCheck.checked,
+                    includeSaturday: includeSaturdayCheck.checked,
+                    includeSunday: includeSundayCheck.checked,
+                    includeHoliday: includeHolidayCheck.checked,
                     isActivate: isActivateCheck.checked
                 });
                 
@@ -2639,6 +2680,10 @@
                         end_date: endDateInput.value,
                         schedule_type: typeSelect.value,
                         reason: reasonInput.value.trim() || null,
+                        include_weekday: includeWeekdayCheck.checked,
+                        include_saturday: includeSaturdayCheck.checked,
+                        include_sunday: includeSundayCheck.checked,
+                        include_holiday: includeHolidayCheck.checked,
                         is_activate: isActivateCheck.checked
                     };
                 } else if (action === 'edit') {
@@ -2649,6 +2694,10 @@
                         end_date: endDateInput.value,
                         schedule_type: typeSelect.value,
                         reason: reasonInput.value.trim() || null,
+                        include_weekday: includeWeekdayCheck.checked,
+                        include_saturday: includeSaturdayCheck.checked,
+                        include_sunday: includeSundayCheck.checked,
+                        include_holiday: includeHolidayCheck.checked,
                         is_activate: isActivateCheck.checked
                     };
                 }

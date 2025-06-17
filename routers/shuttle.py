@@ -72,6 +72,10 @@ class ScheduleExceptionResponse(BaseModel):
     reason: str | None
     schedule_type_name: str | None = None  # 클라이언트에서 표시하기 위해 추가
     is_activate: bool
+    include_weekday: bool
+    include_saturday: bool
+    include_sunday: bool
+    include_holiday: bool
 
     class Config:
         from_attributes = True
@@ -82,6 +86,10 @@ class ScheduleExceptionCreate(BaseModel):
     schedule_type: str
     reason: str | None = None
     is_activate: bool = True
+    include_weekday: bool = True
+    include_saturday: bool = False
+    include_sunday: bool = False
+    include_holiday: bool = False
 
 class ScheduleExceptionUpdate(BaseModel):
     start_date: date | None = None
@@ -89,6 +97,10 @@ class ScheduleExceptionUpdate(BaseModel):
     schedule_type: str | None = None
     reason: str | None = None
     is_activate: bool | None = None
+    include_weekday: bool | None = None
+    include_saturday: bool | None = None
+    include_sunday: bool | None = None
+    include_holiday: bool | None = None
 
 class RouteResponse(BaseModel):
     id: int
@@ -203,32 +215,57 @@ def get_schedules_by_date(
     # 휴일/평일 처리 결과 임시 저장
     base_schedule_type = schedule_type
     
-    # 3. 일정 예외 확인
-    schedule_exception = db.query(ScheduleException).filter(
+    # 3. 일정 예외 확인 - 해당 날짜의 모든 활성화된 예외 일정 조회
+    schedule_exceptions = db.query(ScheduleException).filter(
         ScheduleException.start_date <= date,
-        ScheduleException.end_date >= date
-    ).first()
+        ScheduleException.end_date >= date,
+        ScheduleException.is_activate == True
+    ).all()
     
-    # 일정 예외가 있고 활성화된 경우에만 해당 일정 유형 사용
-    if schedule_exception:
-        # 예외 일정 타입의 활성화 여부 확인
-        exception_type_active = db.query(ScheduleType).filter(
-            ScheduleType.schedule_type == schedule_exception.schedule_type,
-            ScheduleType.is_activate == True
-        ).first()
-        
-        # ScheduleException 자체의 is_activate도 확인
-        if exception_type_active and schedule_exception.is_activate:
-            schedule_type = schedule_exception.schedule_type
-        else:
-            # 비활성화된 예외는 무시하고 기본 일정 타입 사용
-            schedule_type = base_schedule_type
+    # 현재 요일에 적용 가능한 예외 일정 찾기
+    applicable_exception = None
+    if schedule_exceptions:
+        for exception in schedule_exceptions:
+            # 예외 일정 타입의 활성화 여부 확인
+            exception_type_active = db.query(ScheduleType).filter(
+                ScheduleType.schedule_type == exception.schedule_type,
+                ScheduleType.is_activate == True
+            ).first()
+            
+            if exception_type_active:
+                # 현재 요일에 이 예외가 적용되는지 확인
+                should_apply_exception = False
+                
+                # 토요일인 경우
+                if weekday == 5:  # 토요일
+                    should_apply_exception = exception.include_saturday
+                # 일요일인 경우
+                elif weekday == 6:  # 일요일
+                    should_apply_exception = exception.include_sunday
+                # 공휴일인 경우 (평일이지만 공휴일)
+                elif base_schedule_type == "Holiday":  # 공휴일로 판정된 경우
+                    should_apply_exception = exception.include_holiday
+                # 평일인 경우
+                else:  # 평일 (월~금, 공휴일 아닌 경우)
+                    should_apply_exception = exception.include_weekday
+                
+                # 현재 요일에 적용 가능한 첫 번째 예외 일정 사용
+                if should_apply_exception:
+                    applicable_exception = exception
+                    break
+    
+    # 적용 가능한 예외 일정이 있으면 사용, 없으면 기본 일정 타입 사용
+    if applicable_exception:
+        schedule_type = applicable_exception.schedule_type
+    else:
+        schedule_type = base_schedule_type
     
     # schedule_type이 활성화되어 있는지 확인
     schedule_type_info = db.query(ScheduleType).filter(
         ScheduleType.schedule_type == schedule_type
     ).first()
     
+
     if not schedule_type_info or not schedule_type_info.is_activate:
         raise HTTPException(
             status_code=404,
@@ -842,7 +879,11 @@ def get_schedule_exceptions(db: Session = Depends(get_db)):
         ScheduleException.schedule_type,
         ScheduleException.reason,
         ScheduleType.schedule_type_name,
-        ScheduleException.is_activate
+        ScheduleException.is_activate,
+        ScheduleException.include_weekday,
+        ScheduleException.include_saturday,
+        ScheduleException.include_sunday,
+        ScheduleException.include_holiday
     ).join(
         ScheduleType, 
         ScheduleException.schedule_type == ScheduleType.schedule_type
@@ -860,7 +901,11 @@ def get_schedule_exceptions(db: Session = Depends(get_db)):
             "schedule_type": exc.schedule_type,
             "reason": exc.reason,
             "schedule_type_name": exc.schedule_type_name,
-            "is_activate": exc.is_activate
+            "is_activate": exc.is_activate,
+            "include_weekday": exc.include_weekday,
+            "include_saturday": exc.include_saturday,
+            "include_sunday": exc.include_sunday,
+            "include_holiday": exc.include_holiday
         })
     
     # Redis에 응답 데이터 캐싱
@@ -895,17 +940,7 @@ def create_schedule_exception(
             detail="시작 날짜는 종료 날짜보다 이전이어야 합니다."
         )
     
-    # 기간이 겹치는 예외가 있는지 확인
-    overlapping = db.query(ScheduleException).filter(
-        ScheduleException.start_date <= exception_data.end_date,
-        ScheduleException.end_date >= exception_data.start_date
-    ).first()
-    
-    if overlapping:
-        raise HTTPException(
-            status_code=400,
-            detail=f"선택한 기간과 겹치는 예외 일정이 이미 존재합니다."
-        )
+
     
     # 새 예외 일정 생성
     new_exception = ScheduleException(**exception_data.dict())
@@ -933,7 +968,11 @@ def create_schedule_exception(
         "schedule_type": new_exception.schedule_type,
         "reason": new_exception.reason,
         "schedule_type_name": schedule_type.schedule_type_name,
-        "is_activate": new_exception.is_activate
+        "is_activate": new_exception.is_activate,
+        "include_weekday": new_exception.include_weekday,
+        "include_saturday": new_exception.include_saturday,
+        "include_sunday": new_exception.include_sunday,
+        "include_holiday": new_exception.include_holiday
     }
     
     return response
@@ -972,19 +1011,7 @@ def update_schedule_exception(
             detail="시작 날짜는 종료 날짜보다 이전이어야 합니다."
         )
     
-    # 업데이트 대상이 아닌 기존 예외와 기간이 겹치는지 확인
-    if exception_data.start_date or exception_data.end_date:
-        overlapping = db.query(ScheduleException).filter(
-            ScheduleException.id != exception_id,
-            ScheduleException.start_date <= end_date,
-            ScheduleException.end_date >= start_date
-        ).first()
-        
-        if overlapping:
-            raise HTTPException(
-                status_code=400,
-                detail=f"선택한 기간과 겹치는 예외 일정이 이미 존재합니다."
-            )
+
     
     # 시작 날짜 업데이트
     if exception_data.start_date:
@@ -1018,6 +1045,19 @@ def update_schedule_exception(
     if exception_data.is_activate is not None:
         exception.is_activate = exception_data.is_activate
     
+    # 요일별 포함 여부 업데이트
+    if exception_data.include_weekday is not None:
+        exception.include_weekday = exception_data.include_weekday
+    
+    if exception_data.include_saturday is not None:
+        exception.include_saturday = exception_data.include_saturday
+    
+    if exception_data.include_sunday is not None:
+        exception.include_sunday = exception_data.include_sunday
+    
+    if exception_data.include_holiday is not None:
+        exception.include_holiday = exception_data.include_holiday
+    
     try:
         db.commit()
         db.refresh(exception)
@@ -1047,7 +1087,11 @@ def update_schedule_exception(
         "schedule_type": exception.schedule_type,
         "reason": exception.reason,
         "schedule_type_name": schedule_type_name,
-        "is_activate": exception.is_activate
+        "is_activate": exception.is_activate,
+        "include_weekday": exception.include_weekday,
+        "include_saturday": exception.include_saturday,
+        "include_sunday": exception.include_sunday,
+        "include_holiday": exception.include_holiday
     }
     
     return response
@@ -1141,25 +1185,50 @@ def get_station_schedules_by_date(
         ScheduleType.schedule_type == base_schedule_type
     ).first()
     
-    # 가능한 예외 일정 확인
-    schedule_exception = db.query(ScheduleException).filter(
+    # 가능한 예외 일정 확인 - 해당 날짜의 모든 활성화된 예외 일정 조회
+    schedule_exceptions = db.query(ScheduleException).filter(
         ScheduleException.start_date <= date,
         ScheduleException.end_date >= date,
         ScheduleException.is_activate == True
-    ).first()
+    ).all()
     
-    # 일정 유형 최종 결정
-    schedule_type = base_schedule_type
+    # 현재 요일에 적용 가능한 예외 일정 찾기
+    applicable_exception = None
+    if schedule_exceptions:
+        for exception in schedule_exceptions:
+            # 예외 일정 타입의 활성화 여부 확인
+            exception_type_active = db.query(ScheduleType).filter(
+                ScheduleType.schedule_type == exception.schedule_type,
+                ScheduleType.is_activate == True
+            ).first()
+            
+            if exception_type_active:
+                # 현재 요일에 이 예외가 적용되는지 확인
+                should_apply_exception = False
+                
+                # 토요일인 경우
+                if weekday == 5:  # 토요일
+                    should_apply_exception = exception.include_saturday
+                # 일요일인 경우
+                elif weekday == 6:  # 일요일
+                    should_apply_exception = exception.include_sunday
+                # 공휴일인 경우 (평일이지만 공휴일)
+                elif base_schedule_type == "Holiday":  # 공휴일로 판정된 경우
+                    should_apply_exception = exception.include_holiday
+                # 평일인 경우
+                else:  # 평일 (월~금, 공휴일 아닌 경우)
+                    should_apply_exception = exception.include_weekday
+                
+                # 현재 요일에 적용 가능한 첫 번째 예외 일정 사용
+                if should_apply_exception:
+                    applicable_exception = exception
+                    break
     
-    # 활성화된 예외 일정이 있는 경우 사용
-    if schedule_exception:
-        exception_type_active = db.query(ScheduleType).filter(
-            ScheduleType.schedule_type == schedule_exception.schedule_type,
-            ScheduleType.is_activate == True
-        ).first()
-        
-        if exception_type_active:
-            schedule_type = schedule_exception.schedule_type
+    # 적용 가능한 예외 일정이 있으면 사용, 없으면 기본 일정 타입 사용
+    if applicable_exception:
+        schedule_type = applicable_exception.schedule_type
+    else:
+        schedule_type = base_schedule_type
     
     # 최종 선택된 schedule_type 정보 가져오기
     schedule_type_info = db.query(ScheduleType).filter(
