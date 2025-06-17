@@ -4,12 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="db: 해킹 복원">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/admin_notice.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/admin_notice.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/shuttle_admin.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/shuttle_admin.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -134,6 +130,8 @@
       <workItem from="1747673034976" duration="63000" />
       <workItem from="1748232973839" duration="382000" />
       <workItem from="1748316856389" duration="5000" />
+      <workItem from="1748334998695" duration="233000" />
+      <workItem from="1748361992235" duration="22000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -183,7 +181,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748233209472</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정">
+      <option name="closed" value="true" />
+      <created>1748335027939</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1748335027939</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -208,7 +214,8 @@
     <MESSAGE value="feat: 공지사항 유형 추가 및 필터링 기능 구현" />
     <MESSAGE value="build:Docker 설정 업데이트, nginx 서비스 추가" />
     <MESSAGE value="db: 해킹 복원" />
-    <option name="LAST_COMMIT_MESSAGE" value="db: 해킹 복원" />
+    <MESSAGE value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

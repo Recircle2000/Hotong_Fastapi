@@ -22,5 +22,9 @@ class ScheduleException(Base):
     schedule_type = Column(String(50), ForeignKey("schedule_types.schedule_type"), nullable=False)
     reason = Column(String(255), nullable=True)
     is_activate = Column(Boolean, default=False)
+    include_weekday = Column(Boolean, default=True)    # 평일 포함 여부
+    include_saturday = Column(Boolean, default=False)  # 토요일 포함 여부
+    include_sunday = Column(Boolean, default=False)    # 일요일 포함 여부
+    include_holiday = Column(Boolean, default=False)   # 공휴일 포함 여부
     # 관계 설정
     schedule_type_rel = relationship("ScheduleType", back_populates="exceptions") 
