@@ -77,7 +77,7 @@ bus_timetable = {}
 # 시간표 파일의 마지막 수정 시간
 last_timetable_update = 0
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 def load_bus_timetable():
     global last_timetable_update, bus_timetable
@@ -195,34 +195,29 @@ async def fetch_bus_data(route_name, route_id):
 
 
 async def update_bus_data_periodically():
-    # 시간표 로드 (최초 1회)
     load_bus_timetable()
     while True:
-        # 매 업데이트마다 시간표 변경 확인 (변경된 경우에만 갱신)
+        if len(active_connections) == 0:
+            await asyncio.sleep(5)  # 연결 없으면 대기만
+            logging.debug("연결 없음. 버스 데이터 업데이트x")
+            continue
         load_bus_timetable()
-        
-       # print(f"\n===== 버스 데이터 업데이트 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====")
         tasks = []
-        
-        # 모든 노선에 대해 체크 필요성 판단
         checking_routes = []
         skipping_routes = []
-        
         for route_name, route_id in ROUTES.items():
             if should_check_route(route_name):
                 tasks.append(fetch_bus_data(route_name, route_id))
                 checking_routes.append(route_name)
             else:
                 skipping_routes.append(route_name)
-        
         if tasks:
             await asyncio.gather(*tasks)
-            # 갱신된 데이터를 웹소켓 클라이언트들에게 브로드캐스트
             await broadcast_bus_data()
         else:
             logging.debug("현재 체크할 노선이 없습니다")
         logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
-        await asyncio.sleep(5)  # 5초 주기
+        await asyncio.sleep(5)
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
@@ -275,7 +270,10 @@ async def connect_client(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
     logging.info(f"✅ 클라이언트 접속: {len(active_connections)}명")
-    await broadcast_bus_data(websocket)  # Send data to the newly connected client
+    # 최초 연결 시 버스 데이터 즉시 업데이트 후 전송
+    tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
+    await asyncio.gather(*tasks)
+    await broadcast_bus_data(websocket)
 
 
 
