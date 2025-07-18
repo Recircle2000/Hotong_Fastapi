@@ -395,3 +395,21 @@ def invalidate_cache(pattern: str = "*", current_admin = Depends(get_current_adm
     """
     deleted_count = delete_pattern(pattern)
     return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다."}
+
+@router.get("/bus-timetable/version")
+def get_bus_timetable_version():
+    """
+    bus_times.json의 version 필드만 반환하는 엔드포인트
+    """
+    try:
+        with open('bus_times.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            version = data.get('version')
+            if version:
+                return {"version": version}
+            else:
+                raise HTTPException(status_code=404, detail="Version field not found")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="bus_times.json not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

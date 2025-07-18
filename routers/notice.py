@@ -55,12 +55,18 @@ def get_all_notices(notice_type: Optional[NoticeType] = None, db: Session = Depe
 def get_latest_notice(notice_type: Optional[NoticeType] = None, db: Session = Depends(get_db)):
     """
     가장 최근에 작성된 공지사항 1개를 조회합니다.
+    is_pinned가 true인 공지사항이 있으면 그 중 가장 최근 1개만 반환합니다.
     notice_type 파라미터로 특정 유형의 공지사항만 필터링할 수 있습니다.
     공지사항이 없는 경우 404 오류를 반환합니다.
     """
     query = db.query(Notice)
     if notice_type:
         query = query.filter(Notice.notice_type == notice_type)
+    # is_pinned가 true인 공지사항 중 가장 최근 1개 조회
+    pinned_notice = query.filter(Notice.is_pinned == True).order_by(Notice.created_at.desc()).first()
+    if pinned_notice:
+        return pinned_notice
+    # 없으면 기존 방식대로 가장 최근 1개 조회
     notice = query.order_by(Notice.created_at.desc()).first()
     if notice is None:
         raise HTTPException(status_code=404, detail="공지사항이 없습니다")
