@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="build:">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bus_times.json" beforeDir="false" afterPath="$PROJECT_DIR$/bus_times.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -137,7 +135,8 @@
       <workItem from="1748361992235" duration="22000" />
       <workItem from="1750149710562" duration="740000" />
       <workItem from="1750494020621" duration="667000" />
-      <workItem from="1750660327202" duration="601000" />
+      <workItem from="1750660327202" duration="2387000" />
+      <workItem from="1750867996168" duration="74000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -219,7 +218,31 @@
       <option name="project" value="LOCAL" />
       <updated>1750149796886</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="feat: 천안캠퍼스 시내버스 추가">
+      <option name="closed" value="true" />
+      <created>1750665042929</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1750665042929</updated>
+    </task>
+    <task id="LOCAL-00012" summary="feat: 천안캠퍼스 시내버스 추가">
+      <option name="closed" value="true" />
+      <created>1750665052829</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1750665052829</updated>
+    </task>
+    <task id="LOCAL-00013" summary="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화">
+      <option name="closed" value="true" />
+      <created>1750868064002</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1750868064002</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -248,7 +271,9 @@
     <MESSAGE value="db: DB 마이그레이션" />
     <MESSAGE value="feat: 예외 시간표 평일, 토요일, 일요일,공유일 선택 적용 기능 추가" />
     <MESSAGE value="build:" />
-    <option name="LAST_COMMIT_MESSAGE" value="build:" />
+    <MESSAGE value="feat: 천안캠퍼스 시내버스 추가" />
+    <MESSAGE value="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화" />
+    <option name="LAST_COMMIT_MESSAGE" value="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
