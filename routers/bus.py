@@ -39,6 +39,10 @@ ROUTES = {
     "821_DOWN": "ASB288000333",  # 호서대학교 출발 (하행)
     "821_UP": "ASB288000332",  # 시외버스터미널 출발 (상행)
 
+    # 822번
+    "822_DOWN": "ASB288000362",  # 호서대학교 출발 (하행)
+    "822_UP": "ASB288000361",  # 시외버스터미널 출발 (상행)
+
     # 1000번
     "1000_DOWN": "ASB288001028",  # 호서대학교 출발 (하행)
     "1000_UP": "ASB288001027",  # 탕정역 출발 (상행)
@@ -60,14 +64,14 @@ ROUTES = {
 MAIN_ROUTES = ["순환5_DOWN", "순환5_UP", "24_UP", "24_DOWN", "81_UP", "81_DOWN","1000_DOWN", "1000_UP"]
 
 # 시간표 기반 체크 노선
-SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821_UP", ]
+SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821_UP","822_DOWN", "822_UP" ]
 
 # 버스 데이터 캐시 TTL (초)
 BUS_CACHE_TTL = 5
 
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
-MAIN_ROUTES_END_TIME = time(23, 30)   # 오후 10시 15분
+MAIN_ROUTES_END_TIME = time(23, 50)   # 오후 10시 15분
 
 # 웹소켓 연결 관리
 active_connections = []
@@ -198,8 +202,12 @@ async def update_bus_data_periodically():
     load_bus_timetable()
     while True:
         if len(active_connections) == 0:
+            # 연결이 없어도 24_DOWN, 81_DOWN은 항상 업데이트
+            for forced_route in ["24_DOWN", "81_DOWN"]:
+                if forced_route in ROUTES:
+                    await fetch_bus_data(forced_route, ROUTES[forced_route])
             await asyncio.sleep(5)  # 연결 없으면 대기만
-            logging.debug("연결 없음. 버스 데이터 업데이트x")
+            logging.debug("연결 없음. 버스 데이터 업데이트x (필수노선만 업데이트)")
             continue
         load_bus_timetable()
         tasks = []
@@ -230,7 +238,7 @@ async def broadcast_bus_data(websocket: WebSocket = None):
             # 각 버스 데이터에서 불필요한 필드 제거
             filtered_data = []
             for bus in cached_data:
-                filtered_bus = {k: v for k, v in bus.items() if k not in ["nodeid", "nodeord", "routenm", "routetp", "nodenm"]}
+                filtered_bus = {k: v for k, v in bus.items() if k not in ["nodeid", "nodeord", "routetp"]}
                 filtered_data.append(filtered_bus)
             result[route_name] = filtered_data
             available_routes.append(route_name)
@@ -244,6 +252,7 @@ async def broadcast_bus_data(websocket: WebSocket = None):
     if websocket:
         try:
             await websocket.send_text(message)
+
         except Exception as e:
             logging.error(f"❌ WebSocket 전송 오류 (단일 클라이언트): {e}")
     else:
@@ -319,7 +328,7 @@ async def get_all_buses():
             # 각 버스 데이터에서 불필요한 필드 제거
             filtered_data = []
             for bus in cached_data:
-                filtered_bus = {k: v for k, v in bus.items() if k not in ["nodeid", "nodeord", "routenm", "routetp", "nodenm"]}
+                filtered_bus = {k: v for k, v in bus.items() if k not in ["nodeid", "nodeord", "routetp"]}
                 filtered_data.append(filtered_bus)
             result[route_name] = filtered_data
         else:
