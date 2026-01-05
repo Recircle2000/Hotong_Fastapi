@@ -31,13 +31,13 @@
             height: 100vh;
             z-index: 1000;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
 
         .sidebar-header {
             padding: 1.5rem;
             text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-logo {
@@ -55,14 +55,14 @@
             padding: 0.8rem 1.5rem;
             display: flex;
             align-items: center;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             transition: all 0.3s ease;
         }
 
         .nav-item:hover,
         .nav-item.active {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
         }
 
@@ -88,13 +88,13 @@
             bottom: 0;
             width: 100%;
             padding: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .logout-btn {
             width: 100%;
             padding: 0.8rem;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
             border: none;
             border-radius: 8px;
@@ -112,7 +112,7 @@
         }
 
         .logout-btn:hover {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .main-content {
@@ -134,7 +134,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 1rem 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header h1 {
@@ -264,7 +264,8 @@
             font-weight: 500;
         }
 
-        .process-cpu, .process-memory {
+        .process-cpu,
+        .process-memory {
             width: 60px;
             text-align: right;
             color: #666;
@@ -341,11 +342,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: #667eea;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(26px);
         }
 
@@ -372,15 +373,15 @@
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .mobile-toggle {
                 display: block;
             }
-            
+
             .sidebar.active {
                 transform: translateX(0);
             }
@@ -390,13 +391,14 @@
             .container {
                 padding: 1rem;
             }
-            
+
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="wrapper">
         <!-- 사이드바 -->
@@ -429,506 +431,507 @@
                 <h1>🖥️ 서버 모니터링 대시보드</h1>
             </div>
 
-    <div class="container">
-        <div class="auto-refresh">
-            <label class="switch">
-                <input type="checkbox" id="autoRefresh" checked>
-                <span class="slider"></span>
-            </label>
-            <span>자동 새로고침 (5초)</span>
-            <button class="refresh-btn" onclick="refreshAll()">수동 새로고침</button>
+            <div class="container">
+                <div class="auto-refresh">
+                    <label class="switch">
+                        <input type="checkbox" id="autoRefresh" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span>자동 새로고침 (5초)</span>
+                    <button class="refresh-btn" onclick="refreshAll()">수동 새로고침</button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- 시스템 정보 -->
+                    <div class="card">
+                        <h3>💻 시스템 정보</h3>
+                        <div id="systemInfo">
+                            <div class="metric">
+                                <span class="metric-label">CPU 사용률</span>
+                                <span class="metric-value" id="cpuPercent">-</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="cpuProgress"></div>
+                            </div>
+
+                            <div class="metric">
+                                <span class="metric-label">메모리 사용량</span>
+                                <span class="metric-value" id="memoryUsage">-</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="memoryProgress"></div>
+                            </div>
+
+                            <div class="metric">
+                                <span class="metric-label">스왑 메모리</span>
+                                <span class="metric-value" id="swapUsage">-</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="swapProgress"></div>
+                            </div>
+
+                            <div class="metric">
+                                <span class="metric-label">디스크 사용률</span>
+                                <span class="metric-value" id="diskPercent">-</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="diskProgress"></div>
+                            </div>
+
+                            <div class="metric">
+                                <span class="metric-label">CPU 코어 수</span>
+                                <span class="metric-value" id="cpuCount">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 애플리케이션 정보 -->
+                    <div class="card">
+                        <h3>🚀 애플리케이션 정보</h3>
+                        <div id="appInfo">
+                            <div class="metric">
+                                <span class="metric-label">프로세스 ID</span>
+                                <span class="metric-value" id="processId">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">메모리 사용량</span>
+                                <span class="metric-value" id="appMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">CPU 사용률</span>
+                                <span class="metric-value" id="appCpu">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">스레드 수</span>
+                                <span class="metric-value" id="threadCount">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">실행 시간</span>
+                                <span class="metric-value" id="uptime">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">초당 API 호출</span>
+                                <span class="metric-value" id="apiCallsPerSecond">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">총 API 호출</span>
+                                <span class="metric-value" id="totalApiCalls">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 데이터베이스 정보 -->
+                    <div class="card">
+                        <h3>🗄️ 데이터베이스 정보</h3>
+                        <div id="dbInfo">
+                            <div class="metric">
+                                <span class="metric-label">활성 연결</span>
+                                <span class="metric-value" id="dbConnections">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">총 쿼리 수</span>
+                                <span class="metric-value" id="totalQueries">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">느린 쿼리</span>
+                                <span class="metric-value" id="slowQueries">-</span>
+                            </div>
+                            <div class="table-sizes" id="tableSizes"></div>
+                        </div>
+                    </div>
+
+                    <!-- Redis 정보 -->
+                    <div class="card">
+                        <h3>📦 Redis 정보</h3>
+                        <div id="redisInfo">
+                            <div class="metric">
+                                <span class="metric-label">메모리 사용량</span>
+                                <span class="metric-value" id="redisMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">연결된 클라이언트</span>
+                                <span class="metric-value" id="redisClients">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">초당 작업 수</span>
+                                <span class="metric-value" id="redisOps">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">히트율</span>
+                                <span class="metric-value" id="redisHitRate">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">실행 시간</span>
+                                <span class="metric-value" id="redisUptime">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 상위 프로세스 -->
+                    <div class="card">
+                        <h3>⚡ 상위 프로세스</h3>
+                        <div class="process-list" id="processList">
+                            <div class="process-item">
+                                <div class="process-name">로딩 중...</div>
+                                <div class="process-cpu">CPU</div>
+                                <div class="process-memory">MEM</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API 통계 -->
+                    <div class="card">
+                        <h3>🌐 API 통계</h3>
+                        <div id="apiStats">
+                            <div class="metric">
+                                <span class="metric-label">초당 요청 수</span>
+                                <span class="metric-value" id="apiRequestsPerSecond">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">분당 요청 수</span>
+                                <span class="metric-value" id="apiRequestsPerMinute">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">성공 요청</span>
+                                <span class="metric-value" id="apiSuccessRequests">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">클라이언트 오류</span>
+                                <span class="metric-value" id="apiClientErrors">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">서버 오류</span>
+                                <span class="metric-value" id="apiServerErrors">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CPU 사용률 차트 -->
+                    <div class="card">
+                        <h3>📊 CPU 사용률 추이</h3>
+                        <div class="chart-container">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 로그 -->
+                <div class="card">
+                    <h3>📝 최근 로그</h3>
+                    <div class="logs-container" id="logsContainer">
+                        로그를 불러오는 중...
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="dashboard-grid">
-            <!-- 시스템 정보 -->
-            <div class="card">
-                <h3>💻 시스템 정보</h3>
-                <div id="systemInfo">
-                    <div class="metric">
-                        <span class="metric-label">CPU 사용률</span>
-                        <span class="metric-value" id="cpuPercent">-</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="cpuProgress"></div>
-                    </div>
-                    
-                    <div class="metric">
-                        <span class="metric-label">메모리 사용량</span>
-                        <span class="metric-value" id="memoryUsage">-</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="memoryProgress"></div>
-                    </div>
-                    
-                    <div class="metric">
-                        <span class="metric-label">스왑 메모리</span>
-                        <span class="metric-value" id="swapUsage">-</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="swapProgress"></div>
-                    </div>
-                    
-                    <div class="metric">
-                        <span class="metric-label">디스크 사용률</span>
-                        <span class="metric-value" id="diskPercent">-</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="diskProgress"></div>
-                    </div>
-                    
-                    <div class="metric">
-                        <span class="metric-label">CPU 코어 수</span>
-                        <span class="metric-value" id="cpuCount">-</span>
-                    </div>
-                </div>
-            </div>
+        <script>
+            let autoRefreshEnabled = true;
+            let refreshInterval;
+            let cpuChart;
+            let cpuData = [];
+            let timeLabels = [];
 
-            <!-- 애플리케이션 정보 -->
-            <div class="card">
-                <h3>🚀 애플리케이션 정보</h3>
-                <div id="appInfo">
-                    <div class="metric">
-                        <span class="metric-label">프로세스 ID</span>
-                        <span class="metric-value" id="processId">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">메모리 사용량</span>
-                        <span class="metric-value" id="appMemory">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">CPU 사용률</span>
-                        <span class="metric-value" id="appCpu">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">스레드 수</span>
-                        <span class="metric-value" id="threadCount">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">실행 시간</span>
-                        <span class="metric-value" id="uptime">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">초당 API 호출</span>
-                        <span class="metric-value" id="apiCallsPerSecond">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">총 API 호출</span>
-                        <span class="metric-value" id="totalApiCalls">-</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 데이터베이스 정보 -->
-            <div class="card">
-                <h3>🗄️ 데이터베이스 정보</h3>
-                <div id="dbInfo">
-                    <div class="metric">
-                        <span class="metric-label">활성 연결</span>
-                        <span class="metric-value" id="dbConnections">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">총 쿼리 수</span>
-                        <span class="metric-value" id="totalQueries">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">느린 쿼리</span>
-                        <span class="metric-value" id="slowQueries">-</span>
-                    </div>
-                    <div class="table-sizes" id="tableSizes"></div>
-                </div>
-            </div>
-
-            <!-- Redis 정보 -->
-            <div class="card">
-                <h3>📦 Redis 정보</h3>
-                <div id="redisInfo">
-                    <div class="metric">
-                        <span class="metric-label">메모리 사용량</span>
-                        <span class="metric-value" id="redisMemory">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">연결된 클라이언트</span>
-                        <span class="metric-value" id="redisClients">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">초당 작업 수</span>
-                        <span class="metric-value" id="redisOps">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">히트율</span>
-                        <span class="metric-value" id="redisHitRate">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">실행 시간</span>
-                        <span class="metric-value" id="redisUptime">-</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 상위 프로세스 -->
-            <div class="card">
-                <h3>⚡ 상위 프로세스</h3>
-                <div class="process-list" id="processList">
-                    <div class="process-item">
-                        <div class="process-name">로딩 중...</div>
-                        <div class="process-cpu">CPU</div>
-                        <div class="process-memory">MEM</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- API 통계 -->
-            <div class="card">
-                <h3>🌐 API 통계</h3>
-                <div id="apiStats">
-                    <div class="metric">
-                        <span class="metric-label">초당 요청 수</span>
-                        <span class="metric-value" id="apiRequestsPerSecond">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">분당 요청 수</span>
-                        <span class="metric-value" id="apiRequestsPerMinute">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">성공 요청</span>
-                        <span class="metric-value" id="apiSuccessRequests">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">클라이언트 오류</span>
-                        <span class="metric-value" id="apiClientErrors">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">서버 오류</span>
-                        <span class="metric-value" id="apiServerErrors">-</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CPU 사용률 차트 -->
-            <div class="card">
-                <h3>📊 CPU 사용률 추이</h3>
-                <div class="chart-container">
-                    <canvas id="cpuChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- 로그 -->
-        <div class="card">
-            <h3>📝 최근 로그</h3>
-            <div class="logs-container" id="logsContainer">
-                로그를 불러오는 중...
-            </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let autoRefreshEnabled = true;
-        let refreshInterval;
-        let cpuChart;
-        let cpuData = [];
-        let timeLabels = [];
-
-        // 차트 초기화
-        function initChart() {
-            const ctx = document.getElementById('cpuChart').getContext('2d');
-            cpuChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: timeLabels,
-                    datasets: [{
-                        label: 'CPU 사용률 (%)',
-                        data: cpuData,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100
-                        }
+            // 차트 초기화
+            function initChart() {
+                const ctx = document.getElementById('cpuChart').getContext('2d');
+                cpuChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timeLabels,
+                        datasets: [{
+                            label: 'CPU 사용률 (%)',
+                            data: cpuData,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
                     },
-                    plugins: {
-                        legend: {
-                            display: false
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
                         }
                     }
-                }
-            });
-        }
-
-        // 바이트를 읽기 쉬운 형태로 변환
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // 시간을 읽기 쉬운 형태로 변환
-        function formatUptime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            
-            if (days > 0) {
-                return `${days}일 ${hours}시간 ${minutes}분`;
-            } else if (hours > 0) {
-                return `${hours}시간 ${minutes}분`;
-            } else {
-                return `${minutes}분`;
+                });
             }
-        }
 
-        // 진행률 바 업데이트
-        function updateProgressBar(elementId, percentage) {
-            const element = document.getElementById(elementId);
-            element.style.width = percentage + '%';
-            
-            // 색상 변경
-            element.className = 'progress-fill';
-            if (percentage > 80) {
-                element.classList.add('critical');
-            } else if (percentage > 60) {
-                element.classList.add('warning');
+            // 바이트를 읽기 쉬운 형태로 변환
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
-        }
 
-        // 시스템 정보 업데이트
-        async function updateSystemInfo() {
-            try {
-                const response = await fetch('/admin/monitor/api/system-info');
-                const data = await response.json();
-                
-                document.getElementById('cpuPercent').textContent = data.cpu.percent.toFixed(1) + '%';
-                document.getElementById('memoryUsage').textContent = 
-                    `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`;
-                document.getElementById('diskPercent').textContent = data.disk.percent.toFixed(1) + '%';
-                document.getElementById('cpuCount').textContent = data.cpu.count + '개';
-                
-                // 스왑 메모리 정보 업데이트
-                if (data.swap && data.swap.total > 0) {
-                    document.getElementById('swapUsage').textContent = 
-                        `${formatBytes(data.swap.used)} / ${formatBytes(data.swap.total)}`;
-                    updateProgressBar('swapProgress', data.swap.percent);
+            // 시간을 읽기 쉬운 형태로 변환
+            function formatUptime(seconds) {
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+
+                if (days > 0) {
+                    return `${days}일 ${hours}시간 ${minutes}분`;
+                } else if (hours > 0) {
+                    return `${hours}시간 ${minutes}분`;
                 } else {
-                    document.getElementById('swapUsage').textContent = '사용 안함';
-                    updateProgressBar('swapProgress', 0);
+                    return `${minutes}분`;
                 }
-                
-                updateProgressBar('cpuProgress', data.cpu.percent);
-                updateProgressBar('memoryProgress', data.memory.percent);
-                updateProgressBar('diskProgress', data.disk.percent);
-                
-                // CPU 차트 데이터 업데이트
-                const now = new Date().toLocaleTimeString();
-                cpuData.push(data.cpu.percent);
-                timeLabels.push(now);
-                
-                // 최대 20개 데이터 포인트 유지
-                if (cpuData.length > 20) {
-                    cpuData.shift();
-                    timeLabels.shift();
+            }
+
+            // 진행률 바 업데이트
+            function updateProgressBar(elementId, percentage) {
+                const element = document.getElementById(elementId);
+                element.style.width = percentage + '%';
+
+                // 색상 변경
+                element.className = 'progress-fill';
+                if (percentage > 80) {
+                    element.classList.add('critical');
+                } else if (percentage > 60) {
+                    element.classList.add('warning');
                 }
-                
-                cpuChart.update();
-                
-                // 프로세스 목록 업데이트
-                const processList = document.getElementById('processList');
-                processList.innerHTML = '';
-                
-                data.top_processes.forEach(proc => {
-                    const item = document.createElement('div');
-                    item.className = 'process-item';
-                    item.innerHTML = `
+            }
+
+            // 시스템 정보 업데이트
+            async function updateSystemInfo() {
+                try {
+                    const response = await fetch('/admin/monitor/api/system-info');
+                    const data = await response.json();
+
+                    document.getElementById('cpuPercent').textContent = data.cpu.percent.toFixed(1) + '%';
+                    document.getElementById('memoryUsage').textContent =
+                        `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`;
+                    document.getElementById('diskPercent').textContent = data.disk.percent.toFixed(1) + '%';
+                    document.getElementById('cpuCount').textContent = data.cpu.count + '개';
+
+                    // 스왑 메모리 정보 업데이트
+                    if (data.swap && data.swap.total > 0) {
+                        document.getElementById('swapUsage').textContent =
+                            `${formatBytes(data.swap.used)} / ${formatBytes(data.swap.total)}`;
+                        updateProgressBar('swapProgress', data.swap.percent);
+                    } else {
+                        document.getElementById('swapUsage').textContent = '사용 안함';
+                        updateProgressBar('swapProgress', 0);
+                    }
+
+                    updateProgressBar('cpuProgress', data.cpu.percent);
+                    updateProgressBar('memoryProgress', data.memory.percent);
+                    updateProgressBar('diskProgress', data.disk.percent);
+
+                    // CPU 차트 데이터 업데이트
+                    const now = new Date().toLocaleTimeString();
+                    cpuData.push(data.cpu.percent);
+                    timeLabels.push(now);
+
+                    // 최대 20개 데이터 포인트 유지
+                    if (cpuData.length > 20) {
+                        cpuData.shift();
+                        timeLabels.shift();
+                    }
+
+                    cpuChart.update();
+
+                    // 프로세스 목록 업데이트
+                    const processList = document.getElementById('processList');
+                    processList.innerHTML = '';
+
+                    data.top_processes.forEach(proc => {
+                        const item = document.createElement('div');
+                        item.className = 'process-item';
+                        item.innerHTML = `
                         <div class="process-name">${proc.name} (${proc.pid})</div>
                         <div class="process-cpu">${proc.cpu_percent.toFixed(1)}%</div>
                         <div class="process-memory">${proc.memory_percent.toFixed(1)}%</div>
                     `;
-                    processList.appendChild(item);
-                });
-                
-            } catch (error) {
-                console.error('시스템 정보 업데이트 실패:', error);
-            }
-        }
+                        processList.appendChild(item);
+                    });
 
-        // 애플리케이션 정보 업데이트
-        async function updateAppInfo() {
-            try {
-                const response = await fetch('/admin/monitor/api/application-info');
-                const data = await response.json();
-                
-                document.getElementById('processId').textContent = data.process_id;
-                document.getElementById('appMemory').textContent = formatBytes(data.memory.rss);
-                document.getElementById('appCpu').textContent = data.cpu_percent.toFixed(1) + '%';
-                document.getElementById('threadCount').textContent = data.num_threads + '개';
-                document.getElementById('uptime').textContent = formatUptime(data.uptime_seconds);
-                
-                // API 통계 업데이트
-                if (data.api_stats) {
-                    document.getElementById('apiCallsPerSecond').textContent = 
-                        data.api_stats.requests_per_second + '/s';
-                    document.getElementById('totalApiCalls').textContent = 
-                        data.api_stats.total_requests.toLocaleString();
-                } else {
-                    document.getElementById('apiCallsPerSecond').textContent = '0/s';
-                    document.getElementById('totalApiCalls').textContent = '0';
+                } catch (error) {
+                    console.error('시스템 정보 업데이트 실패:', error);
                 }
-                
-            } catch (error) {
-                console.error('애플리케이션 정보 업데이트 실패:', error);
             }
-        }
 
-        // 데이터베이스 정보 업데이트
-        async function updateDbInfo() {
-            try {
-                const response = await fetch('/admin/monitor/api/database-info');
-                const data = await response.json();
-                
-                if (data.error) {
-                    document.getElementById('dbInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
-                    return;
+            // 애플리케이션 정보 업데이트
+            async function updateAppInfo() {
+                try {
+                    const response = await fetch('/admin/monitor/api/application-info');
+                    const data = await response.json();
+
+                    document.getElementById('processId').textContent = data.process_id;
+                    document.getElementById('appMemory').textContent = formatBytes(data.memory.rss);
+                    document.getElementById('appCpu').textContent = data.cpu_percent.toFixed(1) + '%';
+                    document.getElementById('threadCount').textContent = data.num_threads + '개';
+                    document.getElementById('uptime').textContent = formatUptime(data.uptime_seconds);
+
+                    // API 통계 업데이트
+                    if (data.api_stats) {
+                        document.getElementById('apiCallsPerSecond').textContent =
+                            data.api_stats.requests_per_second + '/s';
+                        document.getElementById('totalApiCalls').textContent =
+                            data.api_stats.total_requests.toLocaleString();
+                    } else {
+                        document.getElementById('apiCallsPerSecond').textContent = '0/s';
+                        document.getElementById('totalApiCalls').textContent = '0';
+                    }
+
+                } catch (error) {
+                    console.error('애플리케이션 정보 업데이트 실패:', error);
                 }
-                
-                document.getElementById('dbConnections').textContent = 
-                    `${data.connections.active} / ${data.connections.max}`;
-                document.getElementById('totalQueries').textContent = 
-                    data.queries.total.toLocaleString();
-                document.getElementById('slowQueries').textContent = 
-                    data.queries.slow.toLocaleString();
-                
-                // 테이블 크기 정보
-                const tableSizes = document.getElementById('tableSizes');
-                tableSizes.innerHTML = '<div style="font-weight: 600; margin-bottom: 0.5rem;">테이블 크기 (MB)</div>';
-                
-                data.table_sizes.forEach(table => {
-                    const item = document.createElement('div');
-                    item.className = 'table-item';
-                    item.innerHTML = `
+            }
+
+            // 데이터베이스 정보 업데이트
+            async function updateDbInfo() {
+                try {
+                    const response = await fetch('/admin/monitor/api/database-info');
+                    const data = await response.json();
+
+                    if (data.error) {
+                        document.getElementById('dbInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                        return;
+                    }
+
+                    document.getElementById('dbConnections').textContent =
+                        `${data.connections.active} / ${data.connections.max}`;
+                    document.getElementById('totalQueries').textContent =
+                        data.queries.total.toLocaleString();
+                    document.getElementById('slowQueries').textContent =
+                        data.queries.slow.toLocaleString();
+
+                    // 테이블 크기 정보
+                    const tableSizes = document.getElementById('tableSizes');
+                    tableSizes.innerHTML = '<div style="font-weight: 600; margin-bottom: 0.5rem;">테이블 크기 (MB)</div>';
+
+                    data.table_sizes.forEach(table => {
+                        const item = document.createElement('div');
+                        item.className = 'table-item';
+                        item.innerHTML = `
                         <span>${table.name}</span>
                         <span>${table.size_mb} MB</span>
                     `;
-                    tableSizes.appendChild(item);
-                });
-                
-            } catch (error) {
-                console.error('데이터베이스 정보 업데이트 실패:', error);
-            }
-        }
+                        tableSizes.appendChild(item);
+                    });
 
-        // Redis 정보 업데이트
-        async function updateRedisInfo() {
-            try {
-                const response = await fetch('/admin/monitor/api/redis-info');
-                const data = await response.json();
-                
-                if (data.error) {
-                    document.getElementById('redisInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
-                    return;
+                } catch (error) {
+                    console.error('데이터베이스 정보 업데이트 실패:', error);
                 }
-                
-                document.getElementById('redisMemory').textContent = data.memory.used_memory_human;
-                document.getElementById('redisClients').textContent = data.connections.connected_clients + '개';
-                document.getElementById('redisOps').textContent = data.stats.instantaneous_ops_per_sec + '/s';
-                document.getElementById('redisHitRate').textContent = data.stats.hit_rate + '%';
-                document.getElementById('redisUptime').textContent = formatUptime(data.uptime);
-                
-            } catch (error) {
-                console.error('Redis 정보 업데이트 실패:', error);
             }
-        }
 
-        // 로그 업데이트
-        async function updateLogs() {
-            try {
-                const response = await fetch('/admin/monitor/api/logs?lines=50');
-                const data = await response.json();
-                
-                const logsContainer = document.getElementById('logsContainer');
-                if (data.error) {
-                    logsContainer.textContent = data.error;
+            // Redis 정보 업데이트
+            async function updateRedisInfo() {
+                try {
+                    const response = await fetch('/admin/monitor/api/redis-info');
+                    const data = await response.json();
+
+                    if (data.error) {
+                        document.getElementById('redisInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                        return;
+                    }
+
+                    document.getElementById('redisMemory').textContent = data.memory.used_memory_human;
+                    document.getElementById('redisClients').textContent = data.connections.connected_clients + '개';
+                    document.getElementById('redisOps').textContent = data.stats.instantaneous_ops_per_sec + '/s';
+                    document.getElementById('redisHitRate').textContent = data.stats.hit_rate + '%';
+                    document.getElementById('redisUptime').textContent = formatUptime(data.uptime);
+
+                } catch (error) {
+                    console.error('Redis 정보 업데이트 실패:', error);
+                }
+            }
+
+            // 로그 업데이트
+            async function updateLogs() {
+                try {
+                    const response = await fetch('/admin/monitor/api/logs?lines=50');
+                    const data = await response.json();
+
+                    const logsContainer = document.getElementById('logsContainer');
+                    if (data.error) {
+                        logsContainer.textContent = data.error;
+                    } else {
+                        logsContainer.textContent = data.logs.join('');
+                        logsContainer.scrollTop = logsContainer.scrollHeight;
+                    }
+
+                } catch (error) {
+                    console.error('로그 업데이트 실패:', error);
+                }
+            }
+
+            // API 통계 업데이트
+            async function updateApiStats() {
+                try {
+                    const response = await fetch('/admin/monitor/api/application-info');
+                    const data = await response.json();
+
+                    if (data.api_stats) {
+                        const stats = data.api_stats;
+                        document.getElementById('apiRequestsPerSecond').textContent = stats.requests_per_second + '/s';
+                        document.getElementById('apiRequestsPerMinute').textContent = stats.requests_per_minute + '/min';
+                        document.getElementById('apiSuccessRequests').textContent = stats.success_requests.toLocaleString();
+                        document.getElementById('apiClientErrors').textContent = stats.client_errors.toLocaleString();
+                        document.getElementById('apiServerErrors').textContent = stats.server_errors.toLocaleString();
+                    } else {
+                        document.getElementById('apiRequestsPerSecond').textContent = '0/s';
+                        document.getElementById('apiRequestsPerMinute').textContent = '0/min';
+                        document.getElementById('apiSuccessRequests').textContent = '0';
+                        document.getElementById('apiClientErrors').textContent = '0';
+                        document.getElementById('apiServerErrors').textContent = '0';
+                    }
+
+                } catch (error) {
+                    console.error('API 통계 업데이트 실패:', error);
+                }
+            }
+
+            // 모든 정보 새로고침
+            async function refreshAll() {
+                await Promise.all([
+                    updateSystemInfo(),
+                    updateAppInfo(),
+                    updateDbInfo(),
+                    updateRedisInfo(),
+                    updateLogs(),
+                    updateApiStats()
+                ]);
+            }
+
+            // 자동 새로고침 토글
+            document.getElementById('autoRefresh').addEventListener('change', function () {
+                autoRefreshEnabled = this.checked;
+
+                if (autoRefreshEnabled) {
+                    refreshInterval = setInterval(refreshAll, 5000);
                 } else {
-                    logsContainer.textContent = data.logs.join('');
-                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                    clearInterval(refreshInterval);
                 }
-                
-            } catch (error) {
-                console.error('로그 업데이트 실패:', error);
-            }
-        }
+            });
 
-        // API 통계 업데이트
-        async function updateApiStats() {
-            try {
-                const response = await fetch('/admin/monitor/api/application-info');
-                const data = await response.json();
-                
-                if (data.api_stats) {
-                    const stats = data.api_stats;
-                    document.getElementById('apiRequestsPerSecond').textContent = stats.requests_per_second + '/s';
-                    document.getElementById('apiRequestsPerMinute').textContent = stats.requests_per_minute + '/min';
-                    document.getElementById('apiSuccessRequests').textContent = stats.success_requests.toLocaleString();
-                    document.getElementById('apiClientErrors').textContent = stats.client_errors.toLocaleString();
-                    document.getElementById('apiServerErrors').textContent = stats.server_errors.toLocaleString();
-                } else {
-                    document.getElementById('apiRequestsPerSecond').textContent = '0/s';
-                    document.getElementById('apiRequestsPerMinute').textContent = '0/min';
-                    document.getElementById('apiSuccessRequests').textContent = '0';
-                    document.getElementById('apiClientErrors').textContent = '0';
-                    document.getElementById('apiServerErrors').textContent = '0';
-                }
-                
-            } catch (error) {
-                console.error('API 통계 업데이트 실패:', error);
-            }
-        }
+            // 사이드바 토글
+            document.getElementById('sidebarToggle').addEventListener('click', function () {
+                document.getElementById('sidebar').classList.toggle('active');
+            });
 
-        // 모든 정보 새로고침
-        async function refreshAll() {
-            await Promise.all([
-                updateSystemInfo(),
-                updateAppInfo(),
-                updateDbInfo(),
-                updateRedisInfo(),
-                updateLogs(),
-                updateApiStats()
-            ]);
-        }
+            // 초기화
+            document.addEventListener('DOMContentLoaded', function () {
+                initChart();
+                refreshAll();
 
-        // 자동 새로고침 토글
-        document.getElementById('autoRefresh').addEventListener('change', function() {
-            autoRefreshEnabled = this.checked;
-            
-            if (autoRefreshEnabled) {
+                // 자동 새로고침 시작
                 refreshInterval = setInterval(refreshAll, 5000);
-            } else {
-                clearInterval(refreshInterval);
-            }
-        });
-
-        // 사이드바 토글
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
-
-        // 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            initChart();
-            refreshAll();
-            
-            // 자동 새로고침 시작
-            refreshInterval = setInterval(refreshAll, 5000);
-        });
-    </script>
+            });
+        </script>
 </body>
-</html> 
+
+</html>
