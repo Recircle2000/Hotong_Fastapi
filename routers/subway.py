@@ -130,22 +130,26 @@ async def update_subway_cache():
                         if item.get("bstatnNm") == item.get("statnNm") or item.get("bstatnNm") == "서동탄":
                             continue
 
-                        # [User Request]: 도착 완료된 열차 제외 (예: "천안 도착")
-                        if item.get("arvlMsg2") == f"{station} 도착":
-                            continue
-
                         # 열차 번호 포맷팅 (예: "0694" -> "k694")
                         btrain_no = item.get("btrainNo", "")
                         if btrain_no:
                             btrain_no = f"k{btrain_no.lstrip('0')}"
+                        
+                        # 병점행 하행은 제외(서울 -> 병점이 잡히는 문제점 해결)
+                        if item.get("updnLine") == "하행" and item.get("bstatnNm") == "병점":
+                            continue
 
-                        # [User Request]: 천안 기점 차량이면 메시지 변경
+                        # 1) 천안 기점 차량이면 메시지 변경
                         if btrain_no in starting_trains:
                             item["arvlMsg2"] = "출발 대기"
 
-                        # [User Request]: 상행 신창 기점(현재 위치가 신창)인 경우 메시지 변경
-                        if item.get("updnLine") == "상행" and item.get("arvlMsg3") == "신창":
+                        # 2) 상행 신창 기점(현재 위치가 신창)인 경우 메시지 변경
+                        elif item.get("updnLine") == "상행" and item.get("arvlMsg3") == "신창":
                             item["arvlMsg2"] = "기점(신창) 대기"
+
+                        # 3) 위 케이스가 아니라면(=일반 열차) 도착 완료된 열차 제외
+                        elif item.get("arvlMsg2") == f"{station} 도착":
+                            continue
                         
                         info = SubwayArrivalInfo(
                             subwayId=item.get("subwayId", ""),
