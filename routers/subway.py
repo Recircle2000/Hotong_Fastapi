@@ -213,11 +213,29 @@ async def update_schedule_cache_daily():
     24시간마다 역 별 기차 시간표를 캐싱합니다.
     천안, 아산 / 평일, 주말 / 상행, 하행
     """
+    first_run = True
+    
     while True:
-        try:
-            logging.info("Starting daily subway schedule update...")
+        should_update = True
+        
+        # 첫 실행 시 DB에 데이터가 있는지 확인
+        if first_run:
+            db_check = SessionLocal()
+            try:
+                if db_check.query(SubwaySchedule).first():
+                    logging.info("✅ 기존 지하철 시간표 데이터 존재. 시작 시 중복 업데이트 건너뜀.")
+                    should_update = False
+            except Exception as e:
+                logging.error(f"Startup DB check failed: {e}")
+            finally:
+                db_check.close()
+            first_run = False
             
-            stations = ["천안", "아산"]
+        try:
+            if should_update:
+                logging.info("Starting daily subway schedule update...")
+                
+                stations = ["천안", "아산"]
             directions = ["상행", "하행"]
             day_types = ["평일", "주말"]
             line_name = "1호선" # 천안/아산은 1호선
