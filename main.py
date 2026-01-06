@@ -44,7 +44,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(bus.update_bus_data_periodically())
+
     
     # API 모니터링 미들웨어 확인
     if api_monitor_module.api_monitor:
