@@ -1,5 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 import asyncio
+from typing import List, Dict, Set, Optional
 import httpx
 import os
 import json
@@ -74,7 +75,8 @@ MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
 MAIN_ROUTES_END_TIME = time(23, 50)  # 오후 10시 15분
 
 # 웹소켓 연결 관리
-active_connections = []
+active_connections: Set[WebSocket] = set()
+bus_clients_event = asyncio.Event()
 
 # 시간표 데이터 저장
 bus_timetable = {}
@@ -94,7 +96,7 @@ def load_bus_timetable():
                 bus_timetable.clear()
                 bus_timetable.update(json.load(f))
                 last_timetable_update = current_mtime
-                logging.info(f"버스 시간표가 업데이트되었습니다: {datetime.fromtimestamp(current_mtime)}")
+                logging.debug(f"버스 시간표가 업데이트되었습니다: {datetime.fromtimestamp(current_mtime)}")
     except Exception as e:
         logging.error(f"시간표 로딩 오류: {e}")
 
@@ -114,7 +116,7 @@ def should_check_route(route_name):
     if route_name in MAIN_ROUTES:
         is_check = MAIN_ROUTES_START_TIME <= now <= MAIN_ROUTES_END_TIME
         if not is_check:
-            logging.info(f"[{route_name}] 주요 노선 운행 시간 외: {now} (운행시간: {MAIN_ROUTES_START_TIME}-{MAIN_ROUTES_END_TIME})")
+            logging.debug(f"[{route_name}] 주요 노선 운행 시간 외: {now} (운행시간: {MAIN_ROUTES_START_TIME}-{MAIN_ROUTES_END_TIME})")
         return is_check
 
     # 시간표 기반 노선들
@@ -171,18 +173,17 @@ def should_check_route(route_name):
     return False
 
 
-async def fetch_bus_data(route_name, route_id):
+async def fetch_bus_data(route_name, route_id) -> Optional[List[dict]]:
     # 해당 노선을 체크해야 하는지 확인
     if not should_check_route(route_name):
         # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
         if get_cache(route_name):
             delete_cache(route_name)
         # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
-        return
+        return None
 
     async with httpx.AsyncClient() as client:
         try:
-
             response = await client.get(build_api_url(route_id, route_name))
             response.raise_for_status()
             data = response.json()
@@ -190,7 +191,7 @@ async def fetch_bus_data(route_name, route_id):
             # 데이터가 없는 경우 처리
             if not data["response"]["body"]["items"]:
                 delete_cache(route_name)
-                return
+                return None
 
             items = data["response"]["body"]["items"]["item"]
             if isinstance(items, dict):
@@ -199,37 +200,31 @@ async def fetch_bus_data(route_name, route_id):
             # Redis에 저장 (TTL BUS_CACHE_TTL 초)
             set_cache(route_name, items, BUS_CACHE_TTL)
             # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
+            return items
         except Exception as e:
             logging.error(f"[{route_name}] API 호출 오류: {e}")
+            return None
 
 
-async def update_bus_data_periodically():
+async def update_bus_cache():
     load_bus_timetable()
     while True:
-        if len(active_connections) == 0:
-            # 연결이 없어도 24_DOWN, 81_DOWN은 항상 업데이트
-            for forced_route in ["24_DOWN", "81_DOWN"]:
-                if forced_route in ROUTES:
-                    await fetch_bus_data(forced_route, ROUTES[forced_route])
-            await asyncio.sleep(5)  # 연결 없으면 대기만
-            logging.debug("연결 없음. 버스 데이터 업데이트x (필수노선만 업데이트)")
-            continue
+        # 접속자 생길 때까지 대기
+        await bus_clients_event.wait()
+        
         load_bus_timetable()
         tasks = []
-        checking_routes = []
-        skipping_routes = []
         for route_name, route_id in ROUTES.items():
             if should_check_route(route_name):
                 tasks.append(fetch_bus_data(route_name, route_id))
-                checking_routes.append(route_name)
-            else:
-                skipping_routes.append(route_name)
+
         if tasks:
             await asyncio.gather(*tasks)
             await broadcast_bus_data()
         else:
             logging.debug("현재 체크할 노선이 없습니다")
-        logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
+        
+        # logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
         await asyncio.sleep(5)
 
 
@@ -248,51 +243,23 @@ async def broadcast_bus_data(websocket: WebSocket = None):
             result[route_name] = filtered_data
             available_routes.append(route_name)
 
-    if available_routes:
-        logging.info(f"브로드캐스트: {len(available_routes)}개 노선 데이터 전송 ({', '.join(available_routes)})")
-    else:
-        logging.info("브로드캐스트: 전송할 데이터 없음")
-
     message = json.dumps(result)
+    
     if websocket:
         try:
             await websocket.send_text(message)
-
         except Exception as e:
             logging.error(f"❌ WebSocket 전송 오류 (단일 클라이언트): {e}")
     else:
         if not active_connections:
-            logging.warning("❌ 연결된 클라이언트 없음")
             return
 
-        for connection in active_connections:
+        for connection in list(active_connections):
             try:
                 await connection.send_text(message)
             except Exception as e:
                 logging.error(f"❌ WebSocket 전송 오류: {e}")
-
-                # 끊어진 연결은 제거
-                try:
-                    active_connections.remove(connection)
-                    logging.warning(f"❌ 끊어진 연결 제거 (남은 클라이언트: {len(active_connections)}명)")
-                except:
-                    pass
-
-
-# 웹소켓 연결 관리
-async def connect_client(websocket: WebSocket):
-    await websocket.accept()
-    active_connections.append(websocket)
-    logging.info(f"✅ 클라이언트 접속: {len(active_connections)}명")
-    # 최초 연결 시 버스 데이터 즉시 업데이트 후 전송
-    tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items()]
-    await asyncio.gather(*tasks)
-    await broadcast_bus_data(websocket)
-
-
-async def disconnect_client(websocket: WebSocket):
-    active_connections.remove(websocket)
-    logging.info(f"❌ 클라이언트 접속 종료: {len(active_connections)}명")
+                # 끊어진 연결은 제거하지 않음 (WebSocketDisconnect에서 처리)
 
 
 # WebSocket 엔드포인트
@@ -302,8 +269,22 @@ async def websocket_endpoint(websocket: WebSocket):
     버스 위치 정보를 실시간으로 제공하는 WebSocket 엔드포인트입니다.
     클라이언트가 연결하면 주기적으로 최신 버스 위치 데이터를 전송합니다.
     """
-    await connect_client(websocket)
+    await websocket.accept()
+    active_connections.add(websocket)
+    bus_clients_event.set()
+    logging.info(f"✅ 클라이언트 접속: {len(active_connections)}명")
+
     try:
+        # 최초 연결 시 버스 데이터 즉시 업데이트 후 전송
+        # 캐시에 데이터가 있다면 바로 전송하고, 없다면 fetch
+        await broadcast_bus_data(websocket) # 캐시 데이터 우선 전송
+        
+        # 최신 데이터 fetch 및 전송 (백그라운드 루프가 돌겠지만 즉시성 보장)
+        tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items() if should_check_route(route_name)]
+        if tasks:
+            await asyncio.gather(*tasks)
+            await broadcast_bus_data(websocket)
+
         while True:
             # 클라이언트로부터 메시지 대기
             data = await websocket.receive_text()
@@ -313,10 +294,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text("pong")
 
     except WebSocketDisconnect:
-        await disconnect_client(websocket)
+        logging.info("클라이언트 접속 종료")
     except Exception as e:
         logging.error(f"WebSocket 연결 오류: {e}")
-        await disconnect_client(websocket)
+    finally:
+        active_connections.discard(websocket)
+        logging.info(f"❌ 클라이언트 접속 제거 (남은 클라이언트: {len(active_connections)}명)")
+        if not active_connections:
+            bus_clients_event.clear()
+            logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
+
+@router.on_event("startup")
+async def startup_event():
+    # 백그라운드 작업 시작
+    asyncio.create_task(update_bus_cache())
 
 
 # HTTP API 엔드포인트 (레거시)
@@ -324,10 +315,16 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_all_buses():
     """
     운행 중인 모든 버스 노선의 버스 위치 정보를 조회합니다.
+    캐시에 없으면 실시간으로 조회합니다.
     """
     result = {}
-    for route_name in ROUTES.keys():
+    for route_name, route_id in ROUTES.items():
         cached_data = get_cache(route_name)
+        if not cached_data and should_check_route(route_name):
+            # 캐시에 없고 운행 시간이라면 실시간 조회
+            await fetch_bus_data(route_name, route_id)
+            cached_data = get_cache(route_name)
+
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
             filtered_data = []
@@ -344,6 +341,7 @@ async def get_all_buses():
 async def get_bus_by_route(route_name: str):
     """
     특정 노선의 운행 중인 버스 위치 정보를 조회합니다.
+    캐시에 없으면 실시간으로 조회합니다.
     """
     # 경로 이름 검증
     if route_name not in ROUTES:
@@ -351,7 +349,15 @@ async def get_bus_by_route(route_name: str):
 
     cached_data = get_cache(route_name)
     if not cached_data:
+        # 캐시에 없으면 실시간 조회 시도
+        if should_check_route(route_name):
+            await fetch_bus_data(route_name, ROUTES[route_name])
+            cached_data = get_cache(route_name)
+    
+    if not cached_data:
+        # 그래도 없으면 데이터 없음 처리
         raise HTTPException(status_code=404, detail="No bus data found for this route")
+        
     return {route_name: cached_data}
 
 
