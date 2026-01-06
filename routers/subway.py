@@ -4,7 +4,7 @@ import httpx
 import os
 import asyncio
 import json
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from dotenv import load_dotenv
 import logging
 from utils.redis_client import get_cache, set_cache
@@ -39,7 +39,7 @@ def build_api_url(station_name: str, start_index: int = 0, end_index: int = 20) 
     # httpx가 일반적으로 이를 처리합니다. 서울 API는 경로에 직접 이름을 넣는 것을 기대합니다.
     return f"{BASE_URL}/{SEOUL_SUBWAY_KEY}/json/realtimeStationArrival/{start_index}/{end_index}/{station_name}"
 
-async def fetch_station_data(station_name: str) -> List[dict]:
+async def fetch_station_data(station_name: str) -> Optional[List[dict]]:
     """
     서울 열린데이터 광장에서 특정 역의 실시간 도착 정보를 가져옵니다.
     """
@@ -54,11 +54,17 @@ async def fetch_station_data(station_name: str) -> List[dict]:
                 return data["realtimeArrivalList"]
             else:
                 # API가 오류를 반환하거나 데이터 구조가 없는 경우 처리
+                code = data.get("code")
+                if code == "INFO-200":
+                    # 데이터가 없는 경우 (정상 상황)
+                    logging.info(f"No realtime data for {station_name} (INFO-200)")
+                    return []
+                
                 logging.warning(f"No realtimeArrivalList found for {station_name}: {data}")
                 return []
     except Exception as e:
         logging.error(f"Error fetching subway data for {station_name}: {e}")
-        return []
+        return None
 
 async def broadcast_subway_data(websocket: WebSocket = None):
     """
@@ -70,7 +76,13 @@ async def broadcast_subway_data(websocket: WebSocket = None):
     for station in targets:
         cached_data = get_cache(f"subway:{station}")
         if cached_data:
-             result[station] = [SubwayArrivalInfo(**item).dict() for item in cached_data]
+             safe_items = []
+             for item in cached_data:
+                 try:
+                     safe_items.append(SubwayArrivalInfo(**item).dict())
+                 except Exception as e:
+                     logging.error(f"Failed to parse cached item for {station}: {e}")
+             result[station] = safe_items
         else:
             result[station] = []
     
@@ -108,7 +120,7 @@ async def update_subway_cache():
 
             for station in target_stations:
                 data = await fetch_station_data(station)
-                if data:
+                if data is not None:
                     # 필요하다면 데이터를 파싱하고 단순화하거나, 그대로 저장하고 조회 시 파싱합니다.
                     # Pydantic 모델 구조에 맞춰 파싱된 데이터를 저장합니다.
                     parsed_data = []
@@ -116,6 +128,10 @@ async def update_subway_cache():
                         # 종착역이 현재 역과 같으면 제외 (도착해서 운행 종료하는 열차)
                         # [User Request] 종착역이 서동탄이면 제외
                         if item.get("bstatnNm") == item.get("statnNm") or item.get("bstatnNm") == "서동탄":
+                            continue
+
+                        # [User Request]: 도착 완료된 열차 제외 (예: "천안 도착")
+                        if item.get("arvlMsg2") == f"{station} 도착":
                             continue
 
                         # 열차 번호 포맷팅 (예: "0694" -> "k694")
@@ -126,6 +142,10 @@ async def update_subway_cache():
                         # [User Request]: 천안 기점 차량이면 메시지 변경
                         if btrain_no in starting_trains:
                             item["arvlMsg2"] = "출발 대기"
+
+                        # [User Request]: 상행 신창 기점(현재 위치가 신창)인 경우 메시지 변경
+                        if item.get("updnLine") == "상행" and item.get("arvlMsg3") == "신창":
+                            item["arvlMsg2"] = "기점(신창) 대기"
                         
                         info = SubwayArrivalInfo(
                             subwayId=item.get("subwayId", ""),
@@ -252,9 +272,14 @@ async def update_schedule_cache_daily():
 
                     # [User Request]: 천안 출발/신창 기점 차량 Redis 캐싱
                     # arrival_time이 없고(None or ""), 상행, departure_station이 "천안"
+                    # [User Request]: 현재 요일에 맞춰 평일/주말 필터링 추가
+                    now = datetime.now()
+                    current_day_type = "주말" if now.weekday() >= 5 else "평일"
+
                     target_trains = db.query(SubwaySchedule.train_no).filter(
                         SubwaySchedule.departure_station == "천안",
                         SubwaySchedule.up_down_type == "상행",
+                        SubwaySchedule.day_type == current_day_type,
                         (SubwaySchedule.arrival_time == None) | (SubwaySchedule.arrival_time == "")
                     ).all()
 
@@ -304,7 +329,10 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         # 최초 연결 시 즉시 데이터 전송
-        await broadcast_subway_data(websocket)
+        try:
+            await broadcast_subway_data(websocket)
+        except Exception as e:
+            logging.error(f"Initial broadcast failed, but keeping connection alive: {e}")
         
         while True:
             # 클라이언트 유지 및 메시지 처리 (필요 시)
@@ -312,8 +340,8 @@ async def websocket_endpoint(websocket: WebSocket):
             if data == "ping":
                 await websocket.send_text("pong")
                 
-    except WebSocketDisconnect:
-        logging.info("Subway Client disconnected")
+    except WebSocketDisconnect as e:
+        logging.info(f"Subway Client disconnected: code={e.code}, reason={e.reason}")
     except Exception as e:
         logging.error(f"WebSocket error: {e}")
     finally:
@@ -321,6 +349,8 @@ async def websocket_endpoint(websocket: WebSocket):
         if not active_connections:
             subway_clients_event.clear()
         logging.info(f"Subway Client removed. Total: {len(active_connections)}")
+
+
 
 @router.get("/schedule", response_model=StationScheduleResponse)
 def get_subway_schedule(
@@ -378,6 +408,10 @@ async def get_subway_arrival(station_name: str):
     다른 역의 경우 실시간으로 가져오거나, 대상 역만 지원한다고 가정할 수도 있습니다.
     현재는 캐싱 대상 역에 최적화되어 있습니다.
     """
+    # [Safety] 잘못된 경로 매칭 방지
+    if station_name in ["ws", "favicon.ico"]:
+        raise HTTPException(status_code=404, detail=f"Invalid station name: {station_name}")
+
     # 캐시 먼저 확인
     cached_data = get_cache(f"subway:{station_name}")
     
@@ -389,6 +423,9 @@ async def get_subway_arrival(station_name: str):
     # 대상 역의 캐시가 비어있는 경우), 직접 조회할 수 있습니다.
     # 현재는 캐시에 없으면 직접 조회하도록 처리합니다 (폴백).
     data = await fetch_station_data(station_name)
+    if data is None:
+        data = []
+        
     items = []
     for item in data:
         # 종착역이 현재 역과 같으면 제외 (도착해서 운행 종료하는 열차)
