@@ -68,7 +68,7 @@ MAIN_ROUTES = ["순환5_DOWN", "순환5_UP", "24_UP", "24_DOWN", "81_UP", "81_DO
 SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821_UP", "822_DOWN", "822_UP"]
 
 # 버스 데이터 캐시 TTL (초)
-BUS_CACHE_TTL = 10
+BUS_CACHE_TTL = 5
 
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
@@ -220,9 +220,11 @@ async def update_bus_cache():
 
         if tasks:
             await asyncio.gather(*tasks)
-            await broadcast_bus_data()
         else:
             logging.debug("현재 체크할 노선이 없습니다")
+        
+        # 데이터가 있든 없든 브로드캐스트 (빈 상태 전송)
+        await broadcast_bus_data()
         
         # logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
         await asyncio.sleep(5)
@@ -277,13 +279,15 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # 최초 연결 시 버스 데이터 즉시 업데이트 후 전송
         # 캐시에 데이터가 있다면 바로 전송하고, 없다면 fetch
-        await broadcast_bus_data(websocket) # 캐시 데이터 우선 전송
+        # await broadcast_bus_data(websocket) # 캐시 데이터 우선 전송 (부분 데이터 노출 방지를 위해 주석 처리)
         
         # 최신 데이터 fetch 및 전송 (백그라운드 루프가 돌겠지만 즉시성 보장)
         tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items() if should_check_route(route_name)]
         if tasks:
             await asyncio.gather(*tasks)
-            await broadcast_bus_data(websocket)
+        
+        # 데이터가 있든 없든 최초 1회는 상태를 알려줌 (빈 객체라도 전송)
+        await broadcast_bus_data(websocket)
 
         while True:
             # 클라이언트로부터 메시지 대기
@@ -314,14 +318,24 @@ async def startup_event():
 @router.get("/buses")
 async def get_all_buses():
     """
-    운행 중인 모든 버스 노선의 버스 위치 정보를 조회합니다.
+    운행 중인 24번, 81번 버스 노선의 위치 정보를 조회합니다.
     캐시에 없으면 실시간으로 조회합니다.
     """
+    target_routes = ["24_UP", "24_DOWN", "81_UP", "81_DOWN"]
     result = {}
-    for route_name, route_id in ROUTES.items():
+    
+    for route_name in target_routes:
+        if route_name not in ROUTES:
+            continue
+            
+        route_id = ROUTES[route_name]
         cached_data = get_cache(route_name)
+        
         if not cached_data and should_check_route(route_name):
             # 캐시에 없고 운행 시간이라면 실시간 조회
+            # fetch_bus_data는 결과적으로 메인 캐시(Redis)를 업데이트합니다.
+            # 웹소켓 연결 시 "모든" 노선에 대해 fetch를 수행하므로, 
+            # 여기서 일부 노선만 캐시되어 있어도 문제되지 않습니다.
             await fetch_bus_data(route_name, route_id)
             cached_data = get_cache(route_name)
 
