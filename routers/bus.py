@@ -81,7 +81,7 @@ bus_timetable = {}
 # 시간표 파일의 마지막 수정 시간
 last_timetable_update = 0
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def load_bus_timetable():
