@@ -323,21 +323,26 @@ async def get_all_buses():
     """
     target_routes = ["24_UP", "24_DOWN", "81_UP", "81_DOWN"]
     result = {}
-    
+
+    # 1. Fetch data for all routes concurrently if needed
+    fetch_tasks = []
     for route_name in target_routes:
         if route_name not in ROUTES:
             continue
             
-        route_id = ROUTES[route_name]
+        if not get_cache(route_name) and should_check_route(route_name):
+            route_id = ROUTES[route_name]
+            fetch_tasks.append(fetch_bus_data(route_name, route_id))
+
+    if fetch_tasks:
+        await asyncio.gather(*fetch_tasks)
+    
+    # 2. Construct response from cache
+    for route_name in target_routes:
+        if route_name not in ROUTES:
+            continue
+            
         cached_data = get_cache(route_name)
-        
-        if not cached_data and should_check_route(route_name):
-            # 캐시에 없고 운행 시간이라면 실시간 조회
-            # fetch_bus_data는 결과적으로 메인 캐시(Redis)를 업데이트합니다.
-            # 웹소켓 연결 시 "모든" 노선에 대해 fetch를 수행하므로, 
-            # 여기서 일부 노선만 캐시되어 있어도 문제되지 않습니다.
-            await fetch_bus_data(route_name, route_id)
-            cached_data = get_cache(route_name)
 
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
