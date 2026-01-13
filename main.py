@@ -1,6 +1,6 @@
 # main.py 수정
 from fastapi import FastAPI
-from routers import auth, bus, notice, shuttle, dashboard, admin_monitor
+from routers import auth, bus, notice, shuttle, dashboard, admin_monitor, subway
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from utils.redis_client import redis_client
@@ -32,6 +32,7 @@ app.include_router(notice.router, tags=["Notices"])
 app.include_router(shuttle.router, prefix="/shuttle", tags=["Shuttle"])
 app.include_router(dashboard.router)
 app.include_router(admin_monitor.router, tags=["Admin Monitor"])
+app.include_router(subway.router, tags=["Subway"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,7 +44,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(bus.update_bus_data_periodically())
+
     
     # API 모니터링 미들웨어 확인
     if api_monitor_module.api_monitor:

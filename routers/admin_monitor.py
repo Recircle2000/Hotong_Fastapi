@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import psutil
@@ -18,6 +18,13 @@ def get_admin_session(request: Request):
     """어드민 세션 확인"""
     user_id = request.session.get("user_id")
     if not user_id:
+        accepts_html = "text/html" in (request.headers.get("accept") or "").lower()
+        if accepts_html:
+            raise HTTPException(
+                status_code=status.HTTP_303_SEE_OTHER,
+                detail="관리자 로그인이 필요합니다",
+                headers={"Location": "/admin/login"},
+            )
         raise HTTPException(status_code=401, detail="관리자 로그인이 필요합니다")
     return True
 

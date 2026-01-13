@@ -527,13 +527,21 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 1100px;
+            max-height: 90vh;
             background: var(--white);
             border-radius: var(--radius);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             z-index: 1060;
             animation: slideIn 0.3s ease;
+            overflow: hidden;
+        }
+
+        .notice-form-modal {
+            width: 98%;
+            max-width: 1200px;
+            max-height: 90vh;
         }
 
         .modal-header {
@@ -584,6 +592,8 @@
 
         .modal-body {
             padding: 1.5rem;
+            max-height: calc(90vh - 150px);
+            overflow-y: auto;
         }
 
         .modal-footer {
@@ -593,6 +603,38 @@
             display: flex;
             justify-content: flex-end;
             gap: 0.5rem;
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-editor {
+            border: 1px solid #e9ecef;
+            border-radius: var(--radius);
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+
+        .modal-editor .form-label {
+            margin-bottom: 0.75rem;
+        }
+
+        .form-switch-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e9ecef;
+            border-radius: var(--radius);
+            background: #fdfdff;
+        }
+
+        .form-switch-inline .form-switch-toggle {
+            margin-right: 0.5rem;
         }
 
         /* 애니메이션 */
@@ -673,6 +715,12 @@
             }
         }
     </style>
+    <!-- head 태그 내 CDN 추가 (이미 head에 있다면 중복 추가하지 마세요) -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <!-- Toast UI Editor Viewer 추가 -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" />
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer-all.min.js"></script>
 </head>
 <body>
     <div class="wrapper">
@@ -822,7 +870,7 @@
 
     <!-- 새 공지 모달 -->
     <div class="modal-backdrop" id="modalBackdrop"></div>
-    <div class="modal" id="createModal">
+    <div class="modal notice-form-modal" id="createModal">
         <div class="modal-header">
             <h4 class="modal-title modal-title-create">
                 새 공지사항 작성
@@ -831,31 +879,35 @@
         </div>
         <div class="modal-body">
             <form id="createForm" method="post" action="/admin/create">
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" for="createTitle">제목</label>
-                    <input type="text" id="createTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력하세요" required>
+                <div class="modal-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="createTitle">제목</label>
+                        <input type="text" id="createTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력해주세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="createType">유형</label>
+                        <select id="createType" name="notice_type" class="form-control" required>
+                            <option value="App">앱</option>
+                            <option value="update">업데이트</option>
+                            <option value="shuttle">셔틀버스</option>
+                            <option value="citybus">시내버스</option>
+                        </select>
+                    </div>
+                    <div class="form-switch form-switch-inline">
+                        <input type="checkbox" id="createPinned" name="is_pinned">
+                        <label class="form-switch-label" for="createPinned">
+                            <div class="form-switch-toggle"></div>
+                            상단 고정
+                        </label>
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" for="createType">유형</label>
-                    <select id="createType" name="notice_type" class="form-control" required>
-                        <option value="App">앱</option>
-                        <option value="update">업데이트</option>
-                        <option value="shuttle">셔틀버스</option>
-                        <option value="citybus">시내버스</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 1rem;">
+                <div class="modal-editor">
                     <label class="form-label" for="createContent">내용</label>
-                    <textarea id="createContent" name="content" class="form-control" placeholder="공지사항 내용을 입력하세요" rows="4" required></textarea>
-                </div>
-                <div class="form-switch">
-                    <input type="checkbox" id="createPinned" name="is_pinned">
-                    <label class="form-switch-label" for="createPinned">
-                        <div class="form-switch-toggle"></div>
-                        상단 고정
-                    </label>
+                    <div id="createContentEditor"></div>
+                    <input type="hidden" id="createContent" name="content" required>
                 </div>
             </form>
+
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary modal-close-btn">취소</button>
@@ -866,7 +918,7 @@
     </div>
 
     <!-- 수정 모달 -->
-    <div class="modal" id="editModal">
+    <div class="modal notice-form-modal" id="editModal">
         <div class="modal-header">
             <h4 class="modal-title modal-title-edit">
                 공지사항 수정
@@ -875,31 +927,35 @@
         </div>
         <div class="modal-body">
             <form id="editForm" method="post">
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" for="editTitle">제목</label>
-                    <input type="text" id="editTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력하세요" required>
+                <div class="modal-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="editTitle">제목</label>
+                        <input type="text" id="editTitle" name="title" class="form-control" placeholder="공지사항 제목을 입력해주세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editType">유형</label>
+                        <select id="editType" name="notice_type" class="form-control" required>
+                            <option value="App">앱</option>
+                            <option value="update">업데이트</option>
+                            <option value="shuttle">셔틀버스</option>
+                            <option value="citybus">시내버스</option>
+                        </select>
+                    </div>
+                    <div class="form-switch form-switch-inline">
+                        <input type="checkbox" id="editPinned" name="is_pinned">
+                        <label class="form-switch-label" for="editPinned">
+                            <div class="form-switch-toggle"></div>
+                            상단 고정
+                        </label>
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" for="editType">유형</label>
-                    <select id="editType" name="notice_type" class="form-control" required>
-                        <option value="App">앱</option>
-                        <option value="update">업데이트</option>
-                        <option value="shuttle">셔틀버스</option>
-                        <option value="citybus">시내버스</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 1rem;">
+                <div class="modal-editor">
                     <label class="form-label" for="editContent">내용</label>
-                    <textarea id="editContent" name="content" class="form-control" placeholder="공지사항 내용을 입력하세요" rows="4" required></textarea>
-                </div>
-                <div class="form-switch">
-                    <input type="checkbox" id="editPinned" name="is_pinned">
-                    <label class="form-switch-label" for="editPinned">
-                        <div class="form-switch-toggle"></div>
-                        상단 고정
-                    </label>
+                    <div id="editContentEditor"></div>
+                    <input type="hidden" id="editContent" name="content" required>
                 </div>
             </form>
+
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary modal-close-btn">취소</button>
@@ -948,14 +1004,13 @@
             createModal.style.display = 'block';
             modalBackdrop.style.display = 'block';
             document.getElementById('createForm').reset();
+            createEditor.setMarkdown('');
         });
         
         // 공지사항 상세 보기 모달 열기
         function showNoticeDetail(title, content, date, isPinned, type) {
             document.getElementById('detailTitle').textContent = title;
-            document.getElementById('detailContent').textContent = content;
             document.getElementById('detailDate').textContent = '작성일: ' + date;
-            
             // 유형 표시
             let typeText = '';
             let typeClass = '';
@@ -981,15 +1036,28 @@
                     typeClass = 'badge badge-primary';
             }
             document.getElementById('detailType').innerHTML = `<span class="${typeClass}">${typeText}</span> `;
-            
             const statusText = isPinned === 'True' ? '상단고정' : '일반';
             const statusClass = isPinned === 'True' ? 'badge badge-success' : 'badge badge-secondary';
             document.getElementById('detailStatus').innerHTML = `<span class="${statusClass}">${statusText}</span>`;
-            
+
+            // 마크다운 렌더링 (Toast UI Viewer)
+            const detailContentEl = document.getElementById('detailContent');
+            // 기존 Viewer 인스턴스 제거
+            if (window.detailViewer) {
+                window.detailViewer.destroy();
+                window.detailViewer = null;
+            }
+            // detailContent 내부 비우기
+            detailContentEl.innerHTML = '';
+            // Viewer 생성
+            window.detailViewer = new toastui.Editor.factory({
+                el: detailContentEl,
+                viewer: true,
+                initialValue: content
+            });
+
             noticeDetailModal.style.display = 'block';
             modalBackdrop.style.display = 'block';
-            
-            // 모달 크기 조정
             noticeDetailModal.classList.add('notice-detail-modal');
         }
         
@@ -1013,13 +1081,13 @@
                 const content = this.getAttribute('data-content');
                 const isPinned = this.getAttribute('data-pinned') === 'True';
                 const type = this.getAttribute('data-type');
-                
+
                 document.getElementById('editForm').action = `/admin/update/${id}`;
                 document.getElementById('editTitle').value = title;
-                document.getElementById('editContent').value = content;
                 document.getElementById('editPinned').checked = isPinned;
                 document.getElementById('editType').value = type;
-                
+
+                openEditModal(content);
                 editModal.style.display = 'block';
                 modalBackdrop.style.display = 'block';
             });
@@ -1052,9 +1120,13 @@
             editModal.style.display = 'none';
             noticeDetailModal.style.display = 'none';
             modalBackdrop.style.display = 'none';
-            
             // 모달 크기 조정 클래스 제거
             noticeDetailModal.classList.remove('notice-detail-modal');
+            // 상세보기 Viewer 인스턴스 제거
+            if (window.detailViewer) {
+                window.detailViewer.destroy();
+                window.detailViewer = null;
+            }
         }
         
         // ESC 키로 모달 닫기
@@ -1063,6 +1135,38 @@
                 closeAllModals();
             }
         });
+
+        // Toast UI Editor 초기화 및 submit 시 마크다운 값 hidden input에 넣는 JS
+        // 작성용 에디터
+        const createEditor = new toastui.Editor({
+            el: document.querySelector('#createContentEditor'),
+            height: '450px',
+            initialEditType: 'markdown',
+            previewStyle: 'vertical'
+        });
+
+        // 수정용 에디터
+        const editEditor = new toastui.Editor({
+            el: document.querySelector('#editContentEditor'),
+            height: '450px',
+            initialEditType: 'markdown',
+            previewStyle: 'vertical'
+        });
+
+        // 작성 폼 제출 시 마크다운 내용을 hidden input에 넣음
+        document.getElementById('createForm').addEventListener('submit', function(e) {
+            document.getElementById('createContent').value = createEditor.getMarkdown();
+        });
+
+        // 수정 폼 제출 시 마크다운 내용을 hidden input에 넣음
+        document.getElementById('editForm').addEventListener('submit', function(e) {
+            document.getElementById('editContent').value = editEditor.getMarkdown();
+        });
+
+        // 수정 모달 열릴 때 기존 내용 세팅 (실제 데이터 바인딩 필요)
+        function openEditModal(existingMarkdown) {
+            editEditor.setMarkdown(existingMarkdown || '');
+        }
     </script>
 </body>
 </html> 
