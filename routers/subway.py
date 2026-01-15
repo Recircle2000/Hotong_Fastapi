@@ -336,11 +336,20 @@ async def update_schedule_cache_daily():
         logging.info(f"Next schedule update at {next_run} (in {sleep_seconds} seconds)")
         await asyncio.sleep(sleep_seconds)
 
+# Global task references to prevent duplicate execution
+subway_cache_task: Optional[asyncio.Task] = None
+schedule_cache_task: Optional[asyncio.Task] = None
+
 @router.on_event("startup")
 async def startup_event():
-    # 백그라운드 작업 시작
-    asyncio.create_task(update_subway_cache())
-    asyncio.create_task(update_schedule_cache_daily())
+    global subway_cache_task, schedule_cache_task
+    
+    # 백그라운드 작업 시작 (중복 실행 방지)
+    if subway_cache_task is None or subway_cache_task.done():
+        subway_cache_task = asyncio.create_task(update_subway_cache())
+        
+    if schedule_cache_task is None or schedule_cache_task.done():
+        schedule_cache_task = asyncio.create_task(update_schedule_cache_daily())
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
