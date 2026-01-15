@@ -321,7 +321,7 @@ async def get_all_buses():
     운행 중인 24번, 81번 버스 노선의 위치 정보를 조회합니다.
     캐시에 없으면 실시간으로 조회합니다.
     """
-    target_routes = ["24_UP", "24_DOWN", "81_UP", "81_DOWN"]
+    target_routes = ["24_DOWN", "81_DOWN"]
     result = {}
 
     # 1. Fetch data for all routes concurrently if needed
