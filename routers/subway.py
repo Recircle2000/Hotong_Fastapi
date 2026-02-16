@@ -21,7 +21,7 @@ SEOUL_SUBWAY_KEY = os.getenv("SEOUL_SUBWAY_KEY")
 BASE_URL = "http://swopenAPI.seoul.go.kr/api/subway"
 
 # 캐시 만료 시간 (초)
-SUBWAY_CACHE_TTL = 60  # 30초마다 업데이트
+SUBWAY_CACHE_TTL = 10  # 30초마다 업데이트
 
 # 웹소켓 연결 관리
 active_connections: Set[WebSocket] = set()
