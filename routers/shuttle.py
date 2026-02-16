@@ -36,6 +36,8 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
     # 1. 기본 타입 결정
     if weekday == 5:
         base_schedule_type = "Saturday"
+    elif weekday == 4:
+        base_schedule_type = "Weekday_friday"
     elif weekday == 6:
         base_schedule_type = "Holiday"
     else:
@@ -60,6 +62,8 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
                 should_apply_exception = False
                 if weekday == 5:
                     should_apply_exception = exception.include_saturday
+                elif weekday == 4:
+                    should_apply_exception = exception.include_weekday_friday
                 elif weekday == 6:
                     should_apply_exception = exception.include_sunday
                 elif base_schedule_type == "Holiday":
@@ -141,6 +145,7 @@ class ScheduleExceptionResponse(BaseModel):
     schedule_type_name: str | None = None  # 클라이언트에서 표시하기 위해 추가
     is_activate: bool
     include_weekday: bool
+    include_weekday_friday: bool
     include_saturday: bool
     include_sunday: bool
     include_holiday: bool
@@ -155,6 +160,7 @@ class ScheduleExceptionCreate(BaseModel):
     reason: str | None = None
     is_activate: bool = True
     include_weekday: bool = True
+    include_weekday_friday: bool = True
     include_saturday: bool = False
     include_sunday: bool = False
     include_holiday: bool = False
@@ -166,6 +172,7 @@ class ScheduleExceptionUpdate(BaseModel):
     reason: str | None = None
     is_activate: bool | None = None
     include_weekday: bool | None = None
+    include_weekday_friday: bool | None = None
     include_saturday: bool | None = None
     include_sunday: bool | None = None
     include_holiday: bool | None = None
@@ -791,6 +798,7 @@ def get_schedule_exceptions(db: Session = Depends(get_db)):
         ScheduleType.schedule_type_name,
         ScheduleException.is_activate,
         ScheduleException.include_weekday,
+        ScheduleException.include_weekday_friday,
         ScheduleException.include_saturday,
         ScheduleException.include_sunday,
         ScheduleException.include_holiday
@@ -813,6 +821,7 @@ def get_schedule_exceptions(db: Session = Depends(get_db)):
             "schedule_type_name": exc.schedule_type_name,
             "is_activate": exc.is_activate,
             "include_weekday": exc.include_weekday,
+            "include_weekday_friday": exc.include_weekday_friday,
             "include_saturday": exc.include_saturday,
             "include_sunday": exc.include_sunday,
             "include_holiday": exc.include_holiday
@@ -880,6 +889,7 @@ def create_schedule_exception(
         "schedule_type_name": schedule_type.schedule_type_name,
         "is_activate": new_exception.is_activate,
         "include_weekday": new_exception.include_weekday,
+        "include_weekday_friday": new_exception.include_weekday_friday,
         "include_saturday": new_exception.include_saturday,
         "include_sunday": new_exception.include_sunday,
         "include_holiday": new_exception.include_holiday
@@ -959,6 +969,9 @@ def update_schedule_exception(
     if exception_data.include_weekday is not None:
         exception.include_weekday = exception_data.include_weekday
     
+    if exception_data.include_weekday_friday is not None:
+        exception.include_weekday_friday = exception_data.include_weekday_friday
+    
     if exception_data.include_saturday is not None:
         exception.include_saturday = exception_data.include_saturday
     
@@ -999,6 +1012,7 @@ def update_schedule_exception(
         "schedule_type_name": schedule_type_name,
         "is_activate": exception.is_activate,
         "include_weekday": exception.include_weekday,
+        "include_weekday_friday": exception.include_weekday_friday,
         "include_saturday": exception.include_saturday,
         "include_sunday": exception.include_sunday,
         "include_holiday": exception.include_holiday

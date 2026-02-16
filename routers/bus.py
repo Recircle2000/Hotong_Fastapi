@@ -281,10 +281,10 @@ async def websocket_endpoint(websocket: WebSocket):
         # 캐시에 데이터가 있다면 바로 전송하고, 없다면 fetch
         # await broadcast_bus_data(websocket) # 캐시 데이터 우선 전송 (부분 데이터 노출 방지를 위해 주석 처리)
         
-        # 최신 데이터 fetch 및 전송 (백그라운드 루프가 돌겠지만 즉시성 보장)
-        tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items() if should_check_route(route_name)]
-        if tasks:
-            await asyncio.gather(*tasks)
+        # 최신 데이터 fetch 및 전송 (백그라운드 루프가 돌겠지만 즉시성 보장) -> 중복 호출 원인이므로 제거
+        # tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items() if should_check_route(route_name)]
+        # if tasks:
+        #     await asyncio.gather(*tasks)
         
         # 데이터가 있든 없든 최초 1회는 상태를 알려줌 (빈 객체라도 전송)
         await broadcast_bus_data(websocket)
@@ -308,10 +308,16 @@ async def websocket_endpoint(websocket: WebSocket):
             bus_clients_event.clear()
             logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
 
+# Global task reference to prevent duplicate execution
+bus_cache_task: Optional[asyncio.Task] = None
+
 @router.on_event("startup")
 async def startup_event():
-    # 백그라운드 작업 시작
-    asyncio.create_task(update_bus_cache())
+    global bus_cache_task
+    
+    # 백그라운드 작업 시작 (중복 실행 방지)
+    if bus_cache_task is None or bus_cache_task.done():
+        bus_cache_task = asyncio.create_task(update_bus_cache())
 
 
 # HTTP API 엔드포인트 (레거시)
@@ -321,7 +327,7 @@ async def get_all_buses():
     운행 중인 24번, 81번 버스 노선의 위치 정보를 조회합니다.
     캐시에 없으면 실시간으로 조회합니다.
     """
-    target_routes = ["24_UP", "24_DOWN", "81_UP", "81_DOWN"]
+    target_routes = ["24_DOWN", "81_DOWN"]
     result = {}
 
     # 1. Fetch data for all routes concurrently if needed

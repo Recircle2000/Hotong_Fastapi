@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,8 @@
     <!-- 구글 폰트 추가 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -23,7 +25,7 @@
             --white: #ffffff;
             --sidebar-width: 250px;
             --header-height: 60px;
-            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             --radius: 8px;
             --transition: all 0.3s ease;
         }
@@ -63,7 +65,7 @@
         .sidebar-header {
             padding: 1.5rem;
             text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-logo {
@@ -81,14 +83,14 @@
             padding: 0.8rem 1.5rem;
             display: flex;
             align-items: center;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             transition: var(--transition);
         }
 
         .nav-item:hover,
         .nav-item.active {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--white);
         }
 
@@ -108,7 +110,7 @@
         .nav-item-settings::before {
             content: "⚙️";
         }
-        
+
         .nav-item-shuttle::before {
             content: "🚌";
         }
@@ -122,13 +124,13 @@
             bottom: 0;
             width: 100%;
             padding: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .logout-btn {
             width: 100%;
             padding: 0.8rem;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--white);
             border: none;
             border-radius: var(--radius);
@@ -145,7 +147,7 @@
         }
 
         .logout-btn:hover {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* 메인 콘텐츠 */
@@ -196,7 +198,7 @@
             content: "👤";
             font-size: 1.2rem;
         }
-        
+
         /* 콘텐츠 영역 */
         .content {
             padding: 2rem;
@@ -239,11 +241,11 @@
         .section-title-list::before {
             content: "📋";
         }
-        
+
         .section-title-form::before {
             content: "📝";
         }
-        
+
         .section-title-cache::before {
             content: "🔄";
         }
@@ -278,7 +280,7 @@
             transition: var(--transition);
         }
 
-        .form-control:focus, 
+        .form-control:focus,
         .form-select:focus {
             outline: none;
             border-color: var(--primary);
@@ -329,21 +331,21 @@
         .btn-danger:hover {
             background: #c0392b;
         }
-        
+
         .btn-warning {
             background: var(--warning);
             color: var(--white);
         }
-        
+
         .btn-warning:hover {
             background: #d68910;
         }
-        
+
         .btn-secondary {
             background: var(--secondary);
             color: var(--white);
         }
-        
+
         .btn-secondary:hover {
             background: #5a6268;
         }
@@ -364,11 +366,11 @@
         .btn-delete::before {
             content: "🗑️";
         }
-        
+
         .btn-upload::before {
             content: "📤";
         }
-        
+
         .btn-reset::before {
             content: "🔄";
         }
@@ -403,18 +405,18 @@
         .table tr:hover {
             background: #f8f9fa;
         }
-        
+
         /* 시간표 테이블 특정 스타일 */
         #scheduleTableBody td {
             padding: 0.5rem 0.6rem;
             font-size: 0.9rem;
         }
-        
+
         #scheduleTableBody .btn-sm {
             padding: 0.3rem 0.6rem;
             font-size: 0.8rem;
         }
-        
+
         /* 스피너 */
         #loadingSpinner {
             position: fixed;
@@ -428,12 +430,12 @@
             align-items: center;
             z-index: 2000;
         }
-        
+
         .spinner-border {
             width: 3rem;
             height: 3rem;
         }
-        
+
         /* 정류장 입력 관련 */
         .stop-row {
             margin-bottom: 15px;
@@ -442,15 +444,20 @@
             border-radius: var(--radius);
             background-color: #f8f9fa;
         }
-        
+
         .hidden {
             display: none !important;
         }
-        
+
         /* 애니메이션 */
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         /* 반응형 */
@@ -458,23 +465,23 @@
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .mobile-toggle {
                 display: block;
             }
-            
+
             .sidebar.active {
                 transform: translateX(0);
             }
-            
-            .sidebar.active + .main-content {
+
+            .sidebar.active+.main-content {
                 margin-left: 0;
             }
-            
+
             .form-group {
                 min-width: 100%;
             }
@@ -484,16 +491,16 @@
             .content {
                 padding: 1.5rem 1rem;
             }
-            
+
             .header {
                 padding: 0 1rem;
             }
-            
-            .table th, 
+
+            .table th,
             .table td {
                 padding: 0.75rem;
             }
-            
+
             .btn {
                 padding: 0.7rem 1.2rem;
             }
@@ -505,13 +512,14 @@
                 align-items: flex-start;
                 gap: 1rem;
             }
-            
+
             .btn-sm {
                 width: 100%;
             }
         }
     </style>
 </head>
+
 <body>
     <div id="loadingSpinner" class="hidden">
         <div class="spinner-border text-light" role="status">
@@ -528,6 +536,9 @@
             <nav class="sidebar-nav">
                 <a href="/admin" class="nav-item nav-item-notice">
                     공지사항 관리
+                </a>
+                <a href="/admin/emergency-notices" class="nav-item">
+                    긴급공지 관리
                 </a>
                 <a href="/admin/shuttle" class="nav-item nav-item-shuttle active">
                     셔틀버스 관리
@@ -577,7 +588,7 @@
                         </div>
                     </form>
                 </div>
-                
+
                 <!-- 시간표 목록 -->
                 <div class="section">
                     <div class="section-title section-title-list">
@@ -598,11 +609,12 @@
                             <button id="searchButton" class="btn btn-primary w-100">검색</button>
                         </div>
                     </div>
-                    
+
                     <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-                        <button id="deleteSelectedButton" class="btn btn-danger btn-delete" style="display:none;">선택 항목 삭제</button>
+                        <button id="deleteSelectedButton" class="btn btn-danger btn-delete" style="display:none;">선택 항목
+                            삭제</button>
                     </div>
-                    
+
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -622,7 +634,7 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <!-- 시간표 추가/수정 폼 -->
                 <div class="section">
                     <div class="section-title section-title-form">
@@ -630,7 +642,7 @@
                     </div>
                     <form id="scheduleForm">
                         <input type="hidden" id="scheduleId" value="">
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="routeId" class="form-label">노선</label>
@@ -645,7 +657,7 @@
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="startTime" class="form-label">기점 출발 시간</label>
@@ -656,34 +668,37 @@
                                 <input type="time" id="endTime" class="form-control" required>
                             </div>
                         </div>
-                        
+
                         <div style="margin-top: 2rem; margin-bottom: 1rem;">
                             <h5>정류장 정보</h5>
-                            <button type="button" id="addStopButton" class="btn btn-primary btn-add mt-2 mb-3">정류장 추가</button>
+                            <button type="button" id="addStopButton" class="btn btn-primary btn-add mt-2 mb-3">정류장
+                                추가</button>
                         </div>
-                        
+
                         <div id="scheduleStops">
                             <!-- 정류장 입력 필드가 여기에 동적으로 추가됩니다 -->
                         </div>
-                        
+
                         <div class="form-row mt-4" style="justify-content: space-between;">
                             <div>
-                                <button type="button" id="resetFormButton" class="btn btn-secondary btn-reset">양식 초기화</button>
+                                <button type="button" id="resetFormButton" class="btn btn-secondary btn-reset">양식
+                                    초기화</button>
                             </div>
                             <div>
-                                <button type="button" id="deleteButton" class="btn btn-danger btn-delete hidden">삭제</button>
+                                <button type="button" id="deleteButton"
+                                    class="btn btn-danger btn-delete hidden">삭제</button>
                                 <button type="submit" id="submitButton" class="btn btn-success">저장</button>
                             </div>
                         </div>
                     </form>
                 </div>
-                
+
                 <!-- 일정 유형 관리 섹션 -->
                 <div class="section">
                     <div class="section-title section-title-form">
                         일정 유형 관리
                     </div>
-                    
+
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -699,58 +714,65 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div class="mt-3">
-                        <button type="button" id="addScheduleTypeButton" class="btn btn-primary btn-add">일정 유형 추가</button>
+                        <button type="button" id="addScheduleTypeButton" class="btn btn-primary btn-add">일정 유형
+                            추가</button>
                     </div>
-                    
+
                     <!-- 일정 유형 추가/수정 모달 -->
-                    <div class="modal fade" id="scheduleTypeModal" tabindex="-1" aria-labelledby="scheduleTypeModalLabel" aria-hidden="true">
+                    <div class="modal fade" id="scheduleTypeModal" tabindex="-1"
+                        aria-labelledby="scheduleTypeModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="scheduleTypeModalLabel">일정 유형 추가</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <form id="scheduleTypeForm">
                                         <input type="hidden" id="scheduleTypeAction" value="add">
                                         <input type="hidden" id="currentScheduleType" value="">
-                                        
+
                                         <div class="mb-3" id="scheduleTypeCodeGroup">
                                             <label for="scheduleTypeCode" class="form-label">일정 유형 코드</label>
-                                            <input type="text" class="form-control" id="scheduleTypeCode" placeholder="Weekday, Holiday 등" required>
+                                            <input type="text" class="form-control" id="scheduleTypeCode"
+                                                placeholder="Weekday, Holiday 등" required>
                                             <div class="form-text">영문으로 입력하세요. 한번 설정하면 변경할 수 없습니다.</div>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label for="scheduleTypeName" class="form-label">일정 유형 이름</label>
-                                            <input type="text" class="form-control" id="scheduleTypeName" placeholder="평일, 공휴일 등" required>
+                                            <input type="text" class="form-control" id="scheduleTypeName"
+                                                placeholder="평일, 공휴일 등" required>
                                         </div>
-                                        
+
                                         <div class="mb-3 form-check">
-                                            <input type="checkbox" class="form-check-input" id="scheduleTypeActive" checked>
+                                            <input type="checkbox" class="form-check-input" id="scheduleTypeActive"
+                                                checked>
                                             <label class="form-check-label" for="scheduleTypeActive">활성화</label>
                                         </div>
                                     </form>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                                    <button type="button" class="btn btn-primary" id="saveScheduleTypeButton">저장</button>
+                                    <button type="button" class="btn btn-primary"
+                                        id="saveScheduleTypeButton">저장</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 일정 예외 관리 섹션 추가 -->
                 <div class="section">
                     <div class="section-title section-title-form">
                         일정 예외 관리
                     </div>
-                    
+
                     <p class="mb-3">특정 날짜에 다른 일정 유형을 적용하기 위한 예외 일정을 관리합니다.</p>
-                    
+
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead class="table-dark">
@@ -767,34 +789,37 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div class="mt-3">
-                        <button type="button" id="addScheduleExceptionButton" class="btn btn-primary btn-add">일정 예외 추가</button>
+                        <button type="button" id="addScheduleExceptionButton" class="btn btn-primary btn-add">일정 예외
+                            추가</button>
                     </div>
-                    
+
                     <!-- 일정 예외 추가/수정 모달 -->
-                    <div class="modal fade" id="scheduleExceptionModal" tabindex="-1" aria-labelledby="scheduleExceptionModalLabel" aria-hidden="true">
+                    <div class="modal fade" id="scheduleExceptionModal" tabindex="-1"
+                        aria-labelledby="scheduleExceptionModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="scheduleExceptionModalLabel">일정 예외 추가</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
                                     <form id="scheduleExceptionForm">
                                         <input type="hidden" id="scheduleExceptionAction" value="add">
                                         <input type="hidden" id="scheduleExceptionId" value="">
-                                        
+
                                         <div class="mb-3">
                                             <label for="exceptionStartDate" class="form-label">시작 날짜</label>
                                             <input type="date" class="form-control" id="exceptionStartDate" required>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label for="exceptionEndDate" class="form-label">종료 날짜</label>
                                             <input type="date" class="form-control" id="exceptionEndDate" required>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label for="exceptionScheduleType" class="form-label">적용할 일정 유형</label>
                                             <select class="form-select" id="exceptionScheduleType" required>
@@ -802,35 +827,51 @@
                                                 <!-- 일정 유형 옵션이 여기에 로드됩니다 -->
                                             </select>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label for="exceptionReason" class="form-label">사유</label>
-                                            <textarea class="form-control" id="exceptionReason" rows="3" placeholder="예외 일정 적용 사유를 입력하세요"></textarea>
+                                            <textarea class="form-control" id="exceptionReason" rows="3"
+                                                placeholder="예외 일정 적용 사유를 입력하세요"></textarea>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">포함할 요일 및 공휴일</label>
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeWeekday" checked>
-                                                <label class="form-check-label" for="exceptionIncludeWeekday">평일 포함</label>
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="exceptionIncludeWeekday" checked>
+                                                <label class="form-check-label" for="exceptionIncludeWeekday">평일
+                                                    포함</label>
                                             </div>
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeSaturday">
-                                                <label class="form-check-label" for="exceptionIncludeSaturday">토요일 포함</label>
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="exceptionIncludeWeekdayFriday" checked>
+                                                <label class="form-check-label" for="exceptionIncludeWeekdayFriday">금요일
+                                                    포함</label>
                                             </div>
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeSunday">
-                                                <label class="form-check-label" for="exceptionIncludeSunday">일요일 포함</label>
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="exceptionIncludeSaturday">
+                                                <label class="form-check-label" for="exceptionIncludeSaturday">토요일
+                                                    포함</label>
                                             </div>
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="exceptionIncludeHoliday">
-                                                <label class="form-check-label" for="exceptionIncludeHoliday">공휴일 포함</label>
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="exceptionIncludeSunday">
+                                                <label class="form-check-label" for="exceptionIncludeSunday">일요일
+                                                    포함</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input"
+                                                    id="exceptionIncludeHoliday">
+                                                <label class="form-check-label" for="exceptionIncludeHoliday">공휴일
+                                                    포함</label>
                                             </div>
                                             <div class="form-text text-muted">체크된 요일/공휴일에도 이 예외 일정이 적용됩니다.</div>
                                         </div>
-                                        
+
                                         <div class="mb-3 form-check">
-                                            <input type="checkbox" class="form-check-input" id="exceptionIsActivate" checked>
+                                            <input type="checkbox" class="form-check-input" id="exceptionIsActivate"
+                                                checked>
                                             <label class="form-check-label" for="exceptionIsActivate">활성화</label>
                                             <div class="form-text text-muted">비활성화된 예외 일정은 적용되지 않습니다.</div>
                                         </div>
@@ -838,13 +879,14 @@
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                                    <button type="button" class="btn btn-primary" id="saveScheduleExceptionButton">저장</button>
+                                    <button type="button" class="btn btn-primary"
+                                        id="saveScheduleExceptionButton">저장</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 캐시 초기화 섹션 -->
                 <div class="section">
                     <div class="section-title section-title-cache">
@@ -889,14 +931,14 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         // 사이드바 토글
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
             document.getElementById('sidebar').classList.toggle('active');
         });
-        
-        document.addEventListener('DOMContentLoaded', function() {
+
+        document.addEventListener('DOMContentLoaded', function () {
             // API URL
             const API_BASE_URL = '';
-            
+
             // 요소 참조
             const routeSelect = document.getElementById('routeSelect');
             const routeIdSelect = document.getElementById('routeId');
@@ -912,30 +954,30 @@
             const deleteButton = document.getElementById('deleteButton');
             const resetFormButton = document.getElementById('resetFormButton');
             const loadingSpinner = document.getElementById('loadingSpinner');
-            
+
             // 인증 토큰 관리
             let authToken = '';
-            
+
             // 인증 토큰 가져오기 (세션 쿠키는 자동으로 전송됨)
             async function getAuthToken() {
                 try {
                     // 이미 토큰이 있으면 재사용
                     if (authToken) return authToken;
-                    
+
                     // 로컬 스토리지에서 토큰 확인
                     const savedToken = localStorage.getItem('access_token');
                     if (savedToken) {
                         authToken = savedToken;
                         return authToken;
                     }
-                    
+
                     // 토큰이 없는 경우 서버에서 새로운 토큰 요청
                     try {
                         const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
                             method: 'POST',
                             credentials: 'include'
                         });
-                        
+
                         if (response.ok) {
                             const data = await response.json();
                             if (data.access_token) {
@@ -947,14 +989,14 @@
                     } catch (tokenError) {
                         console.error('토큰 새로고침 실패:', tokenError);
                     }
-                    
+
                     return null;
                 } catch (error) {
                     console.error('인증 토큰 가져오기 실패:', error);
                     return null;
                 }
             }
-            
+
             // API 요청 도우미 함수 (인증 토큰 추가)
             async function fetchWithAuth(url, options = {}) {
                 try {
@@ -965,13 +1007,13 @@
                         },
                         credentials: 'include'
                     };
-                    
+
                     // 인증 토큰 가져와서 헤더에 추가 (로컬 스토리지에서 직접 가져옴)
                     const savedToken = localStorage.getItem('access_token');
                     if (savedToken) {
                         baseOptions.headers['Authorization'] = `Bearer ${savedToken}`;
                     }
-                    
+
                     // 요청 보내기
                     const response = await fetch(url, {
                         ...options,
@@ -981,7 +1023,7 @@
                             ...options.headers
                         }
                     });
-                    
+
                     // 인증 오류인 경우 로그인 페이지로 리다이렉트
                     if (response.status === 401) {
                         if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
@@ -991,7 +1033,7 @@
                         }
                         throw new Error('인증이 필요합니다');
                     }
-                    
+
                     // 응답이 JSON이 아닌 경우 처리
                     if (!response.headers.get('content-type')?.includes('application/json')) {
                         if (!response.ok) {
@@ -999,51 +1041,51 @@
                         }
                         return response;
                     }
-                    
+
                     return response;
                 } catch (error) {
                     console.error('API 요청 오류:', error);
                     throw error;
                 }
             }
-            
+
             // 초기 로딩 스피너 강제 숨김
             loadingSpinner.classList.add('hidden');
             loadingSpinner.style.display = 'none';
-            
+
             // 로딩 상태 표시
             function showLoading() {
                 loadingSpinner.style.display = 'flex';
                 loadingSpinner.classList.remove('hidden');
             }
-            
+
             function hideLoading() {
                 loadingSpinner.style.display = 'none';
                 loadingSpinner.classList.add('hidden');
             }
-            
+
             // 페이지 초기화
             initPage();
-            
+
             async function initPage() {
                 try {
                     showLoading();
-                    
+
                     // 로그인 상태 확인
                     await checkLoginStatus();
-                    
+
                     // 노선 목록 로드
                     await loadRoutes();
-                    
+
                     // 일정 유형 목록 로드
                     await loadScheduleTypes();
-                    
+
                     // 정류장 목록 로드
                     await loadStations();
-                    
+
                     // 일정 유형 테이블 로드
                     await loadScheduleTypeTable();
-                    
+
                     // 일정 예외 테이블 로드
                     await loadScheduleExceptionTable();
                 } catch (error) {
@@ -1059,7 +1101,7 @@
                     hideLoading();
                 }
             }
-            
+
             // 로그인 상태 확인
             async function checkLoginStatus() {
                 try {
@@ -1068,14 +1110,14 @@
                         method: 'GET',
                         credentials: 'include'
                     });
-                    
+
                     if (response.status === 401) {
                         // 로그인 페이지로 리다이렉트
                         console.error('로그인이 필요합니다.');
                         window.location.href = '/admin/login?redirect=/admin/shuttle';
                         throw new Error('인증 필요');
                     }
-                    
+
                     // 세션 유효한 경우 토큰 확인 및 갱신
                     if (response.ok) {
                         try {
@@ -1083,7 +1125,7 @@
                                 method: 'POST',
                                 credentials: 'include'
                             });
-                            
+
                             if (tokenResponse.ok) {
                                 const data = await tokenResponse.json();
                                 if (data.access_token) {
@@ -1101,41 +1143,41 @@
                     throw error;
                 }
             }
-            
+
             // 이벤트 리스너 등록
             searchButton.addEventListener('click', searchSchedules);
             addStopButton.addEventListener('click', () => addStopRow());
             scheduleForm.addEventListener('submit', handleSubmit);
             deleteButton.addEventListener('click', handleDelete);
             resetFormButton.addEventListener('click', resetForm);
-            
+
             // CSV 파일 업로드 폼 제출 이벤트
-            document.getElementById('csvUploadForm').addEventListener('submit', async function(event) {
+            document.getElementById('csvUploadForm').addEventListener('submit', async function (event) {
                 event.preventDefault();
-                
+
                 const fileInput = document.getElementById('csvFile');
                 const file = fileInput.files[0];
-                
+
                 if (!file) {
                     alert('파일을 선택해주세요.');
                     return;
                 }
-                
+
                 if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
                     alert('CSV 파일만 업로드 가능합니다.');
                     return;
                 }
-                
+
                 showLoading();
-                
+
                 try {
                     // 파일 읽기
                     const csvData = await readFile(file);
-                    
+
                     try {
                         // CSV 파싱
                         Papa.parse(csvData, {
-                            complete: async function(results) {
+                            complete: async function (results) {
                                 try {
                                     // CSV 데이터 처리 - 성공 메시지는 함수 내에서만 표시하도록 수정
                                     await processCSVData(results.data, true);
@@ -1147,7 +1189,7 @@
                                     hideLoading();
                                 }
                             },
-                            error: function(error) {
+                            error: function (error) {
                                 alert('CSV 파일을 파싱할 수 없습니다: ' + error.message);
                                 hideLoading();
                             }
@@ -1161,15 +1203,15 @@
                     hideLoading();
                 }
             });
-            
+
             // 노선 목록 로드
             async function loadRoutes() {
                 try {
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/routes`);
                     if (!response.ok) throw new Error('노선 데이터를 불러오는데 실패했습니다.');
-                    
+
                     const routes = await response.json();
-                    
+
                     // 검색 선택상자에 추가
                     routeSelect.innerHTML = '<option value="">노선 선택</option>';
                     routes.forEach(route => {
@@ -1178,7 +1220,7 @@
                         option.textContent = `${route.route_name} (${route.direction})`;
                         routeSelect.appendChild(option);
                     });
-                    
+
                     // 폼 선택상자에 추가
                     routeIdSelect.innerHTML = '<option value="">노선 선택</option>';
                     routes.forEach(route => {
@@ -1187,22 +1229,22 @@
                         option.textContent = `${route.route_name} (${route.direction})`;
                         routeIdSelect.appendChild(option);
                     });
-                    
+
                     return routes;
                 } catch (error) {
                     alert('노선 데이터를 불러오는데 실패했습니다: ' + error.message);
                     throw error;
                 }
             }
-            
+
             // 일정 유형 목록 로드
             async function loadScheduleTypes() {
                 try {
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
                     if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
-                    
+
                     const scheduleTypes = await response.json();
-                    
+
                     // 검색 선택상자에 추가
                     const scheduleTypeSelect = document.getElementById('scheduleTypeSelect');
                     scheduleTypeSelect.innerHTML = '<option value="">일정 유형 선택</option>';
@@ -1215,7 +1257,7 @@
                         }
                         scheduleTypeSelect.appendChild(option);
                     });
-                    
+
                     // 폼 선택상자에 추가
                     const scheduleTypeFormSelect = document.getElementById('scheduleType');
                     scheduleTypeFormSelect.innerHTML = '<option value="">유형 선택</option>';
@@ -1228,60 +1270,60 @@
                         }
                         scheduleTypeFormSelect.appendChild(option);
                     });
-                    
+
                     return scheduleTypes;
                 } catch (error) {
                     alert('일정 유형 데이터를 불러오는데 실패했습니다: ' + error.message);
                     throw error;
                 }
             }
-            
+
             // 정류장 목록 저장 변수
             let stationsList = [];
-            
+
             // 정류장 목록 로드
             async function loadStations() {
                 try {
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/stations`);
                     if (!response.ok) throw new Error('정류장 데이터를 불러오는데 실패했습니다.');
-                    
+
                     stationsList = await response.json();
-                    
+
                     // 정류장 데이터 로드 후 초기 정류장 행 추가
                     addStopRow();
-                    
+
                     return stationsList;
                 } catch (error) {
                     alert('정류장 데이터를 불러오는데 실패했습니다: ' + error.message);
                     throw error;
                 }
             }
-            
+
             // 시간표 검색
             async function searchSchedules() {
                 const routeId = routeSelect.value;
                 const scheduleType = scheduleTypeSelect.value;
-                
+
                 if (!routeId || !scheduleType) {
                     alert('노선과 일정 유형을 모두 선택해주세요.');
                     return;
                 }
-                
+
                 try {
                     showLoading();
-                    
+
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
-                    
+
                     // 404 오류는 데이터가 없다는 의미이므로 오류 메시지 대신 빈 목록 표시
                     if (response.status === 404) {
                         displaySchedules([]);
                         return;
                     }
-                    
+
                     if (!response.ok) throw new Error('시간표 데이터를 불러오는데 실패했습니다.');
-                    
+
                     const schedules = await response.json();
-                    
+
                     displaySchedules(schedules);
                 } catch (error) {
                     alert('시간표 데이터를 불러오는데 실패했습니다: ' + error.message);
@@ -1290,24 +1332,24 @@
                     hideLoading();
                 }
             }
-            
+
             // 시간표 표시
             function displaySchedules(schedules) {
                 scheduleTableBody.innerHTML = '';
-                
+
                 // 시간표가 없는 경우 처리
                 if (!schedules || schedules.length === 0) {
                     scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center">이 노선과 일정 유형에 해당하는 시간표가 없습니다.</td></tr>';
                     return;
                 }
-                
+
                 schedules.forEach(schedule => {
                     const row = document.createElement('tr');
-                    
+
                     // 시간 형식 변환
                     const startTime = formatTime(schedule.start_time);
                     const endTime = formatTime(schedule.end_time);
-                    
+
                     row.innerHTML = `
                         <td><input type="checkbox" class="schedule-checkbox" data-id="${schedule.id}"></td>
                         <td>${schedule.id}</td>
@@ -1320,38 +1362,38 @@
                             <button class="btn btn-sm btn-danger delete-button" data-id="${schedule.id}">삭제</button>
                         </td>
                     `;
-                    
+
                     scheduleTableBody.appendChild(row);
                 });
-                
+
                 // 수정 버튼에 이벤트 리스너 추가
                 document.querySelectorAll('.edit-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const id = this.getAttribute('data-id');
                         loadScheduleForEdit(id);
                     });
                 });
-                
+
                 // 삭제 버튼에 이벤트 리스너 추가
                 document.querySelectorAll('.delete-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const id = this.getAttribute('data-id');
                         if (confirm('이 시간표를 삭제하시겠습니까?')) {
                             deleteSchedule(id);
                         }
                     });
                 });
-                
+
                 // 체크박스 이벤트 리스너 추가
                 updateCheckboxListeners();
             }
-            
+
             // 노선 이름 가져오기
             function getRouteName(routeId) {
                 const option = routeSelect.querySelector(`option[value="${routeId}"]`);
                 return option ? option.textContent : `노선 ${routeId}`;
             }
-            
+
             // 일정 유형 번역
             function translateScheduleType(type) {
                 // 전역 변수에 일정 유형-이름 매핑 저장
@@ -1369,11 +1411,11 @@
                         }
                     });
                 }
-                
+
                 // 매핑된 이름 반환 또는 원래 값 사용
                 return window.scheduleTypeMap[type] || type;
             }
-            
+
             // 시간 형식 변환
             function formatTime(timeStr) {
                 if (!timeStr) return '';
@@ -1383,26 +1425,26 @@
                 }
                 return timeStr;
             }
-            
+
             // 정류장 행 추가
             function addStopRow(stationId = '', arrivalTime = '', stopOrder = '') {
                 try {
                     if (!stationsList || stationsList.length === 0) {
                         return;
                     }
-                    
+
                     const template = document.getElementById('stopRowTemplate');
                     if (!template) {
                         return;
                     }
-                    
+
                     const clone = document.importNode(template.content, true);
-                    
+
                     const stationSelect = clone.querySelector('.station-select');
                     const arrivalTimeInput = clone.querySelector('.arrival-time');
                     const stopOrderInput = clone.querySelector('.stop-order');
                     const removeButton = clone.querySelector('.remove-stop-button');
-                    
+
                     // 정류장 목록 채우기
                     stationsList.forEach(station => {
                         const option = document.createElement('option');
@@ -1410,11 +1452,11 @@
                         option.textContent = station.name;
                         stationSelect.appendChild(option);
                     });
-                    
+
                     // 값이 있으면 설정
                     if (stationId) stationSelect.value = stationId;
                     if (arrivalTime) arrivalTimeInput.value = formatTime(arrivalTime);
-                    
+
                     // 정류장 순서를 자동으로 설정
                     if (stopOrder) {
                         // 수정 모드일 경우 전달된 값 사용
@@ -1424,21 +1466,21 @@
                         const currentStopRows = document.querySelectorAll('.stop-row');
                         stopOrderInput.value = currentStopRows.length + 1;
                     }
-                    
+
                     // 삭제 버튼 이벤트
-                    removeButton.addEventListener('click', function() {
+                    removeButton.addEventListener('click', function () {
                         this.closest('.stop-row').remove();
-                        
+
                         // 삭제 후 나머지 정류장 순서 재정렬
                         updateStopOrders();
                     });
-                    
+
                     scheduleStops.appendChild(clone);
                 } catch (error) {
                     // 오류 핸들링
                 }
             }
-            
+
             // 정류장 순서 재정렬
             function updateStopOrders() {
                 const stopRows = document.querySelectorAll('.stop-row');
@@ -1447,43 +1489,43 @@
                     orderInput.value = index + 1;
                 });
             }
-            
+
             // 수정을 위한 시간표 로드
             async function loadScheduleForEdit(id) {
                 try {
                     showLoading();
-                    
+
                     // 1. 기본 시간표 정보 가져오기
                     const routeId = routeSelect.value;
                     const scheduleType = scheduleTypeSelect.value;
-                    
+
                     if (!routeId || !scheduleType) {
                         alert('현재 선택된 노선과 일정 유형으로 시간표를 불러올 수 없습니다.\n먼저 노선과 일정 유형을 선택하고 검색해주세요.');
                         hideLoading();
                         return;
                     }
-                    
+
                     const scheduleResponse = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules?route_id=${routeId}&schedule_type=${scheduleType}`);
                     if (!scheduleResponse.ok) {
                         throw new Error('시간표 정보를 불러오는데 실패했습니다. 상태: ' + scheduleResponse.status);
                     }
-                    
+
                     const schedules = await scheduleResponse.json();
-                    
+
                     const schedule = schedules.find(s => s.id == id);
-                    
+
                     if (!schedule) {
                         throw new Error('해당 시간표를 찾을 수 없습니다. 다른 노선이나 일정 유형에 있을 수 있습니다.');
                     }
-                    
+
                     // 2. 정류장 정보 가져오기
                     const stopsResponse = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedules/${id}/stops`);
                     if (!stopsResponse.ok) {
                         throw new Error('정류장 정보를 불러오는데 실패했습니다. 상태: ' + stopsResponse.status);
                     }
-                    
+
                     const stops = await stopsResponse.json();
-                    
+
                     // 폼 설정
                     formTitle.textContent = '시간표 수정';
                     scheduleId.value = id;
@@ -1491,18 +1533,18 @@
                     document.getElementById('scheduleType').value = schedule.schedule_type;
                     document.getElementById('startTime').value = formatTime(schedule.start_time);
                     document.getElementById('endTime').value = formatTime(schedule.end_time);
-                    
+
                     // 기존 정류장 행 제거
                     scheduleStops.innerHTML = '';
-                    
+
                     // 정류장 행 추가
                     stops.forEach(stop => {
                         addStopRow(stop.station_id, stop.arrival_time, stop.stop_order);
                     });
-                    
+
                     // 삭제 버튼 표시
                     deleteButton.classList.remove('hidden');
-                    
+
                     // 폼으로 스크롤
                     document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
                 } catch (error) {
@@ -1511,50 +1553,50 @@
                     hideLoading();
                 }
             }
-            
+
             // 폼 제출 처리
             async function handleSubmit(event) {
                 event.preventDefault();
-                
+
                 // 폼 데이터 수집
                 const id = scheduleId.value;
                 const routeId = routeIdSelect.value;
                 const scheduleType = document.getElementById('scheduleType').value;
                 const startTime = document.getElementById('startTime').value;
                 const endTime = document.getElementById('endTime').value;
-                
+
                 // 폼 검증
                 if (!routeId || !scheduleType || !startTime || !endTime) {
                     alert('모든 필수 필드를 입력해주세요.');
                     return;
                 }
-                
+
                 // 정류장 데이터 수집
                 const stops = [];
                 const stopRows = document.querySelectorAll('.stop-row');
-                
+
                 if (stopRows.length === 0) {
                     alert('최소한 하나의 정류장을 추가해주세요.');
                     return;
                 }
-                
+
                 for (const row of stopRows) {
                     const stationId = row.querySelector('.station-select').value;
                     const arrivalTime = row.querySelector('.arrival-time').value;
                     const stopOrder = row.querySelector('.stop-order').value;
-                    
+
                     if (!stationId || !arrivalTime || !stopOrder) {
                         alert('모든 정류장 정보를 입력해주세요.');
                         return;
                     }
-                    
+
                     stops.push({
                         station_id: parseInt(stationId),
                         arrival_time: arrivalTime,
                         stop_order: parseInt(stopOrder)
                     });
                 }
-                
+
                 // 요청 데이터 생성
                 const data = {
                     route_id: parseInt(routeId),
@@ -1563,13 +1605,13 @@
                     end_time: endTime,
                     stops: stops
                 };
-                
+
                 try {
                     showLoading();
-                    
+
                     let response;
                     let apiUrl;
-                    
+
                     if (id) {
                         // 수정
                         apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
@@ -1587,17 +1629,17 @@
                             body: JSON.stringify(data)
                         });
                     }
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.detail || '시간표 저장에 실패했습니다.');
                     }
-                    
+
                     const result = await response.json();
-                    
+
                     alert(id ? '시간표가 수정되었습니다.' : '새 시간표가 추가되었습니다.');
                     resetForm();
-                    
+
                     // 현재 검색된 시간표 다시 로드
                     if (routeSelect.value && scheduleTypeSelect.value) {
                         searchSchedules();
@@ -1608,32 +1650,32 @@
                     hideLoading();
                 }
             }
-            
+
             // 삭제 처리
             async function handleDelete() {
                 const id = scheduleId.value;
                 if (!id) return;
-                
+
                 if (!confirm('정말로 이 시간표를 삭제하시겠습니까?')) {
                     return;
                 }
-                
+
                 try {
                     showLoading();
-                    
+
                     const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
                     const response = await fetchWithAuth(apiUrl, {
                         method: 'DELETE'
                     });
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.detail || '시간표 삭제에 실패했습니다.');
                     }
-                    
+
                     alert('시간표가 삭제되었습니다.');
                     resetForm();
-                    
+
                     // 현재 검색된 시간표 다시 로드
                     if (routeSelect.value && scheduleTypeSelect.value) {
                         searchSchedules();
@@ -1644,7 +1686,7 @@
                     hideLoading();
                 }
             }
-            
+
             // 폼 초기화
             function resetForm() {
                 formTitle.textContent = '새 시간표 추가';
@@ -1652,11 +1694,11 @@
                 scheduleForm.reset();
                 scheduleStops.innerHTML = '';
                 deleteButton.classList.add('hidden');
-                
+
                 // 초기 정류장 행 추가
                 addStopRow();
             }
-            
+
             // 파일 읽기 함수
             function readFile(file) {
                 return new Promise((resolve, reject) => {
@@ -1666,16 +1708,16 @@
                     reader.readAsText(file);
                 });
             }
-            
+
             // CSV 데이터 처리 함수
             async function processCSVData(data, showSuccessMessage = false) {
                 // 파일 입력 필드 참조 얻기
                 const csvFileInput = document.getElementById('csvFile');
-                
+
                 // 첫 번째 행에서 노선 ID와 시간표 유형 추출
                 let routeId = null;
                 let scheduleType = null;
-                
+
                 for (let i = 0; i < data.length; i++) {
                     const row = data[i];
                     if (row[0]?.trim() === 'routeID' && row[1]) {
@@ -1686,15 +1728,15 @@
                     }
                     if (routeId && scheduleType) break;
                 }
-                
+
                 if (!routeId || !scheduleType) {
                     throw new Error('CSV 파일에서 노선 ID 또는 시간표 유형을 찾을 수 없습니다.');
                 }
-                
+
                 // 정류장 ID와 도착 시간 추출
                 let stationIds = [];
                 let arrivalTimes = [];
-                
+
                 for (let i = 0; i < data.length; i++) {
                     const row = data[i];
                     if (row[0]?.trim() === 'stationID') {
@@ -1704,54 +1746,64 @@
                                 stationIds.push(parseInt(row[j]));
                             }
                         }
-                    } else if (stationIds.length > 0 && row[0]?.trim() === '' && row[1] && row[1].match(/^\d{1,2}:\d{2}$/)) {
-                        // 시간 행 찾기 (첫 번째 값이 비어있고 두 번째 값이 시간 형식인 행)
-                        const timeRow = [];
+                    } else if (stationIds.length > 0 && row[0]?.trim() === '') {
+                        // 시간 행 찾기 (첫 번째 열이 비어있고, 나머지 열 중 하나라도 시간 형식이 있는 행)
+                        let hasTime = false;
                         for (let j = 1; j < Math.min(row.length, stationIds.length + 1); j++) {
-                            if (row[j] && row[j].trim() !== '') {
-                                timeRow.push(formatTimeForAPI(row[j].trim()));
-                            } else {
-                                timeRow.push(null);
+                            if (row[j] && row[j].trim().match(/^\d{1,2}:\d{2}$/)) {
+                                hasTime = true;
+                                break;
                             }
                         }
-                        
-                        if (timeRow.length > 0 && timeRow.some(time => time !== null)) {
-                            arrivalTimes.push(timeRow);
+
+                        if (hasTime) {
+                            const timeRow = [];
+                            for (let j = 1; j < Math.min(row.length, stationIds.length + 1); j++) {
+                                if (row[j] && row[j].trim() !== '') {
+                                    timeRow.push(formatTimeForAPI(row[j].trim()));
+                                } else {
+                                    timeRow.push(null);
+                                }
+                            }
+
+                            if (timeRow.length > 0 && timeRow.some(time => time !== null)) {
+                                arrivalTimes.push(timeRow);
+                            }
                         }
                     }
                 }
-                
+
                 if (stationIds.length === 0 || arrivalTimes.length === 0) {
                     throw new Error('CSV 파일에서 정류장 ID 또는 도착 시간을 찾을 수 없습니다.');
                 }
-                
+
                 // 스케줄 API에 맞는 형식으로 변환 
                 function transformScheduleData(scheduleData) {
                     // 시간 형식 검증 및 변환
                     const start_time = formatTimeForAPI(scheduleData.start_time);
                     const end_time = formatTimeForAPI(scheduleData.end_time);
-                    
+
                     // 유효성 검사
                     if (!isValidTime(start_time) || !isValidTime(end_time)) {
                         throw new Error(`유효하지 않은 시간 형식: 시작 시간(${start_time}) 또는 종료 시간(${end_time})`);
                     }
-                    
+
                     // 정류장 순서 확인 및 보정
                     const stops = scheduleData.stops.map((stop, i) => {
                         const arrival_time = formatTimeForAPI(stop.arrival_time);
-                        
+
                         // 유효성 검사
                         if (!isValidTime(arrival_time)) {
                             throw new Error(`유효하지 않은 도착 시간 형식: 정류장 ${stop.station_id}의 시간(${arrival_time})`);
                         }
-                        
+
                         return {
                             station_id: parseInt(stop.station_id),
                             arrival_time: arrival_time,
                             stop_order: i + 1  // 명시적으로 0부터 재정렬
                         };
                     });
-                    
+
                     return {
                         route_id: parseInt(scheduleData.route_id),
                         schedule_type: scheduleData.schedule_type,
@@ -1770,11 +1822,11 @@
                 // 각 시간표 행(arrivalTimes의 각 행)에 대해 시간표 생성
                 for (let i = 0; i < arrivalTimes.length; i++) {
                     const times = arrivalTimes[i];
-                    
+
                     // 시작 시간과 종료 시간 찾기 (첫 번째와 마지막 유효한 시간)
                     let startTime = null;
                     let endTime = null;
-                    
+
                     for (let j = 0; j < times.length; j++) {
                         if (times[j] && !startTime) {
                             startTime = times[j];
@@ -1783,14 +1835,14 @@
                             endTime = times[j];
                         }
                     }
-                    
+
                     if (!startTime || !endTime) {
                         continue;
                     }
-                    
+
                     // 정류장 정보 구성
                     const stops = [];
-                    
+
                     for (let j = 0; j < stationIds.length; j++) {
                         if (j < times.length && times[j]) {
                             stops.push({
@@ -1800,7 +1852,7 @@
                             });
                         }
                     }
-                    
+
                     // 시간표 데이터 생성
                     const rawScheduleData = {
                         route_id: routeId,
@@ -1809,24 +1861,24 @@
                         end_time: endTime,
                         stops: stops
                     };
-                    
+
                     // API 형식으로 변환
                     const scheduleData = transformScheduleData(rawScheduleData);
-                    
+
                     try {
                         // API 요청 전 데이터 유효성 검증
                         if (!Array.isArray(scheduleData.stops) || scheduleData.stops.length === 0) {
                             throw new Error('정류장 정보가 없습니다.');
                         }
-                        
+
                         const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/admin/schedules`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(scheduleData)
                         });
-                        
+
                         const responseText = await response.text();
-                        
+
                         if (!response.ok) {
                             let errorMessage = '알 수 없는 오류';
                             try {
@@ -1834,7 +1886,7 @@
                                 if (typeof errorData.detail === 'string') {
                                     errorMessage = errorData.detail;
                                 } else if (Array.isArray(errorData.detail)) {
-                                    errorMessage = errorData.detail.map(err => 
+                                    errorMessage = errorData.detail.map(err =>
                                         `${err.loc?.join('.') || ''}: ${err.msg || JSON.stringify(err)}`
                                     ).join('\n');
                                 } else {
@@ -1846,7 +1898,7 @@
                             throw new Error(errorMessage);
                         }
                     } catch (error) {
-                        throw new Error(`시간표 ${i+1} 저장 중 오류 발생: ${error.message}`);
+                        throw new Error(`시간표 ${i + 1} 저장 중 오류 발생: ${error.message}`);
                     }
                 }
 
@@ -1872,20 +1924,20 @@
             // 시간 형식을 API에 맞게 변환 (HH:MM → HH:MM:SS)
             function formatTimeForAPI(timeStr) {
                 if (!timeStr) return '';
-                
+
                 // 시간 형식 분석
                 const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
                 if (!timeMatch) return timeStr;
-                
+
                 // 시, 분, 초 추출
                 let [_, hours, minutes, seconds] = timeMatch;
-                
+
                 // 시에 앞에 0 추가 (필요한 경우)
                 hours = hours.padStart(2, '0');
-                
+
                 // 초가 없는 경우 기본값 '00' 설정
                 seconds = seconds || '00';
-                
+
                 // HH:MM:SS 형식으로 반환
                 return `${hours}:${minutes}:${seconds}`;
             }
@@ -1896,27 +1948,27 @@
                 const selectAllCheckbox = document.getElementById('selectAllSchedules');
                 const scheduleCheckboxes = document.querySelectorAll('.schedule-checkbox');
                 const deleteSelectedButton = document.getElementById('deleteSelectedButton');
-                
+
                 // 전체 선택 체크박스 이벤트
-                selectAllCheckbox.addEventListener('change', function() {
+                selectAllCheckbox.addEventListener('change', function () {
                     const isChecked = this.checked;
                     scheduleCheckboxes.forEach(checkbox => {
                         checkbox.checked = isChecked;
                     });
                     updateDeleteButtonVisibility();
                 });
-                
+
                 // 개별 체크박스 이벤트
                 scheduleCheckboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', function() {
+                    checkbox.addEventListener('change', function () {
                         updateDeleteButtonVisibility();
-                        
+
                         // 모든 체크박스가 선택되었는지 확인
                         const allChecked = Array.from(scheduleCheckboxes).every(cb => cb.checked);
                         selectAllCheckbox.checked = allChecked;
                     });
                 });
-                
+
                 // 초기 삭제 버튼 상태 업데이트
                 updateDeleteButtonVisibility();
             }
@@ -1925,22 +1977,22 @@
             function updateDeleteButtonVisibility() {
                 const scheduleCheckboxes = document.querySelectorAll('.schedule-checkbox');
                 const deleteSelectedButton = document.getElementById('deleteSelectedButton');
-                
+
                 // 선택된 체크박스가 있는지 확인
                 const hasChecked = Array.from(scheduleCheckboxes).some(cb => cb.checked);
                 deleteSelectedButton.style.display = hasChecked ? 'block' : 'none';
             }
 
             // 선택된 시간표 일괄 삭제 기능 추가
-            document.getElementById('deleteSelectedButton').addEventListener('click', function() {
+            document.getElementById('deleteSelectedButton').addEventListener('click', function () {
                 const checkedBoxes = document.querySelectorAll('.schedule-checkbox:checked');
                 const ids = Array.from(checkedBoxes).map(checkbox => checkbox.getAttribute('data-id'));
-                
+
                 if (ids.length === 0) {
                     alert('삭제할 시간표를 선택해주세요.');
                     return;
                 }
-                
+
                 if (confirm(`선택한 ${ids.length}개의 시간표를 삭제하시겠습니까?`)) {
                     deleteSelectedSchedules(ids);
                 }
@@ -1949,25 +2001,25 @@
             // 선택된 시간표 일괄 삭제 함수
             async function deleteSelectedSchedules(ids) {
                 if (!ids || ids.length === 0) return;
-                
+
                 try {
                     showLoading();
-                    
+
                     // 각 시간표 순차적으로 삭제
                     for (const id of ids) {
                         const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
                         const response = await fetchWithAuth(apiUrl, {
                             method: 'DELETE'
                         });
-                        
+
                         if (!response.ok) {
                             const errorData = await response.json();
                             throw new Error(errorData.detail || `시간표 ID ${id} 삭제 실패`);
                         }
                     }
-                    
+
                     alert(`${ids.length}개의 시간표가 삭제되었습니다.`);
-                    
+
                     // 현재 검색된 시간표 다시 로드
                     if (routeSelect.value && scheduleTypeSelect.value) {
                         searchSchedules();
@@ -1982,22 +2034,22 @@
             // 단일 시간표 삭제 함수
             async function deleteSchedule(id) {
                 if (!id) return;
-                
+
                 try {
                     showLoading();
-                    
+
                     const apiUrl = `${API_BASE_URL}/shuttle/admin/schedules/${id}`;
                     const response = await fetchWithAuth(apiUrl, {
                         method: 'DELETE'
                     });
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.detail || '시간표 삭제에 실패했습니다.');
                     }
-                    
+
                     alert('시간표가 삭제되었습니다.');
-                    
+
                     // 현재 검색된 시간표 다시 로드
                     if (routeSelect.value && scheduleTypeSelect.value) {
                         searchSchedules();
@@ -2010,53 +2062,53 @@
             }
 
             // 로그아웃 버튼 이벤트 설정
-            document.getElementById('logoutButton').addEventListener('click', function(e) {
+            document.getElementById('logoutButton').addEventListener('click', function (e) {
                 e.preventDefault();
                 handleLogout();
             });
-            
+
             // 로그아웃 처리
             async function handleLogout() {
                 try {
                     // 로컬 저장소의 토큰 삭제
                     localStorage.removeItem('access_token');
                     authToken = '';
-                    
+
                     // 서버 세션 로그아웃 요청
                     await fetch(`${API_BASE_URL}/admin/logout`, {
                         method: 'GET',
                         credentials: 'include'
                     });
-                    
+
                     // 로그인 페이지로 리다이렉트
                     window.location.href = '/admin/login';
                 } catch (error) {
                     console.error('로그아웃 중 오류 발생:', error);
-                    
+
                     // 오류가 발생해도 로그인 페이지로 이동
                     window.location.href = '/admin/login';
                 }
             }
 
             // 캐시 초기화 버튼 이벤트 설정
-            document.getElementById('clearCacheButton').addEventListener('click', function() {
+            document.getElementById('clearCacheButton').addEventListener('click', function () {
                 clearCache();
             });
-            
+
             // 캐시 초기화 함수
             async function clearCache() {
                 try {
                     showLoading();
-                    
+
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/admin/clear-cache`, {
                         method: 'POST'
                     });
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.detail || '캐시 초기화에 실패했습니다.');
                     }
-                    
+
                     alert('캐시가 성공적으로 초기화되었습니다. 앱에서 변경사항이 즉시 반영됩니다.');
                 } catch (error) {
                     alert(error.message || '캐시 초기화에 실패했습니다.');
@@ -2070,14 +2122,14 @@
                 try {
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
                     if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
-                    
+
                     const scheduleTypes = await response.json();
                     const tableBody = document.getElementById('scheduleTypeTableBody');
                     tableBody.innerHTML = '';
-                    
+
                     scheduleTypes.forEach(type => {
                         const row = document.createElement('tr');
-                        
+
                         row.innerHTML = `
                             <td>${type.schedule_type}</td>
                             <td>${type.schedule_type_name}</td>
@@ -2091,71 +2143,71 @@
                                 <button class="btn btn-sm btn-danger delete-schedule-type-button" data-type="${type.schedule_type}">삭제</button>
                             </td>
                         `;
-                        
+
                         tableBody.appendChild(row);
                     });
-                    
+
                     // 이벤트 리스너 추가
                     addScheduleTypeEventListeners();
-                    
+
                 } catch (error) {
                     console.error('일정 유형 테이블 로드 실패:', error);
                 }
             }
-            
+
             // 일정 유형 이벤트 리스너 추가
             function addScheduleTypeEventListeners() {
                 // 추가 버튼
                 document.getElementById('addScheduleTypeButton').addEventListener('click', () => {
                     showScheduleTypeModal('add');
                 });
-                
+
                 // 저장 버튼
                 document.getElementById('saveScheduleTypeButton').addEventListener('click', saveScheduleType);
-                
+
                 // 수정 버튼들
                 document.querySelectorAll('.edit-schedule-type-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const scheduleType = this.getAttribute('data-type');
                         showScheduleTypeModal('edit', scheduleType);
                     });
                 });
-                
+
                 // 삭제 버튼들
                 document.querySelectorAll('.delete-schedule-type-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const scheduleType = this.getAttribute('data-type');
                         deleteScheduleType(scheduleType);
                     });
                 });
             }
-            
+
             // 페이지 스크롤 상태 초기화 (완전 강화된 버전)
             function resetPageScrolling() {
                 console.log('페이지 스크롤 상태 완전 초기화');
-                
+
                 try {
                     // 모든 모달 관련 요소 제거
                     $('.modal').modal('hide');
                     $('.modal-backdrop').remove();
-                    
+
                     // 스크롤 재설정
                     $('body').removeClass('modal-open');
                     $('body').css({
                         'overflow': '',
                         'padding-right': ''
                     });
-                    
+
                     // body 강제 새로고침
                     $('body').addClass('force-scroll-reset');
                     setTimeout(() => {
                         $('body').removeClass('force-scroll-reset');
                     }, 10);
-                    
+
                     console.log('스크롤 상태 초기화 성공');
                 } catch (e) {
                     console.error('모달 초기화 중 오류:', e);
-                    
+
                     // 백업 방법으로 직접 DOM 조작
                     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                     document.body.classList.remove('modal-open');
@@ -2163,55 +2215,55 @@
                     document.body.style.paddingRight = '';
                 }
             }
-            
+
             // 모달 초기화 - Bootstrap 이벤트 등록
             function setupModals() {
                 // 모달이 닫히기 전에 실행
-                $(document).on('hide.bs.modal', '.modal', function(e) {
+                $(document).on('hide.bs.modal', '.modal', function (e) {
                     console.log('모달 닫기 이벤트 발생:', e.target.id);
                 });
-                
+
                 // 모달이 완전히 닫힌 후 실행
-                $(document).on('hidden.bs.modal', '.modal', function(e) {
+                $(document).on('hidden.bs.modal', '.modal', function (e) {
                     console.log('모달 완전히 닫힘:', e.target.id);
                     resetPageScrolling();
                 });
-                
+
                 // 모달이 열릴 때 실행
-                $(document).on('show.bs.modal', '.modal', function(e) {
+                $(document).on('show.bs.modal', '.modal', function (e) {
                     console.log('모달 열기:', e.target.id);
-                    
+
                     // 이전에 열려있던 모달 정리
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open');
                 });
-                
+
                 // 취소 버튼에 이벤트 연결
-                $(document).on('click', '[data-bs-dismiss="modal"]', function() {
+                $(document).on('click', '[data-bs-dismiss="modal"]', function () {
                     const modalId = $(this).closest('.modal').attr('id');
                     console.log(`모달 취소 버튼 클릭: ${modalId}`);
-                    
+
                     // 모달 수동 닫기
                     $(`#${modalId}`).modal('hide');
-                    
+
                     // 즉시 스크롤 상태 초기화
                     setTimeout(resetPageScrolling, 50);
                 });
-                
+
                 // ESC 키 이벤트 처리
-                $(document).on('keydown', function(e) {
+                $(document).on('keydown', function (e) {
                     if (e.key === 'Escape') {
                         console.log('ESC 키 감지됨');
                         setTimeout(resetPageScrolling, 50);
                     }
                 });
             }
-            
+
             // 일정 유형 모달 표시
             async function showScheduleTypeModal(action, scheduleType = null) {
                 // 모달 표시 전 기존 모달 정리
                 resetPageScrolling();
-                
+
                 // 모달 요소
                 const modalElement = document.getElementById('scheduleTypeModal');
                 const form = document.getElementById('scheduleTypeForm');
@@ -2222,11 +2274,11 @@
                 const activeCheck = document.getElementById('scheduleTypeActive');
                 const actionInput = document.getElementById('scheduleTypeAction');
                 const currentTypeInput = document.getElementById('currentScheduleType');
-                
+
                 // 폼 초기화
                 form.reset();
                 actionInput.value = action;
-                
+
                 if (action === 'add') {
                     modalTitle.textContent = '일정 유형 추가';
                     codeGroup.style.display = 'block';
@@ -2236,21 +2288,21 @@
                     codeGroup.style.display = 'none';
                     codeInput.setAttribute('disabled', 'disabled');
                     currentTypeInput.value = scheduleType;
-                    
+
                     // 기존 데이터 로드
                     try {
                         showLoading();
-                        
+
                         const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
                         const scheduleTypes = await response.json();
-                        
+
                         const typeData = scheduleTypes.find(t => t.schedule_type === scheduleType);
-                        
+
                         if (typeData) {
                             nameInput.value = typeData.schedule_type_name;
                             activeCheck.checked = typeData.is_activate;
                         }
-                        
+
                         hideLoading();
                     } catch (error) {
                         hideLoading();
@@ -2258,11 +2310,11 @@
                         return;
                     }
                 }
-                
+
                 // jQuery로 모달 열기
                 $(modalElement).modal('show');
             }
-            
+
             // 일정 유형 저장
             async function saveScheduleType() {
                 // 폼 요소
@@ -2272,16 +2324,16 @@
                 const codeInput = document.getElementById('scheduleTypeCode');
                 const nameInput = document.getElementById('scheduleTypeName');
                 const activeCheck = document.getElementById('scheduleTypeActive');
-                
+
                 // 폼 검증
                 if (!form.checkValidity()) {
                     form.reportValidity();
                     return;
                 }
-                
+
                 // 데이터 준비
                 let url, method, data;
-                
+
                 if (action === 'add') {
                     url = `${API_BASE_URL}/shuttle/admin/schedule-types`;
                     method = 'POST';
@@ -2298,61 +2350,61 @@
                         is_activate: activeCheck.checked
                     };
                 }
-                
+
                 // API 요청
                 try {
                     showLoading();
-                    
+
                     const response = await fetchWithAuth(url, {
                         method: method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.detail || '저장에 실패했습니다.');
                     }
-                    
+
                     // 성공 처리
                     alert(action === 'add' ? '일정 유형이 추가되었습니다.' : '일정 유형이 수정되었습니다.');
-                    
+
                     // jQuery로 모달 닫기
                     $('#scheduleTypeModal').modal('hide');
-                    
+
                     // 모달 닫고 스크롤 복원
                     setTimeout(resetPageScrolling, 100);
-                    
+
                     // 테이블 다시 로드
                     await loadScheduleTypeTable();
-                    
+
                     // 일정 유형 선택 드롭다운 다시 로드
                     await loadScheduleTypes();
-                    
+
                 } catch (error) {
                     alert(error.message || '저장에 실패했습니다.');
                 } finally {
                     hideLoading();
                 }
             }
-            
+
             // 일정 유형 삭제
             async function deleteScheduleType(scheduleType) {
                 if (!confirm(`일정 유형 '${scheduleType}'을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
                     return;
                 }
-                
+
                 try {
                     showLoading();
                     console.log(`일정 유형 삭제 시작 - 유형: ${scheduleType}`);
-                    
+
                     const url = `${API_BASE_URL}/shuttle/admin/schedule-types/${scheduleType}`;
                     console.log('삭제 요청 URL:', url);
-                    
+
                     const response = await fetchWithAuth(url, {
                         method: 'DELETE'
                     });
-                    
+
                     if (!response.ok) {
                         let errorMessage = '삭제에 실패했습니다.';
                         try {
@@ -2363,24 +2415,24 @@
                         }
                         throw new Error(errorMessage);
                     }
-                    
+
                     // 성공 처리
                     console.log('일정 유형 삭제 성공');
                     alert('일정 유형이 삭제되었습니다.');
-                    
+
                     // 스크롤 초기화 (백드롭이 남아있을 수 있음)
                     resetPageScrolling();
-                    
+
                     // 추가 처리: jQuery로 백드롭 강제 제거
                     $('.modal-backdrop').remove();
                     $('body').removeClass('modal-open').css('overflow', '');
-                    
+
                     // 테이블 다시 로드
                     await loadScheduleTypeTable();
-                    
+
                     // 일정 유형 선택 드롭다운 다시 로드
                     await loadScheduleTypes();
-                    
+
                 } catch (error) {
                     console.error('일정 유형 삭제 실패:', error);
                     alert(error.message || '삭제에 실패했습니다.');
@@ -2388,21 +2440,21 @@
                     hideLoading();
                 }
             }
-            
+
             // 일정 예외 테이블 로드
             async function loadScheduleExceptionTable() {
                 try {
                     console.log('일정 예외 테이블 로드 시작');
-                    
+
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-exceptions`);
                     if (!response.ok) throw new Error('일정 예외 데이터를 불러오는데 실패했습니다.');
-                    
+
                     const exceptions = await response.json();
                     console.log('가져온 일정 예외 목록:', exceptions);
-                    
+
                     const tableBody = document.getElementById('scheduleExceptionTableBody');
                     tableBody.innerHTML = '';
-                    
+
                     if (exceptions.length === 0) {
                         // 데이터가 없는 경우
                         const row = document.createElement('tr');
@@ -2411,11 +2463,11 @@
                     } else {
                         exceptions.forEach(exception => {
                             const row = document.createElement('tr');
-                            
+
                             // 날짜 기간 포맷 변경
                             const startDate = new Date(exception.start_date);
                             const endDate = new Date(exception.end_date);
-                            
+
                             // 시작 날짜와 종료 날짜가 같으면 하나만 표시
                             let formattedDate;
                             if (startDate.getTime() === endDate.getTime()) {
@@ -2425,12 +2477,12 @@
                                 const formattedEndDate = `${endDate.getFullYear()}년 ${endDate.getMonth() + 1}월 ${endDate.getDate()}일`;
                                 formattedDate = `${formattedStartDate} ~ ${formattedEndDate}`;
                             }
-                            
+
                             // 활성화 상태 배지 스타일 설정
-                            const statusBadge = exception.is_activate 
-                                ? '<span class="badge bg-success">활성화</span>' 
+                            const statusBadge = exception.is_activate
+                                ? '<span class="badge bg-success">활성화</span>'
                                 : '<span class="badge bg-secondary">비활성화</span>';
-                            
+
                             row.innerHTML = `
                                 <td>${formattedDate}</td>
                                 <td>${exception.schedule_type_name || exception.schedule_type}</td>
@@ -2441,59 +2493,59 @@
                                     <button class="btn btn-sm btn-danger delete-exception-button" data-id="${exception.id}">삭제</button>
                                 </td>
                             `;
-                            
+
                             tableBody.appendChild(row);
                         });
                     }
-                    
+
                     // 이벤트 리스너 추가
                     addScheduleExceptionEventListeners();
                     console.log('일정 예외 테이블 로드 완료');
-                    
+
                 } catch (error) {
                     console.error('일정 예외 테이블 로드 실패:', error);
                 }
             }
-            
+
             // 일정 예외 이벤트 리스너 추가
             function addScheduleExceptionEventListeners() {
                 console.log('일정 예외 이벤트 리스너 추가 시작');
-                
+
                 // 추가 버튼
                 document.getElementById('addScheduleExceptionButton').addEventListener('click', () => {
                     console.log('일정 예외 추가 버튼 클릭');
                     showScheduleExceptionModal('add');
                 });
-                
+
                 // 저장 버튼
                 document.getElementById('saveScheduleExceptionButton').addEventListener('click', saveScheduleException);
-                
+
                 // 수정 버튼들
                 document.querySelectorAll('.edit-exception-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const exceptionId = this.getAttribute('data-id');
                         console.log('일정 예외 수정 버튼 클릭 - ID:', exceptionId);
                         showScheduleExceptionModal('edit', exceptionId);
                     });
                 });
-                
+
                 // 삭제 버튼들
                 document.querySelectorAll('.delete-exception-button').forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         const exceptionId = this.getAttribute('data-id');
                         console.log('일정 예외 삭제 버튼 클릭 - ID:', exceptionId);
                         deleteScheduleException(exceptionId);
                     });
                 });
-                
+
                 console.log('일정 예외 이벤트 리스너 추가 완료');
             }
-            
+
             // 일정 예외 모달 표시
             async function showScheduleExceptionModal(action, exceptionId = null) {
                 // 모달 표시 전 기존 모달 정리
                 resetPageScrolling();
-                
+
                 // 모달 요소
                 const modalElement = document.getElementById('scheduleExceptionModal');
                 const form = document.getElementById('scheduleExceptionForm');
@@ -2503,17 +2555,18 @@
                 const typeSelect = document.getElementById('exceptionScheduleType');
                 const reasonInput = document.getElementById('exceptionReason');
                 const includeWeekdayCheck = document.getElementById('exceptionIncludeWeekday');
+                const includeWeekdayFridayCheck = document.getElementById('exceptionIncludeWeekdayFriday');
                 const includeSaturdayCheck = document.getElementById('exceptionIncludeSaturday');
                 const includeSundayCheck = document.getElementById('exceptionIncludeSunday');
                 const includeHolidayCheck = document.getElementById('exceptionIncludeHoliday');
                 const isActivateCheck = document.getElementById('exceptionIsActivate');
                 const actionInput = document.getElementById('scheduleExceptionAction');
                 const idInput = document.getElementById('scheduleExceptionId');
-                
+
                 // 폼 초기화
                 form.reset();
                 actionInput.value = action;
-                
+
                 // jQuery로 모달 직접 제어
                 try {
                     // 일정 유형 선택 옵션 로드
@@ -2525,7 +2578,7 @@
                         option.textContent = `${type.schedule_type_name} ${type.is_activate ? '' : '(비활성화)'}`;
                         typeSelect.appendChild(option);
                     });
-                    
+
                     if (action === 'add') {
                         modalTitle.textContent = '일정 예외 추가';
                         // 오늘 날짜를 기본값으로 설정
@@ -2535,10 +2588,11 @@
                         const dd = String(today.getDate()).padStart(2, '0');
                         startDateInput.value = `${yyyy}-${mm}-${dd}`;
                         endDateInput.value = `${yyyy}-${mm}-${dd}`;
-                        
+
                         startDateInput.removeAttribute('disabled');
                         endDateInput.removeAttribute('disabled');
                         includeWeekdayCheck.checked = true; // 기본값 포함
+                        includeWeekdayFridayCheck.checked = true; // 기본값 포함
                         includeSaturdayCheck.checked = false; // 기본값 비포함
                         includeSundayCheck.checked = false; // 기본값 비포함
                         includeHolidayCheck.checked = false; // 기본값 비포함
@@ -2546,29 +2600,29 @@
                     } else if (action === 'edit' && exceptionId) {
                         modalTitle.textContent = '일정 예외 수정';
                         idInput.value = exceptionId;
-                        
+
                         console.log('일정 예외 수정 모달 열기 - ID:', exceptionId);
-                        
+
                         // 기존 데이터 로드
                         showLoading();
                         console.log('일정 예외 데이터 로드 시도 중...');
-                        
+
                         const url = `${API_BASE_URL}/shuttle/schedule-exceptions`;
                         console.log('요청 URL:', url);
-                        
+
                         const response = await fetchWithAuth(url);
                         if (!response.ok) {
                             const errorText = await response.text();
                             console.error('API 응답 오류:', response.status, errorText);
                             throw new Error(`API 오류: ${response.status} ${errorText}`);
                         }
-                        
+
                         const exceptions = await response.json();
                         console.log('받은 데이터:', exceptions);
-                        
+
                         const exceptionData = exceptions.find(e => e.id == exceptionId);
                         console.log('찾은 예외 데이터:', exceptionData);
-                        
+
                         if (exceptionData) {
                             // 시작 날짜 설정
                             const startDate = new Date(exceptionData.start_date);
@@ -2576,54 +2630,55 @@
                             const startMm = String(startDate.getMonth() + 1).padStart(2, '0');
                             const startDd = String(startDate.getDate()).padStart(2, '0');
                             startDateInput.value = `${startYyyy}-${startMm}-${startDd}`;
-                            
+
                             // 종료 날짜 설정
                             const endDate = new Date(exceptionData.end_date);
                             const endYyyy = endDate.getFullYear();
                             const endMm = String(endDate.getMonth() + 1).padStart(2, '0');
                             const endDd = String(endDate.getDate()).padStart(2, '0');
                             endDateInput.value = `${endYyyy}-${endMm}-${endDd}`;
-                            
+
                             typeSelect.value = exceptionData.schedule_type;
                             reasonInput.value = exceptionData.reason || '';
                             includeWeekdayCheck.checked = exceptionData.include_weekday !== undefined ? exceptionData.include_weekday : true;
+                            includeWeekdayFridayCheck.checked = exceptionData.include_weekday_friday !== undefined ? exceptionData.include_weekday_friday : true;
                             includeSaturdayCheck.checked = exceptionData.include_saturday || false;
                             includeSundayCheck.checked = exceptionData.include_sunday || false;
                             includeHolidayCheck.checked = exceptionData.include_holiday || false;
                             isActivateCheck.checked = exceptionData.is_activate;
-                            
+
                             console.log('폼에 데이터 설정 완료');
                         } else {
                             console.error('ID에 해당하는 예외 데이터를 찾을 수 없음:', exceptionId);
                             throw new Error(`ID ${exceptionId}에 해당하는 예외 데이터를 찾을 수 없습니다.`);
                         }
-                        
+
                         hideLoading();
                     }
-                    
+
                     // jQuery로 모달 열기
                     $(modalElement).modal('show');
-                    
+
                 } catch (error) {
                     hideLoading();
                     console.error('일정 예외 모달 표시 실패:', error);
                     alert(`일정 예외 데이터를 불러오는데 실패했습니다: ${error.message}`);
                 }
             }
-            
+
             // 일정 유형 데이터 가져오기
             async function fetchScheduleTypes() {
                 try {
                     const response = await fetchWithAuth(`${API_BASE_URL}/shuttle/schedule-types`);
                     if (!response.ok) throw new Error('일정 유형 데이터를 불러오는데 실패했습니다.');
-                    
+
                     return await response.json();
                 } catch (error) {
                     console.error('일정 유형 데이터 로드 실패:', error);
                     return [];
                 }
             }
-            
+
             // 일정 예외 저장
             async function saveScheduleException() {
                 // 폼 요소
@@ -2635,43 +2690,45 @@
                 const typeSelect = document.getElementById('exceptionScheduleType');
                 const reasonInput = document.getElementById('exceptionReason');
                 const includeWeekdayCheck = document.getElementById('exceptionIncludeWeekday');
+                const includeWeekdayFridayCheck = document.getElementById('exceptionIncludeWeekdayFriday');
                 const includeSaturdayCheck = document.getElementById('exceptionIncludeSaturday');
                 const includeSundayCheck = document.getElementById('exceptionIncludeSunday');
                 const includeHolidayCheck = document.getElementById('exceptionIncludeHoliday');
                 const isActivateCheck = document.getElementById('exceptionIsActivate');
-                
+
                 console.log('일정 예외 저장 시작', {
-                    action, 
+                    action,
                     exceptionId,
                     startDate: startDateInput.value,
                     endDate: endDateInput.value,
                     scheduleType: typeSelect.value,
                     reason: reasonInput.value,
                     includeWeekday: includeWeekdayCheck.checked,
+                    includeWeekdayFriday: includeWeekdayFridayCheck.checked,
                     includeSaturday: includeSaturdayCheck.checked,
                     includeSunday: includeSundayCheck.checked,
                     includeHoliday: includeHolidayCheck.checked,
                     isActivate: isActivateCheck.checked
                 });
-                
+
                 // 폼 검증
                 if (!form.checkValidity()) {
                     form.reportValidity();
                     return;
                 }
-                
+
                 // 날짜 검증
                 const startDate = new Date(startDateInput.value);
                 const endDate = new Date(endDateInput.value);
-                
+
                 if (startDate > endDate) {
                     alert('시작 날짜는 종료 날짜보다 이전이어야 합니다.');
                     return;
                 }
-                
+
                 // 데이터 준비
                 let url, method, data;
-                
+
                 if (action === 'add') {
                     url = `${API_BASE_URL}/shuttle/admin/schedule-exceptions`;
                     method = 'POST';
@@ -2681,6 +2738,7 @@
                         schedule_type: typeSelect.value,
                         reason: reasonInput.value.trim() || null,
                         include_weekday: includeWeekdayCheck.checked,
+                        include_weekday_friday: includeWeekdayFridayCheck.checked,
                         include_saturday: includeSaturdayCheck.checked,
                         include_sunday: includeSundayCheck.checked,
                         include_holiday: includeHolidayCheck.checked,
@@ -2695,43 +2753,44 @@
                         schedule_type: typeSelect.value,
                         reason: reasonInput.value.trim() || null,
                         include_weekday: includeWeekdayCheck.checked,
+                        include_weekday_friday: includeWeekdayFridayCheck.checked,
                         include_saturday: includeSaturdayCheck.checked,
                         include_sunday: includeSundayCheck.checked,
                         include_holiday: includeHolidayCheck.checked,
                         is_activate: isActivateCheck.checked
                     };
                 }
-                
+
                 // API 요청
                 try {
                     showLoading();
-                    
-                    console.log('예외 일정 저장 요청:', {url, method, data});
-                    
+
+                    console.log('예외 일정 저장 요청:', { url, method, data });
+
                     const response = await fetchWithAuth(url, {
                         method: method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
-                    
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error('저장 실패 응답:', errorData);
                         throw new Error(errorData.detail || '저장에 실패했습니다.');
                     }
-                    
+
                     // 성공 처리
                     alert(action === 'add' ? '일정 예외가 추가되었습니다.' : '일정 예외가 수정되었습니다.');
-                    
+
                     // jQuery로 모달 닫기
                     $('#scheduleExceptionModal').modal('hide');
-                    
+
                     // 모달 닫고 스크롤 복원
                     setTimeout(resetPageScrolling, 100);
-                    
+
                     // 테이블 다시 로드
                     await loadScheduleExceptionTable();
-                    
+
                 } catch (error) {
                     console.error('예외 일정 저장 실패:', error);
                     alert(error.message || '저장에 실패했습니다.');
@@ -2739,24 +2798,24 @@
                     hideLoading();
                 }
             }
-            
+
             // 일정 예외 삭제
             async function deleteScheduleException(exceptionId) {
                 if (!confirm(`이 일정 예외를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
                     return;
                 }
-                
+
                 try {
                     showLoading();
                     console.log(`일정 예외 삭제 시작 - ID: ${exceptionId}`);
-                    
+
                     const url = `${API_BASE_URL}/shuttle/admin/schedule-exceptions/${exceptionId}`;
                     console.log('삭제 요청 URL:', url);
-                    
+
                     const response = await fetchWithAuth(url, {
                         method: 'DELETE'
                     });
-                    
+
                     if (!response.ok) {
                         let errorMessage = '삭제에 실패했습니다.';
                         try {
@@ -2767,17 +2826,17 @@
                         }
                         throw new Error(errorMessage);
                     }
-                    
+
                     // 성공 처리
                     console.log('일정 예외 삭제 성공');
                     alert('일정 예외가 삭제되었습니다.');
-                    
+
                     // 스크롤 초기화 (백드롭이 남아있을 수 있음)
                     resetPageScrolling();
-                    
+
                     // 테이블 다시 로드
                     await loadScheduleExceptionTable();
-                    
+
                 } catch (error) {
                     console.error('일정 예외 삭제 실패:', error);
                     alert(error.message || '삭제에 실패했습니다.');
@@ -2787,14 +2846,14 @@
             }
 
             // 페이지 로드 시 이벤트도 추가
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 // 페이지 초기 상태 초기화 (이전에 남아있을 수 있는 모달 백드롭 등 제거)
                 setTimeout(resetPageScrolling, 100);
-                
+
                 // jQuery가 로드되지 않은 경우 폴백
                 if (typeof jQuery === 'undefined') {
                     console.warn('jQuery가 로드되지 않았습니다. 폴백 방법을 사용합니다.');
-                    
+
                     // CSS 스타일 추가 (강제 스크롤 초기화용)
                     const style = document.createElement('style');
                     style.textContent = `
@@ -2821,7 +2880,7 @@
                         `)
                         .appendTo('head');
                 }
-                
+
                 // 일정 예외 추가 버튼
                 const addScheduleExceptionButton = document.getElementById('addScheduleExceptionButton');
                 if (addScheduleExceptionButton) {
@@ -2829,13 +2888,14 @@
                         showScheduleExceptionModal('add');
                     });
                 }
-                
+
                 // 모달 관련 이벤트 처리 초기화
                 setupModals();
-                
+
                 console.log('페이지 초기화 완료');
             });
         });
     </script>
 </body>
+
 </html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>긴급공지 관리</title>
+    <style>
+        :root {
+            --primary: #1d4ed8;
+            --primary-dark: #1e40af;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --secondary: #6b7280;
+            --background: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --muted: #9ca3af;
+            --dark: #343a40;
+            --white: #ffffff;
+            --sidebar-width: 250px;
+            --shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+            --radius: 10px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+            background: var(--background);
+            color: var(--text);
+        }
+
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--dark);
+            color: var(--white);
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--white);
+            text-decoration: none;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+        }
+
+        .nav-item::before {
+            margin-right: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        .nav-item-notice::before {
+            content: "📢";
+        }
+
+        .nav-item-shuttle::before {
+            content: "🚌";
+        }
+
+        .nav-item-monitor::before {
+            content: "📊";
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .logout-btn::before {
+            content: "🚪";
+            margin-right: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 1.5rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .mobile-toggle {
+            display: none;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .mobile-toggle::before {
+            content: "☰";
+        }
+
+        .title {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-outline {
+            background: #fff;
+            border: 1px solid #d1d5db;
+            color: var(--text);
+        }
+
+        .section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1rem;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.7rem;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f9fafb;
+            font-size: 0.92rem;
+        }
+
+        .content-cell {
+            max-width: 320px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-valid {
+            background: rgba(22, 163, 74, 0.15);
+            color: var(--success);
+        }
+
+        .badge-expired {
+            background: rgba(220, 38, 38, 0.12);
+            color: var(--danger);
+        }
+
+        .action-group {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1100;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 50% auto auto 50%;
+            transform: translate(-50%, -50%);
+            width: min(800px, 95vw);
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1110;
+        }
+
+        .modal-header,
+        .modal-footer {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-footer {
+            border-bottom: none;
+            border-top: 1px solid #e5e7eb;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .modal-body {
+            padding: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 0.9rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.35rem;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="datetime-local"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 160px;
+            resize: vertical;
+        }
+
+        .close-btn {
+            border: none;
+            background: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" />
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer-all.min.js"></script>
+</head>
+<body>
+<div class="wrapper">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="sidebar-logo">호서교통 관리자</a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/admin" class="nav-item nav-item-notice">공지사항 관리</a>
+            <a href="/admin/emergency-notices" class="nav-item active">긴급공지 관리</a>
+            <a href="/admin/shuttle" class="nav-item nav-item-shuttle">셔틀버스 관리</a>
+            <a href="/admin/monitor" class="nav-item nav-item-monitor">서버 모니터링</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="logout-btn">로그아웃</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="header">
+            <div class="header-left">
+                <button type="button" class="mobile-toggle" id="sidebarToggle" aria-label="사이드바 토글"></button>
+                <h1 class="title">긴급공지 관리</h1>
+            </div>
+            <button type="button" class="btn btn-primary" id="openCreateModal">긴급공지 등록</button>
+        </div>
+
+        <section class="section">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>구분</th>
+                        <th>제목</th>
+                        <th>내용</th>
+                        <th>작성시간</th>
+                        <th>종료시간</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for notice in notices %}
+                        <tr>
+                            <td>{{ notice.id }}</td>
+                            <td>
+                                {% if notice.category.value == "shuttle" %}셔틀 긴급공지{% endif %}
+                                {% if notice.category.value == "asan_citybus" %}아산 시내버스 긴급공지{% endif %}
+                                {% if notice.category.value == "cheonan_citybus" %}천안 시내버스 긴급공지{% endif %}
+                                {% if notice.category.value == "subway" %}지하철 긴급공지{% endif %}
+                            </td>
+                            <td>{{ notice.title }}</td>
+                            <td class="content-cell">{{ notice.content }}</td>
+                            <td>{{ notice.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                            <td>{{ notice.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                            <td>
+                                {% if notice.end_at >= now_kst %}
+                                    <span class="badge badge-valid">유효</span>
+                                {% else %}
+                                    <span class="badge badge-expired">만료</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <textarea class="notice-content-source" hidden>{{ notice.content }}</textarea>
+                                <div class="action-group">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline edit-btn"
+                                        data-id="{{ notice.id }}"
+                                        data-category="{{ notice.category.value }}"
+                                        data-title="{{ notice.title|replace('"', '&quot;')|replace("'", '&#39;') }}"
+                                        data-end-at="{{ notice.end_at.strftime('%Y-%m-%dT%H:%M') }}"
+                                    >
+                                        수정
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-danger delete-btn"
+                                        data-id="{{ notice.id }}"
+                                    >
+                                        삭제
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="8">등록된 긴급공지가 없습니다.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop"></div>
+
+<div class="modal" id="createModal">
+    <div class="modal-header">
+        <strong>긴급공지 등록</strong>
+        <button type="button" class="close-btn modal-close">x</button>
+    </div>
+    <div class="modal-body">
+        <form id="createForm" method="post" action="/admin/emergency-notices/create">
+            <div class="form-group">
+                <label for="createCategory">구분</label>
+                <select id="createCategory" name="category" required>
+                    <option value="shuttle">셔틀 긴급공지</option>
+                    <option value="asan_citybus">아산 시내버스 긴급공지</option>
+                    <option value="cheonan_citybus">천안 시내버스 긴급공지</option>
+                    <option value="subway">지하철 긴급공지</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="createTitle">제목</label>
+                <input id="createTitle" type="text" name="title" required maxlength="255">
+            </div>
+            <div class="form-group">
+                <label for="createContent">내용</label>
+                <div id="createContentEditor"></div>
+                <input id="createContent" type="hidden" name="content" required>
+            </div>
+            <div class="form-group">
+                <label for="createEndAt">종료시간</label>
+                <input id="createEndAt" type="datetime-local" name="end_at" required>
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline modal-close">취소</button>
+        <button type="submit" form="createForm" class="btn btn-primary">등록</button>
+    </div>
+</div>
+
+<div class="modal" id="editModal">
+    <div class="modal-header">
+        <strong>긴급공지 수정</strong>
+        <button type="button" class="close-btn modal-close">x</button>
+    </div>
+    <div class="modal-body">
+        <form id="editForm" method="post">
+            <div class="form-group">
+                <label for="editCategory">구분</label>
+                <select id="editCategory" name="category" required>
+                    <option value="shuttle">셔틀 긴급공지</option>
+                    <option value="asan_citybus">아산 시내버스 긴급공지</option>
+                    <option value="cheonan_citybus">천안 시내버스 긴급공지</option>
+                    <option value="subway">지하철 긴급공지</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editTitle">제목</label>
+                <input id="editTitle" type="text" name="title" required maxlength="255">
+            </div>
+            <div class="form-group">
+                <label for="editContent">내용</label>
+                <div id="editContentEditor"></div>
+                <input id="editContent" type="hidden" name="content" required>
+            </div>
+            <div class="form-group">
+                <label for="editEndAt">종료시간</label>
+                <input id="editEndAt" type="datetime-local" name="end_at" required>
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-outline modal-close">취소</button>
+        <button type="submit" form="editForm" class="btn btn-primary">저장</button>
+    </div>
+</div>
+
+<script>
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const createModal = document.getElementById("createModal");
+    const editModal = document.getElementById("editModal");
+    const createForm = document.getElementById("createForm");
+    const editForm = document.getElementById("editForm");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const createEditor = new toastui.Editor({
+        el: document.querySelector("#createContentEditor"),
+        height: "420px",
+        initialEditType: "markdown",
+        previewStyle: "vertical"
+    });
+    const editEditor = new toastui.Editor({
+        el: document.querySelector("#editContentEditor"),
+        height: "420px",
+        initialEditType: "markdown",
+        previewStyle: "vertical"
+    });
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener("click", function () {
+            document.getElementById("sidebar").classList.toggle("active");
+        });
+    }
+
+    function openModal(modal) {
+        modal.style.display = "block";
+        modalBackdrop.style.display = "block";
+    }
+
+    function closeModals() {
+        createModal.style.display = "none";
+        editModal.style.display = "none";
+        modalBackdrop.style.display = "none";
+    }
+
+    function setDefaultCreateEndAt() {
+        const endAtInput = document.getElementById("createEndAt");
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        const offset = now.getTimezoneOffset();
+        const localDate = new Date(now.getTime() - offset * 60000);
+        endAtInput.value = localDate.toISOString().slice(0, 16);
+    }
+
+    document.getElementById("openCreateModal").addEventListener("click", function () {
+        createForm.reset();
+        createEditor.setMarkdown("");
+        document.getElementById("createContent").value = "";
+        setDefaultCreateEndAt();
+        openModal(createModal);
+    });
+
+    document.querySelectorAll(".edit-btn").forEach(function (button) {
+        button.addEventListener("click", function () {
+            const row = button.closest("tr");
+            const content = row.querySelector(".notice-content-source").value;
+            const noticeId = button.getAttribute("data-id");
+
+            editForm.action = "/admin/emergency-notices/update/" + noticeId;
+            document.getElementById("editCategory").value = button.getAttribute("data-category");
+            document.getElementById("editTitle").value = button.getAttribute("data-title");
+            editEditor.setMarkdown(content || "");
+            document.getElementById("editContent").value = content || "";
+            document.getElementById("editEndAt").value = button.getAttribute("data-end-at");
+            openModal(editModal);
+        });
+    });
+
+    createForm.addEventListener("submit", function () {
+        document.getElementById("createContent").value = createEditor.getMarkdown();
+    });
+
+    editForm.addEventListener("submit", function () {
+        document.getElementById("editContent").value = editEditor.getMarkdown();
+    });
+
+    document.querySelectorAll(".delete-btn").forEach(function (button) {
+        button.addEventListener("click", function () {
+            const noticeId = button.getAttribute("data-id");
+            if (!confirm("해당 긴급공지를 삭제하시겠습니까?")) {
+                return;
+            }
+            const form = document.createElement("form");
+            form.method = "post";
+            form.action = "/admin/emergency-notices/delete/" + noticeId;
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
+
+    document.querySelectorAll(".modal-close").forEach(function (button) {
+        button.addEventListener("click", closeModals);
+    });
+    modalBackdrop.addEventListener("click", closeModals);
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeModals();
+        }
+    });
+</script>
+</body>
+</html>

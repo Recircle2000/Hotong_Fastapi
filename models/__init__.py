@@ -7,4 +7,6 @@ from .user import User
 from .bus import BusRoute, BusLocation
 from .shuttle import ShuttleStation, ShuttleRoute, ShuttleStationRoute
 from .notice import Notice
+from .emergency_notice import EmergencyNotice
 from .schedule_types import ScheduleType, ScheduleException
+from .subway_schedule import SubwaySchedule
