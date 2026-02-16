@@ -58,3 +58,32 @@ Content-Type: application/json
 DELETE http://127.0.0.1:8000/notices/1
 
 ###
+
+# 긴급공지 API 테스트
+
+# 카테고리별 최신 유효 긴급공지 조회
+GET http://127.0.0.1:8000/emergency-notices/latest?category=shuttle
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/emergency-notices/latest?category=asan_citybus
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/emergency-notices/latest?category=cheonan_citybus
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/emergency-notices/latest?category=subway
+Accept: application/json
+
+###
+
+# 유효 공지가 없으면 200 + null 응답
+GET http://127.0.0.1:8000/emergency-notices/latest?category=shuttle
+Accept: application/json
+
+###

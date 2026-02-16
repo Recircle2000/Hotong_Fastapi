@@ -4,9 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 외부api 중복 호출 문제 해결">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/schedule_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/schedule_types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/shuttle.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/shuttle.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/subway.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/subway.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/shuttle_admin.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/shuttle_admin.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -137,6 +143,23 @@
       <workItem from="1750494020621" duration="667000" />
       <workItem from="1750660327202" duration="2387000" />
       <workItem from="1750867996168" duration="74000" />
+      <workItem from="1755853250838" duration="8000" />
+      <workItem from="1756109558500" duration="613000" />
+      <workItem from="1756113630099" duration="1184000" />
+      <workItem from="1762074055704" duration="1230000" />
+      <workItem from="1762098128176" duration="956000" />
+      <workItem from="1762138775567" duration="1249000" />
+      <workItem from="1765268360341" duration="191000" />
+      <workItem from="1765358352255" duration="45000" />
+      <workItem from="1767627170620" duration="192000" />
+      <workItem from="1767630503599" duration="116000" />
+      <workItem from="1767701434465" duration="131000" />
+      <workItem from="1767720467660" duration="1869000" />
+      <workItem from="1767767712192" duration="2445000" />
+      <workItem from="1768307004921" duration="31000" />
+      <workItem from="1768471062833" duration="67000" />
+      <workItem from="1769588473723" duration="622000" />
+      <workItem from="1771156093149" duration="31000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -242,7 +265,143 @@
       <option name="project" value="LOCAL" />
       <updated>1750868064002</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="feat: 신기능을 위한 수정">
+      <option name="closed" value="true" />
+      <created>1762099088892</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1762099088892</updated>
+    </task>
+    <task id="LOCAL-00015" summary="fix: 코드 정리 및 주석 수정, 버스 데이터 캐시 TTL 증가">
+      <option name="closed" value="true" />
+      <created>1765268380115</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1765268380115</updated>
+    </task>
+    <task id="LOCAL-00016" summary="fix: 코드 정리 및 주석 수정, 버스 데이터 캐시 TTL 증가">
+      <option name="closed" value="true" />
+      <created>1765268384082</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1765268384082</updated>
+    </task>
+    <task id="LOCAL-00017" summary="fix: 로그인 필요시 리다이텍트 하도록 변경">
+      <option name="closed" value="true" />
+      <created>1765268549228</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1765268549228</updated>
+    </task>
+    <task id="LOCAL-00018" summary="fix: 지하철 위치/시간표 엔드포인트 추가">
+      <option name="closed" value="true" />
+      <created>1767627263864</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1767627263864</updated>
+    </task>
+    <task id="LOCAL-00019" summary="feat: 지하철 위치/시간표 엔드포인트 추가">
+      <option name="closed" value="true" />
+      <created>1767627330942</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1767627330942</updated>
+    </task>
+    <task id="LOCAL-00020" summary="chore: 문법 수정">
+      <option name="closed" value="true" />
+      <created>1767627348155</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1767627348155</updated>
+    </task>
+    <task id="LOCAL-00021" summary="chore: 지하철 정보 필터링 추가(2개)">
+      <option name="closed" value="true" />
+      <created>1767701495523</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1767701495524</updated>
+    </task>
+    <task id="LOCAL-00022" summary="chore: 로그 레벨 변경 (DEBUG -&gt; INFO)">
+      <option name="closed" value="true" />
+      <created>1767701538703</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1767701538703</updated>
+    </task>
+    <task id="LOCAL-00023" summary="feat: 필터링 기준 추가(하행 병점행 제거)">
+      <option name="closed" value="true" />
+      <created>1767720516476</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1767720516476</updated>
+    </task>
+    <task id="LOCAL-00024" summary="feat: 웹소켓 클라이언트 연결 관리 및 버스 데이터 실시간 조회 개선">
+      <option name="closed" value="true" />
+      <created>1767720533158</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1767720533158</updated>
+    </task>
+    <task id="LOCAL-00025" summary="feat: 버스 데이터 브로드캐스트 로직 개선">
+      <option name="closed" value="true" />
+      <created>1767724010835</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1767724010835</updated>
+    </task>
+    <task id="LOCAL-00026" summary="feat: 버스 데이터 브로드캐스트 로직 개선">
+      <option name="closed" value="true" />
+      <created>1767724047171</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1767724047171</updated>
+    </task>
+    <task id="LOCAL-00027" summary="feat: 서버 첫 실행시 불필요한 호출 방지">
+      <option name="closed" value="true" />
+      <created>1767724071259</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1767724071259</updated>
+    </task>
+    <task id="LOCAL-00028" summary="feat: 비동기적으로 모든 노선의 데이터를 동시에 조회하도록 개선">
+      <option name="closed" value="true" />
+      <created>1768307025247</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1768307025247</updated>
+    </task>
+    <task id="LOCAL-00029" summary="chore: 24번 및 81번 버스 노선의 조회 대상 축소&#10;&#10;-메인메뉴 위젯에 쓰이는 엔드포인트는 상행 노선을 조회할 필요가 없음.">
+      <option name="closed" value="true" />
+      <created>1768471096529</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1768471096529</updated>
+    </task>
+    <task id="LOCAL-00030" summary="feat: 외부api 중복 호출 문제 해결">
+      <option name="closed" value="true" />
+      <created>1768471121827</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1768471121827</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -260,11 +419,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가" />
-    <MESSAGE value="셔틀 스케줄 CRUD 구현 및 관리 페이지 추가" />
-    <MESSAGE value="refactor: Redis 캐시 키 및 TTL 설정 변경" />
-    <MESSAGE value="feat: API 문서화 주석 추가" />
-    <MESSAGE value="feat: 공지사항 유형 추가 및 필터링 기능 구현" />
     <MESSAGE value="build:Docker 설정 업데이트, nginx 서비스 추가" />
     <MESSAGE value="db: 해킹 복원" />
     <MESSAGE value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
@@ -273,7 +427,24 @@
     <MESSAGE value="build:" />
     <MESSAGE value="feat: 천안캠퍼스 시내버스 추가" />
     <MESSAGE value="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화" />
-    <option name="LAST_COMMIT_MESSAGE" value="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화" />
+    <MESSAGE value="feat: 신기능을 위한 수정" />
+    <MESSAGE value="fix: 공지사항 작성/수정 모달 크기 조정" />
+    <MESSAGE value="fix: 공지사항 작성/수정 모달 크기 조정" />
+    <MESSAGE value="fix: 로그인 필요시 리다이텍트 하도록 변경" />
+    <MESSAGE value="feat: 지하철 위치/시간표 엔드포인트 추가" />
+    <MESSAGE value="feat: 지하철 위치/시간표 엔드포인트 추가" />
+    <MESSAGE value="chore: 문법 수정" />
+    <MESSAGE value="chore: 지하철 정보 필터링 추가(2개)" />
+    <MESSAGE value="chore: 로그 레벨 변경 (DEBUG -&gt; INFO)" />
+    <MESSAGE value="feat: 필터링 기준 추가(하행 병점행 제거)" />
+    <MESSAGE value="feat: 웹소켓 클라이언트 연결 관리 및 버스 데이터 실시간 조회 개선" />
+    <MESSAGE value="feat: 버스 데이터 브로드캐스트 로직 개선" />
+    <MESSAGE value="feat: 서버 첫 실행시 불필요한 호출 방지" />
+    <MESSAGE value="fix: 브로드캐스크 로직 개선" />
+    <MESSAGE value="feat: 비동기적으로 모든 노선의 데이터를 동시에 조회하도록 개선" />
+    <MESSAGE value="chore: 24번 및 81번 버스 노선의 조회 대상 축소&#10;&#10;-메인메뉴 위젯에 쓰이는 엔드포인트는 상행 노선을 조회할 필요가 없음." />
+    <MESSAGE value="feat: 외부api 중복 호출 문제 해결" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 외부api 중복 호출 문제 해결" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

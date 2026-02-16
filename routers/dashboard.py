@@ -3,8 +3,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from models.notice import Notice
+from models.emergency_notice import EmergencyNotice, EmergencyNoticeCategory
 from database import get_db
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from fastapi import Response
 from starlette.middleware.sessions import SessionMiddleware
 from models import User
@@ -18,6 +19,20 @@ from typing import Optional
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
+KST = timezone(timedelta(hours=9))
+
+
+def get_now_kst_naive() -> datetime:
+    return datetime.now(KST).replace(tzinfo=None)
+
+
+def parse_datetime_local(value: str) -> datetime:
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    raise HTTPException(status_code=400, detail="종료시간 형식이 올바르지 않습니다.")
 
 @router.get("/apis")
 async def get_api_list(request: Request):
@@ -266,3 +281,92 @@ async def admin_shuttle_page(
     관리자 인증이 필요합니다.
     """
     return templates.TemplateResponse("shuttle_admin.html", {"request": request}) 
+
+
+@router.get("/admin/emergency-notices")
+async def admin_emergency_notice_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_admin_user)
+):
+    notices = db.query(EmergencyNotice).order_by(EmergencyNotice.created_at.desc()).all()
+    return templates.TemplateResponse(
+        "admin_emergency_notice.html",
+        {
+            "request": request,
+            "notices": notices,
+            "now_kst": get_now_kst_naive(),
+        },
+    )
+
+
+@router.post("/admin/emergency-notices/create")
+async def create_emergency_notice(
+    request: Request,
+    category: str = Form(...),
+    title: str = Form(...),
+    content: str = Form(...),
+    end_at: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_admin_user)
+):
+    try:
+        category_enum = EmergencyNoticeCategory(category)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
+
+    end_at_dt = parse_datetime_local(end_at)
+
+    new_notice = EmergencyNotice(
+        category=category_enum,
+        title=title.strip(),
+        content=content.strip(),
+        created_at=get_now_kst_naive(),
+        end_at=end_at_dt,
+    )
+    db.add(new_notice)
+    db.commit()
+    return RedirectResponse(url="/admin/emergency-notices", status_code=303)
+
+
+@router.post("/admin/emergency-notices/update/{notice_id}")
+async def update_emergency_notice(
+    request: Request,
+    notice_id: int,
+    category: str = Form(...),
+    title: str = Form(...),
+    content: str = Form(...),
+    end_at: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_admin_user)
+):
+    try:
+        category_enum = EmergencyNoticeCategory(category)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
+
+    end_at_dt = parse_datetime_local(end_at)
+    notice = db.query(EmergencyNotice).filter(EmergencyNotice.id == notice_id).first()
+    if notice is None:
+        raise HTTPException(status_code=404, detail="긴급공지 정보를 찾을 수 없습니다.")
+
+    notice.category = category_enum
+    notice.title = title.strip()
+    notice.content = content.strip()
+    notice.end_at = end_at_dt
+    db.commit()
+    return RedirectResponse(url="/admin/emergency-notices", status_code=303)
+
+
+@router.post("/admin/emergency-notices/delete/{notice_id}")
+async def delete_emergency_notice(
+    request: Request,
+    notice_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(get_admin_user)
+):
+    notice = db.query(EmergencyNotice).filter(EmergencyNotice.id == notice_id).first()
+    if notice:
+        db.delete(notice)
+        db.commit()
+    return RedirectResponse(url="/admin/emergency-notices", status_code=303)
