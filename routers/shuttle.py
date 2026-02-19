@@ -216,7 +216,7 @@ class StationSchedulesByDateResponse(BaseModel):
         from_attributes = True
 
 class ScheduleTypeByDateResponse(BaseModel):
-    schedule_type: str
+    schedule_type_name: str
 
 class ScheduleResponse(BaseModel):
     id: int
@@ -288,8 +288,8 @@ def get_schedule_type_by_date(
     """
     주어진 날짜에 적용되는 셔틀 일정 유형을 조회합니다.
     """
-    schedule_type, _ = resolve_schedule_type(db, date)
-    return {"schedule_type": schedule_type}
+    _, schedule_type_name = resolve_schedule_type(db, date)
+    return {"schedule_type_name": schedule_type_name}
 
 @router.get("/schedules/{schedule_id}/stops", response_model=List[ScheduleStopResponse])
 def get_schedule_stops(
