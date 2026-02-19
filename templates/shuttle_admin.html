@@ -42,12 +42,17 @@
             color: #333;
             line-height: 1.6;
             word-break: keep-all;
+            overflow-x: hidden;
+        }
+
+        body.sidebar-open {
+            overflow: hidden;
         }
 
         /* 레이아웃 */
         .wrapper {
             display: flex;
-            min-height: 100vh;
+            min-height: 100dvh;
         }
 
         /* 사이드바 */
@@ -56,10 +61,19 @@
             background: var(--dark);
             color: var(--white);
             position: fixed;
-            height: 100vh;
+            height: 100dvh;
             z-index: 1000;
             transition: var(--transition);
             box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 990;
         }
 
         .sidebar-header {
@@ -154,6 +168,7 @@
         .main-content {
             flex: 1;
             margin-left: var(--sidebar-width);
+            min-width: 0;
             transition: var(--transition);
         }
 
@@ -202,6 +217,7 @@
         /* 콘텐츠 영역 */
         .content {
             padding: 2rem;
+            min-width: 0;
         }
 
         .page-title {
@@ -379,6 +395,7 @@
         .table-responsive {
             overflow-x: auto;
             margin-top: 1rem;
+            -webkit-overflow-scrolling: touch;
         }
 
         .table {
@@ -404,6 +421,16 @@
 
         .table tr:hover {
             background: #f8f9fa;
+        }
+
+        .table-row-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .table-empty {
+            text-align: center;
         }
 
         /* 시간표 테이블 특정 스타일 */
@@ -449,6 +476,41 @@
             display: none !important;
         }
 
+        .flex-3 {
+            flex: 3;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .form-group-auto-150 {
+            flex: 0 0 auto;
+            min-width: 150px;
+        }
+
+        .actions-right {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+
+        .section-gap {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-row-space-between {
+            justify-content: space-between;
+        }
+
+        .stop-remove-group {
+            flex: 0 0 auto;
+            min-width: 80px;
+            display: flex;
+            align-items: flex-end;
+        }
+
         /* 애니메이션 */
         @keyframes fadeIn {
             from {
@@ -466,6 +528,10 @@
                 transform: translateX(-100%);
             }
 
+            .sidebar-backdrop.active {
+                display: block;
+            }
+
             .main-content {
                 margin-left: 0;
             }
@@ -478,7 +544,7 @@
                 transform: translateX(0);
             }
 
-            .sidebar.active+.main-content {
+            .sidebar.active~.main-content {
                 margin-left: 0;
             }
 
@@ -489,32 +555,214 @@
 
         @media (max-width: 768px) {
             .content {
-                padding: 1.5rem 1rem;
+                padding: 1.25rem 0.9rem;
             }
 
             .header {
-                padding: 0 1rem;
+                padding: 0 0.9rem;
             }
 
-            .table th,
+            .section {
+                padding: 1rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .page-title h1 {
+                font-size: 1.35rem;
+            }
+
+            .form-row {
+                gap: 0.75rem;
+            }
+
+            .actions-right {
+                width: 100%;
+            }
+
+            .actions-right .btn {
+                width: 100%;
+            }
+
+            .table-responsive {
+                overflow-x: visible;
+            }
+
+            .table {
+                width: 100%;
+                min-width: 100%;
+                white-space: normal;
+                table-layout: auto;
+                border-collapse: separate;
+                border-spacing: 0 0.75rem;
+                margin-top: -0.75rem;
+            }
+
+            .table thead {
+                display: none;
+            }
+
+            .table tbody,
+            .table tr,
+            .table td {
+                display: block;
+                width: 100%;
+            }
+
+            .table tr {
+                background: var(--white);
+                border: 1px solid #e9ecef;
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
             .table td {
                 padding: 0.75rem;
+                border-bottom: 1px solid #eef1f4;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                vertical-align: top;
+                display: grid;
+                grid-template-columns: 92px minmax(0, 1fr);
+                gap: 0.6rem;
+                align-items: start;
+            }
+
+            .table td:last-child {
+                border-bottom: none;
+            }
+
+            .table td::before {
+                content: attr(data-label);
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: var(--secondary);
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            .table td[data-label="Actions"] .table-row-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .table td[data-label="Actions"] .btn,
+            .table td[data-label="Actions"] .btn-sm {
+                width: 100%;
+            }
+
+            .table td.table-empty {
+                display: block;
+                text-align: center;
+                border-bottom: none;
+                padding: 0.9rem;
+            }
+
+            .table td.table-empty::before {
+                content: none;
+            }
+
+            .table th[width] {
+                width: auto !important;
             }
 
             .btn {
-                padding: 0.7rem 1.2rem;
+                padding: 0.7rem 1rem;
+            }
+
+            .form-row-space-between {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .form-row-space-between > div {
+                width: 100%;
+            }
+
+            .form-row-space-between > div .btn {
+                width: 100%;
+            }
+
+            .stop-remove-group {
+                min-width: 100%;
+            }
+
+            .modal-dialog {
+                margin: 0.5rem;
+                max-width: calc(100% - 1rem);
+            }
+
+            .modal-content {
+                max-height: calc(100dvh - 1rem);
+                overflow: hidden;
+            }
+
+            .modal-body {
+                overflow-y: auto;
+            }
+
+            .modal-footer {
+                flex-wrap: wrap;
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 calc(50% - 0.25rem);
+            }
+
+            .modal-footer .btn:only-child {
+                flex-basis: 100%;
             }
         }
 
         @media (max-width: 576px) {
+            .content {
+                padding: 1rem 0.75rem;
+            }
+
+            .header {
+                padding: 0 0.75rem;
+            }
+
+            .user-name {
+                display: none;
+            }
+
             .page-title {
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .page-title .btn {
+                width: 100%;
+            }
+
+            .table td {
+                grid-template-columns: 1fr;
+                gap: 0.35rem;
+                padding: 0.65rem 0.75rem;
+            }
+
+            .table td::before {
+                font-size: 0.72rem;
+                text-transform: none;
             }
 
             .btn-sm {
                 width: 100%;
+            }
+
+            .modal-dialog {
+                margin: 0.25rem;
+                max-width: calc(100% - 0.5rem);
+            }
+
+            .modal-content {
+                max-height: calc(100dvh - 0.5rem);
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 100%;
             }
         }
     </style>
@@ -553,6 +801,7 @@
                 </button>
             </div>
         </aside>
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <!-- 메인 콘텐츠 -->
         <div class="main-content">
@@ -579,10 +828,10 @@
                     </div>
                     <form id="csvUploadForm">
                         <div class="form-row">
-                            <div class="form-group" style="flex: 3;">
+                            <div class="form-group flex-3">
                                 <input type="file" id="csvFile" class="form-control" accept=".csv">
                             </div>
-                            <div class="form-group" style="flex: 1;">
+                            <div class="form-group flex-1">
                                 <button type="submit" class="btn btn-primary btn-upload w-100">업로드 및 처리</button>
                             </div>
                         </div>
@@ -605,13 +854,13 @@
                                 <option value="">일정 유형 선택</option>
                             </select>
                         </div>
-                        <div class="form-group" style="flex: 0 0 auto; min-width: 150px;">
+                        <div class="form-group form-group-auto-150">
                             <button id="searchButton" class="btn btn-primary w-100">검색</button>
                         </div>
                     </div>
 
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-                        <button id="deleteSelectedButton" class="btn btn-danger btn-delete" style="display:none;">선택 항목
+                    <div class="actions-right">
+                        <button id="deleteSelectedButton" class="btn btn-danger btn-delete hidden">선택 항목
                             삭제</button>
                     </div>
 
@@ -669,7 +918,7 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: 2rem; margin-bottom: 1rem;">
+                        <div class="section-gap">
                             <h5>정류장 정보</h5>
                             <button type="button" id="addStopButton" class="btn btn-primary btn-add mt-2 mb-3">정류장
                                 추가</button>
@@ -679,7 +928,7 @@
                             <!-- 정류장 입력 필드가 여기에 동적으로 추가됩니다 -->
                         </div>
 
-                        <div class="form-row mt-4" style="justify-content: space-between;">
+                        <div class="form-row mt-4 form-row-space-between">
                             <div>
                                 <button type="button" id="resetFormButton" class="btn btn-secondary btn-reset">양식
                                     초기화</button>
@@ -919,7 +1168,7 @@
                     <label class="form-label">정류장 순서</label>
                     <input type="number" class="form-control stop-order" required min="1">
                 </div>
-                <div class="form-group" style="flex: 0 0 auto; min-width: 80px; display: flex; align-items: flex-end;">
+                <div class="form-group stop-remove-group">
                     <button type="button" class="btn btn-danger btn-sm remove-stop-button">삭제</button>
                 </div>
             </div>
@@ -930,14 +1179,14 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // 사이드바 토글
-        document.getElementById('sidebarToggle').addEventListener('click', function () {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
-
         document.addEventListener('DOMContentLoaded', function () {
             // API URL
             const API_BASE_URL = '';
+
+            const body = document.body;
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+            const sidebarToggle = document.getElementById('sidebarToggle');
 
             // 요소 참조
             const routeSelect = document.getElementById('routeSelect');
@@ -955,8 +1204,34 @@
             const resetFormButton = document.getElementById('resetFormButton');
             const loadingSpinner = document.getElementById('loadingSpinner');
 
+            function openSidebar() {
+                sidebar.classList.add('active');
+                sidebarBackdrop.classList.add('active');
+                body.classList.add('sidebar-open');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('active');
+                sidebarBackdrop.classList.remove('active');
+                body.classList.remove('sidebar-open');
+            }
+
+            sidebarToggle.addEventListener('click', function () {
+                if (sidebar.classList.contains('active')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+            sidebarBackdrop.addEventListener('click', closeSidebar);
+            document.querySelectorAll('.sidebar .nav-item').forEach(function (item) {
+                item.addEventListener('click', closeSidebar);
+            });
+
             // 인증 토큰 관리
             let authToken = '';
+            let scheduleTypeEventsBound = false;
+            let scheduleExceptionEventsBound = false;
 
             // 인증 토큰 가져오기 (세션 쿠키는 자동으로 전송됨)
             async function getAuthToken() {
@@ -1063,6 +1338,10 @@
                 loadingSpinner.style.display = 'none';
                 loadingSpinner.classList.add('hidden');
             }
+
+            // 정적 버튼/테이블 이벤트는 초기 1회만 바인딩
+            addScheduleTypeEventListeners();
+            addScheduleExceptionEventListeners();
 
             // 페이지 초기화
             initPage();
@@ -1327,7 +1606,7 @@
                     displaySchedules(schedules);
                 } catch (error) {
                     alert('시간표 데이터를 불러오는데 실패했습니다: ' + error.message);
-                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center">시간표를 불러오는데 실패했습니다.</td></tr>';
+                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center table-empty">시간표를 불러오는데 실패했습니다.</td></tr>';
                 } finally {
                     hideLoading();
                 }
@@ -1339,7 +1618,7 @@
 
                 // 시간표가 없는 경우 처리
                 if (!schedules || schedules.length === 0) {
-                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center">이 노선과 일정 유형에 해당하는 시간표가 없습니다.</td></tr>';
+                    scheduleTableBody.innerHTML = '<tr><td colspan="7" class="text-center table-empty">이 노선과 일정 유형에 해당하는 시간표가 없습니다.</td></tr>';
                     return;
                 }
 
@@ -1351,15 +1630,17 @@
                     const endTime = formatTime(schedule.end_time);
 
                     row.innerHTML = `
-                        <td><input type="checkbox" class="schedule-checkbox" data-id="${schedule.id}"></td>
-                        <td>${schedule.id}</td>
-                        <td>${getRouteName(schedule.route_id)}</td>
-                        <td>${translateScheduleType(schedule.schedule_type)}</td>
-                        <td>${startTime}</td>
-                        <td>${endTime}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary edit-button" data-id="${schedule.id}">수정</button>
-                            <button class="btn btn-sm btn-danger delete-button" data-id="${schedule.id}">삭제</button>
+                        <td data-label="Select"><input type="checkbox" class="schedule-checkbox" data-id="${schedule.id}"></td>
+                        <td data-label="ID">${schedule.id}</td>
+                        <td data-label="Route">${getRouteName(schedule.route_id)}</td>
+                        <td data-label="Type">${translateScheduleType(schedule.schedule_type)}</td>
+                        <td data-label="Depart">${startTime}</td>
+                        <td data-label="Arrive">${endTime}</td>
+                        <td data-label="Actions">
+                            <div class="table-row-actions">
+                                <button class="btn btn-sm btn-primary edit-button" data-id="${schedule.id}">수정</button>
+                                <button class="btn btn-sm btn-danger delete-button" data-id="${schedule.id}">삭제</button>
+                            </div>
                         </td>
                     `;
 
@@ -1947,16 +2228,15 @@
                 // 전체 선택 체크박스
                 const selectAllCheckbox = document.getElementById('selectAllSchedules');
                 const scheduleCheckboxes = document.querySelectorAll('.schedule-checkbox');
-                const deleteSelectedButton = document.getElementById('deleteSelectedButton');
 
                 // 전체 선택 체크박스 이벤트
-                selectAllCheckbox.addEventListener('change', function () {
+                selectAllCheckbox.onchange = function () {
                     const isChecked = this.checked;
                     scheduleCheckboxes.forEach(checkbox => {
                         checkbox.checked = isChecked;
                     });
                     updateDeleteButtonVisibility();
-                });
+                };
 
                 // 개별 체크박스 이벤트
                 scheduleCheckboxes.forEach(checkbox => {
@@ -1980,7 +2260,7 @@
 
                 // 선택된 체크박스가 있는지 확인
                 const hasChecked = Array.from(scheduleCheckboxes).some(cb => cb.checked);
-                deleteSelectedButton.style.display = hasChecked ? 'block' : 'none';
+                deleteSelectedButton.classList.toggle('hidden', !hasChecked);
             }
 
             // 선택된 시간표 일괄 삭제 기능 추가
@@ -2131,17 +2411,14 @@
                         const row = document.createElement('tr');
 
                         row.innerHTML = `
-                            <td>${type.schedule_type}</td>
-                            <td>${type.schedule_type_name}</td>
-                            <td>
+                            <td data-label="Code">${type.schedule_type}</td>
+                            <td data-label="Name">${type.schedule_type_name}</td>
+                            <td data-label="Status">
                                 <span class="badge ${type.is_activate ? 'bg-success' : 'bg-secondary'}">
                                     ${type.is_activate ? '활성화' : '비활성화'}
                                 </span>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-primary edit-schedule-type-button" data-type="${type.schedule_type}">수정</button>
-                                <button class="btn btn-sm btn-danger delete-schedule-type-button" data-type="${type.schedule_type}">삭제</button>
-                            </td>
+                            <td data-label="Actions"><div class="table-row-actions"><button class="btn btn-sm btn-primary edit-schedule-type-button" data-type="${type.schedule_type}">수정</button><button class="btn btn-sm btn-danger delete-schedule-type-button" data-type="${type.schedule_type}">삭제</button></div></td>
                         `;
 
                         tableBody.appendChild(row);
@@ -2157,28 +2434,30 @@
 
             // 일정 유형 이벤트 리스너 추가
             function addScheduleTypeEventListeners() {
-                // 추가 버튼
+                if (scheduleTypeEventsBound) {
+                    return;
+                }
+                scheduleTypeEventsBound = true;
+
                 document.getElementById('addScheduleTypeButton').addEventListener('click', () => {
                     showScheduleTypeModal('add');
                 });
-
-                // 저장 버튼
                 document.getElementById('saveScheduleTypeButton').addEventListener('click', saveScheduleType);
 
-                // 수정 버튼들
-                document.querySelectorAll('.edit-schedule-type-button').forEach(button => {
-                    button.addEventListener('click', function () {
-                        const scheduleType = this.getAttribute('data-type');
+                const tableBody = document.getElementById('scheduleTypeTableBody');
+                tableBody.addEventListener('click', function (event) {
+                    const editButton = event.target.closest('.edit-schedule-type-button');
+                    if (editButton) {
+                        const scheduleType = editButton.getAttribute('data-type');
                         showScheduleTypeModal('edit', scheduleType);
-                    });
-                });
+                        return;
+                    }
 
-                // 삭제 버튼들
-                document.querySelectorAll('.delete-schedule-type-button').forEach(button => {
-                    button.addEventListener('click', function () {
-                        const scheduleType = this.getAttribute('data-type');
+                    const deleteButton = event.target.closest('.delete-schedule-type-button');
+                    if (deleteButton) {
+                        const scheduleType = deleteButton.getAttribute('data-type');
                         deleteScheduleType(scheduleType);
-                    });
+                    }
                 });
             }
 
@@ -2254,6 +2533,9 @@
                 $(document).on('keydown', function (e) {
                     if (e.key === 'Escape') {
                         console.log('ESC 키 감지됨');
+                        if (sidebar.classList.contains('active') && !document.querySelector('.modal.show')) {
+                            closeSidebar();
+                        }
                         setTimeout(resetPageScrolling, 50);
                     }
                 });
@@ -2458,7 +2740,7 @@
                     if (exceptions.length === 0) {
                         // 데이터가 없는 경우
                         const row = document.createElement('tr');
-                        row.innerHTML = `<td colspan="5" class="text-center">등록된 일정 예외가 없습니다.</td>`;
+                        row.innerHTML = `<td colspan="5" class="text-center table-empty">등록된 일정 예외가 없습니다.</td>`;
                         tableBody.appendChild(row);
                     } else {
                         exceptions.forEach(exception => {
@@ -2484,14 +2766,11 @@
                                 : '<span class="badge bg-secondary">비활성화</span>';
 
                             row.innerHTML = `
-                                <td>${formattedDate}</td>
-                                <td>${exception.schedule_type_name || exception.schedule_type}</td>
-                                <td>${exception.reason || '-'}</td>
-                                <td class="text-center">${statusBadge}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary edit-exception-button" data-id="${exception.id}">수정</button>
-                                    <button class="btn btn-sm btn-danger delete-exception-button" data-id="${exception.id}">삭제</button>
-                                </td>
+                                <td data-label="Period">${formattedDate}</td>
+                                <td data-label="Type">${exception.schedule_type_name || exception.schedule_type}</td>
+                                <td data-label="Reason">${exception.reason || '-'}</td>
+                                <td data-label="Status" class="text-center">${statusBadge}</td>
+                                <td data-label="Actions"><div class="table-row-actions"><button class="btn btn-sm btn-primary edit-exception-button" data-id="${exception.id}">수정</button><button class="btn btn-sm btn-danger delete-exception-button" data-id="${exception.id}">삭제</button></div></td>
                             `;
 
                             tableBody.appendChild(row);
@@ -2509,36 +2788,31 @@
 
             // 일정 예외 이벤트 리스너 추가
             function addScheduleExceptionEventListeners() {
-                console.log('일정 예외 이벤트 리스너 추가 시작');
+                if (scheduleExceptionEventsBound) {
+                    return;
+                }
+                scheduleExceptionEventsBound = true;
 
-                // 추가 버튼
                 document.getElementById('addScheduleExceptionButton').addEventListener('click', () => {
-                    console.log('일정 예외 추가 버튼 클릭');
                     showScheduleExceptionModal('add');
                 });
-
-                // 저장 버튼
                 document.getElementById('saveScheduleExceptionButton').addEventListener('click', saveScheduleException);
 
-                // 수정 버튼들
-                document.querySelectorAll('.edit-exception-button').forEach(button => {
-                    button.addEventListener('click', function () {
-                        const exceptionId = this.getAttribute('data-id');
-                        console.log('일정 예외 수정 버튼 클릭 - ID:', exceptionId);
+                const tableBody = document.getElementById('scheduleExceptionTableBody');
+                tableBody.addEventListener('click', function (event) {
+                    const editButton = event.target.closest('.edit-exception-button');
+                    if (editButton) {
+                        const exceptionId = editButton.getAttribute('data-id');
                         showScheduleExceptionModal('edit', exceptionId);
-                    });
-                });
+                        return;
+                    }
 
-                // 삭제 버튼들
-                document.querySelectorAll('.delete-exception-button').forEach(button => {
-                    button.addEventListener('click', function () {
-                        const exceptionId = this.getAttribute('data-id');
-                        console.log('일정 예외 삭제 버튼 클릭 - ID:', exceptionId);
+                    const deleteButton = event.target.closest('.delete-exception-button');
+                    if (deleteButton) {
+                        const exceptionId = deleteButton.getAttribute('data-id');
                         deleteScheduleException(exceptionId);
-                    });
+                    }
                 });
-
-                console.log('일정 예외 이벤트 리스너 추가 완료');
             }
 
             // 일정 예외 모달 표시
@@ -2845,18 +3119,27 @@
                 }
             }
 
-            // 페이지 로드 시 이벤트도 추가
-            document.addEventListener('DOMContentLoaded', function () {
-                // 페이지 초기 상태 초기화 (이전에 남아있을 수 있는 모달 백드롭 등 제거)
-                setTimeout(resetPageScrolling, 100);
+            // 페이지 초기 상태 초기화 (이전에 남아있을 수 있는 모달 백드롭 등 제거)
+            setTimeout(resetPageScrolling, 100);
 
-                // jQuery가 로드되지 않은 경우 폴백
-                if (typeof jQuery === 'undefined') {
-                    console.warn('jQuery가 로드되지 않았습니다. 폴백 방법을 사용합니다.');
+            // jQuery가 로드되지 않은 경우 폴백
+            if (typeof jQuery === 'undefined') {
+                console.warn('jQuery가 로드되지 않았습니다. 폴백 방법을 사용합니다.');
 
-                    // CSS 스타일 추가 (강제 스크롤 초기화용)
-                    const style = document.createElement('style');
-                    style.textContent = `
+                const style = document.createElement('style');
+                style.textContent = `
+                    .force-scroll-reset {
+                        overflow: auto !important;
+                    }
+                    body.modal-open {
+                        overflow: auto !important;
+                        padding-right: 0 !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            } else {
+                $('<style>')
+                    .text(`
                         .force-scroll-reset {
                             overflow: auto !important;
                         }
@@ -2864,36 +3147,12 @@
                             overflow: auto !important;
                             padding-right: 0 !important;
                         }
-                    `;
-                    document.head.appendChild(style);
-                } else {
-                    // CSS 스타일 추가 (jQuery 사용)
-                    $('<style>')
-                        .text(`
-                            .force-scroll-reset {
-                                overflow: auto !important;
-                            }
-                            body.modal-open {
-                                overflow: auto !important;
-                                padding-right: 0 !important;
-                            }
-                        `)
-                        .appendTo('head');
-                }
+                    `)
+                    .appendTo('head');
+            }
 
-                // 일정 예외 추가 버튼
-                const addScheduleExceptionButton = document.getElementById('addScheduleExceptionButton');
-                if (addScheduleExceptionButton) {
-                    addScheduleExceptionButton.addEventListener('click', () => {
-                        showScheduleExceptionModal('add');
-                    });
-                }
-
-                // 모달 관련 이벤트 처리 초기화
-                setupModals();
-
-                console.log('페이지 초기화 완료');
-            });
+            setupModals();
+            console.log('페이지 초기화 완료');
         });
     </script>
 </body>

@@ -224,6 +224,10 @@
             animation: shake 0.5s ease;
         }
 
+        .is-hidden {
+            display: none;
+        }
+
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -304,7 +308,7 @@
                     </button>
                 </form>
                 
-                <div id="errorMessage" class="error-alert" style="display: none;">
+                <div id="errorMessage" class="error-alert is-hidden">
                     <p>{{ error }}</p>
                 </div>
                 
@@ -322,7 +326,7 @@
             const errorElement = document.getElementById('errorMessage');
             
             if (error && error.trim() !== 'None' && error.trim() !== '') {
-                errorElement.style.display = 'flex';
+                errorElement.classList.remove('is-hidden');
             }
             
             // URL 매개변수에서 리다이렉트 경로 가져오기
@@ -338,68 +342,23 @@
             
             // 로그인 폼 제출 처리
             const loginForm = document.getElementById('loginForm');
-            loginForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
+            loginForm.addEventListener('submit', function(e) {
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 const redirect = document.getElementById('redirect').value;
                 
                 if (!email || !password) {
+                    e.preventDefault();
                     showError('이메일과 비밀번호를 모두 입력해주세요');
                     return;
                 }
-                
-                try {
-                    // 일반 폼 제출 방식으로 처리 (리디렉션이 자동으로 처리됨)
-                    const formData = new FormData();
-                    formData.append('email', email);
-                    formData.append('password', password);
-                    if (redirect) {
-                        formData.append('redirect', redirect);
-                    }
-                    
-                    // 폼 제출
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '/admin/login';
-                    
-                    // 이메일 필드 추가
-                    const emailField = document.createElement('input');
-                    emailField.type = 'hidden';
-                    emailField.name = 'email';
-                    emailField.value = email;
-                    form.appendChild(emailField);
-                    
-                    // 비밀번호 필드 추가
-                    const passwordField = document.createElement('input');
-                    passwordField.type = 'hidden';
-                    passwordField.name = 'password';
-                    passwordField.value = password;
-                    form.appendChild(passwordField);
-                    
-                    // 리다이렉트 필드 추가
-                    if (redirect) {
-                        const redirectField = document.createElement('input');
-                        redirectField.type = 'hidden';
-                        redirectField.name = 'redirect';
-                        redirectField.value = redirect;
-                        form.appendChild(redirectField);
-                    }
-                    
-                    // 폼을 문서에 추가하고 제출
-                    document.body.appendChild(form);
-                    form.submit();
-                } catch (error) {
-                    showError('로그인 중 오류가 발생했습니다');
-                    console.error('Login error:', error);
-                }
+                loginForm.action = '/admin/login';
             });
             
             // 에러 메시지 표시 함수
             function showError(message) {
                 errorElement.querySelector('p').textContent = message;
-                errorElement.style.display = 'flex';
+                errorElement.classList.remove('is-hidden');
             }
         });
     </script>

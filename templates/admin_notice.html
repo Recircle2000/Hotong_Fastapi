@@ -38,12 +38,18 @@
             color: #333;
             line-height: 1.6;
             word-break: keep-all;
+            overflow-x: hidden;
+        }
+
+        body.sidebar-open,
+        body.modal-open {
+            overflow: hidden;
         }
 
         /* 레이아웃 */
         .wrapper {
             display: flex;
-            min-height: 100vh;
+            min-height: 100dvh;
         }
 
         /* 사이드바 */
@@ -52,10 +58,19 @@
             background: var(--dark);
             color: var(--white);
             position: fixed;
-            height: 100vh;
+            height: 100dvh;
             z-index: 1000;
             transition: var(--transition);
             box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 990;
         }
 
         .sidebar-header {
@@ -150,6 +165,7 @@
         .main-content {
             flex: 1;
             margin-left: var(--sidebar-width);
+            min-width: 0;
             transition: var(--transition);
         }
 
@@ -198,6 +214,7 @@
         /* 콘텐츠 영역 */
         .content {
             padding: 2rem;
+            min-width: 0;
         }
 
         .page-title {
@@ -215,6 +232,30 @@
             box-shadow: var(--shadow);
             padding: 1.5rem;
             margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            margin-bottom: 0;
+            box-shadow: none;
+            background: #f8f9fa;
+            text-align: center;
+        }
+
+        .stat-value {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .stat-value-primary {
+            color: var(--primary);
+        }
+
+        .stat-value-success {
+            color: var(--success);
+        }
+
+        .stat-label {
+            margin: 0;
         }
 
         .section-title {
@@ -375,6 +416,12 @@
             font-size: 0.85rem;
         }
 
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
         .btn-add::before {
             content: "➕";
         }
@@ -391,6 +438,7 @@
         .table-responsive {
             overflow-x: auto;
             margin-top: 1rem;
+            -webkit-overflow-scrolling: touch;
         }
 
         .table {
@@ -529,19 +577,21 @@
             transform: translate(-50%, -50%);
             width: 95%;
             max-width: 1100px;
-            max-height: 90vh;
+            max-height: 92dvh;
             background: var(--white);
             border-radius: var(--radius);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             z-index: 1060;
             animation: slideIn 0.3s ease;
             overflow: hidden;
+            flex-direction: column;
         }
 
         .notice-form-modal {
             width: 98%;
             max-width: 1200px;
-            max-height: 90vh;
+            max-height: 92dvh;
+            overflow: visible;
         }
 
         .modal-header {
@@ -592,8 +642,9 @@
 
         .modal-body {
             padding: 1.5rem;
-            max-height: calc(90vh - 150px);
+            max-height: calc(92dvh - 150px);
             overflow-y: auto;
+            overflow-x: visible;
         }
 
         .modal-footer {
@@ -637,6 +688,29 @@
             margin-right: 0.5rem;
         }
 
+        .modal-body .toastui-editor-defaultUI,
+        .modal-body .toastui-editor-main {
+            min-width: 0;
+        }
+
+        .notice-form-modal .toastui-editor-defaultUI {
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        .notice-form-modal .toastui-editor-toolbar {
+            position: relative;
+            z-index: 2;
+        }
+
+        .notice-form-modal .toastui-editor-dropdown-toolbar,
+        .notice-form-modal .toastui-editor-popup,
+        .notice-form-modal .toastui-editor-context-menu {
+            z-index: 100;
+            pointer-events: auto;
+        }
+
         /* 애니메이션 */
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -653,6 +727,10 @@
             .sidebar {
                 transform: translateX(-100%);
             }
+
+            .sidebar-backdrop.active {
+                display: block;
+            }
             
             .main-content {
                 margin-left: 0;
@@ -666,7 +744,7 @@
                 transform: translateX(0);
             }
             
-            .sidebar.active + .main-content {
+            .sidebar.active ~ .main-content {
                 margin-left: 0;
             }
             
@@ -677,41 +755,213 @@
 
         @media (max-width: 768px) {
             .content {
-                padding: 1.5rem 1rem;
+                padding: 1.25rem 0.9rem;
             }
-            
+
+            .section {
+                padding: 1rem;
+                margin-bottom: 1.25rem;
+            }
+
             .header {
-                padding: 0 1rem;
+                padding: 0 0.9rem;
             }
-            
-            .table th, 
+
+            .page-title h1 {
+                font-size: 1.35rem;
+            }
+
+            .table-responsive {
+                overflow-x: visible;
+            }
+
+            .table {
+                white-space: normal;
+                min-width: 100%;
+                table-layout: auto;
+                border-collapse: separate;
+                border-spacing: 0 0.75rem;
+                margin-top: -0.75rem;
+            }
+
+            .table thead {
+                display: none;
+            }
+
+            .table tbody,
+            .table tr,
+            .table td {
+                display: block;
+                width: 100%;
+            }
+
+            .table tr {
+                background: var(--white);
+                border: 1px solid #e9ecef;
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
             .table td {
                 padding: 0.75rem;
+                border-bottom: 1px solid #eef1f4;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                vertical-align: top;
+                display: grid;
+                grid-template-columns: 92px minmax(0, 1fr);
+                gap: 0.6rem;
+                align-items: start;
             }
-            
+
+            .table td:last-child {
+                border-bottom: none;
+            }
+
+            .table td::before {
+                content: attr(data-label);
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: var(--secondary);
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            .table td[data-label="Actions"] .table-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .table td[data-label="Actions"] .btn,
+            .table td[data-label="Actions"] .btn-sm {
+                width: 100%;
+            }
+
+            .table th[width] {
+                width: auto !important;
+            }
+
             .btn {
-                padding: 0.7rem 1.2rem;
+                padding: 0.7rem 1rem;
+            }
+
+            .content-cell {
+                max-width: none;
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
+                display: block;
+                -webkit-line-clamp: unset;
+                -webkit-box-orient: initial;
+            }
+
+            .modal,
+            .notice-form-modal {
+                width: calc(100% - 1rem);
+                max-width: 100%;
+                max-height: calc(100dvh - 1rem);
+            }
+
+            .modal-header,
+            .modal-body,
+            .modal-footer {
+                padding: 1rem;
+            }
+
+            .modal-body {
+                max-height: calc(100dvh - 180px);
+            }
+
+            .modal-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .form-switch-inline {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .modal-footer {
+                flex-wrap: wrap;
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 calc(50% - 0.25rem);
+            }
+
+            .modal-footer .btn:only-child {
+                flex-basis: 100%;
+            }
+
+            .notice-content {
+                max-height: 42dvh;
             }
         }
 
         @media (max-width: 576px) {
+            .content {
+                padding: 1rem 0.75rem;
+            }
+
+            .header {
+                padding: 0 0.75rem;
+            }
+
+            .user-name {
+                display: none;
+            }
+
             .page-title {
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .page-title .btn {
+                width: 100%;
             }
             
             .table-actions {
                 flex-direction: column;
                 gap: 0.5rem;
             }
+
+            .table td {
+                grid-template-columns: 1fr;
+                gap: 0.35rem;
+                padding: 0.65rem 0.75rem;
+            }
+
+            .table td::before {
+                font-size: 0.72rem;
+                text-transform: none;
+            }
             
             .btn-sm {
                 width: 100%;
             }
             
-            .modal {
-                width: 95%;
+            .modal,
+            .notice-form-modal {
+                width: calc(100% - 0.5rem);
+                max-height: calc(100dvh - 0.5rem);
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 100%;
+            }
+
+            .notice-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .notice-info > div {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.4rem;
             }
         }
     </style>
@@ -719,8 +969,6 @@
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
     <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
     <!-- Toast UI Editor Viewer 추가 -->
-    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" />
-    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer-all.min.js"></script>
 </head>
 <body>
     <div class="wrapper">
@@ -749,6 +997,7 @@
                 </a>
             </div>
         </aside>
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <!-- 메인 콘텐츠 -->
         <div class="main-content">
@@ -778,19 +1027,19 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <div class="section" style="margin-bottom: 0; box-shadow: none; background: #f8f9fa;">
-                                <h3 style="margin: 0; font-size: 2rem; text-align: center; color: var(--primary);">
+                            <div class="section stat-card">
+                                <h3 class="stat-value stat-value-primary">
                                     {{ notices|length }}
                                 </h3>
-                                <p style="text-align: center; margin: 0;">전체 공지사항</p>
+                                <p class="stat-label">전체 공지사항</p>
                             </div>
                         </div>
                         <div class="form-group">
-                            <div class="section" style="margin-bottom: 0; box-shadow: none; background: #f8f9fa;">
-                                <h3 style="margin: 0; font-size: 2rem; text-align: center; color: var(--success);">
+                            <div class="section stat-card">
+                                <h3 class="stat-value stat-value-success">
                                     {{ notices|selectattr('is_pinned')|list|length }}
                                 </h3>
-                                <p style="text-align: center; margin: 0;">고정된 공지</p>
+                                <p class="stat-label">고정된 공지</p>
                             </div>
                         </div>
                     </div>
@@ -817,9 +1066,12 @@
                             <tbody>
                                 {% for notice in notices %}
                                 <tr>
-                                    <td>{{ notice.id }}</td>
-                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">{{ notice.title }}</td>
-                                    <td>
+                                    <td data-label="ID">
+                                        {{ notice.id }}
+                                        <textarea class="notice-content-source" hidden>{{ notice.content }}</textarea>
+                                    </td>
+                                    <td data-label="Title" class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">{{ notice.title }}</td>
+                                    <td data-label="Type">
                                         {% if notice.notice_type %}
                                             {% if notice.notice_type.value == 'App' %}
                                             <span class="badge badge-primary">앱</span>
@@ -834,23 +1086,22 @@
                                         <span class="badge badge-primary">앱</span>
                                         {% endif %}
                                     </td>
-                                    <td class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">
+                                    <td data-label="Content" class="content-cell clickable" data-id="{{ notice.id }}" data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}" data-date="{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}" data-pinned="{{ notice.is_pinned }}" data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">
                                         {{ notice.content }}
                                     </td>
-                                    <td>
+                                    <td data-label="Status">
                                         {% if notice.is_pinned %}
                                         <span class="badge badge-success">상단고정</span>
                                         {% else %}
                                         <span class="badge badge-secondary">일반</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td>
+                                    <td data-label="Created">{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td data-label="Actions">
                                         <div class="table-actions">
                                             <button class="btn btn-primary btn-sm btn-edit edit-btn" 
                                                     data-id="{{ notice.id }}"
                                                     data-title="{{ notice.title|replace('"', '&quot;')|replace("'", "&#39;") }}"
-                                                    data-content="{{ notice.content|replace('"', '&quot;')|replace("'", "&#39;") }}"
                                                     data-pinned="{{ notice.is_pinned }}"
                                                     data-type="{{ notice.notice_type.value if notice.notice_type else 'App' }}">
                                                 수정
@@ -991,33 +1242,113 @@
     </div>
 
     <script>
-        // 사이드바 토글
-        document.getElementById('sidebarToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
+        const body = document.body;
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const sidebarToggle = document.getElementById('sidebarToggle');
 
-        // 모달 제어
         const modalBackdrop = document.getElementById('modalBackdrop');
         const createModal = document.getElementById('createModal');
         const editModal = document.getElementById('editModal');
         const noticeDetailModal = document.getElementById('noticeDetailModal');
-        
-        // 새 공지 모달 열기
-        document.getElementById('newNoticeBtn').addEventListener('click', function() {
-            createModal.style.display = 'block';
+
+        function openSidebar() {
+            sidebar.classList.add('active');
+            sidebarBackdrop.classList.add('active');
+            body.classList.add('sidebar-open');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('active');
+            sidebarBackdrop.classList.remove('active');
+            body.classList.remove('sidebar-open');
+        }
+
+        sidebarToggle.addEventListener('click', function () {
+            if (sidebar.classList.contains('active')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+        sidebarBackdrop.addEventListener('click', closeSidebar);
+        document.querySelectorAll('.sidebar .nav-item').forEach(function (item) {
+            item.addEventListener('click', closeSidebar);
+        });
+
+        function openModal(modal) {
+            closeSidebar();
+            modal.style.display = 'flex';
             modalBackdrop.style.display = 'block';
+            body.classList.add('modal-open');
+        }
+
+        function closeAllModals() {
+            createModal.style.display = 'none';
+            editModal.style.display = 'none';
+            noticeDetailModal.style.display = 'none';
+            modalBackdrop.style.display = 'none';
+            body.classList.remove('modal-open');
+            noticeDetailModal.classList.remove('notice-detail-modal');
+            if (window.detailViewer) {
+                window.detailViewer.destroy();
+                window.detailViewer = null;
+            }
+        }
+
+        const isCompactViewport = () => window.matchMedia('(max-width: 992px)').matches;
+        const getEditorHeight = () => (window.matchMedia('(max-width: 768px)').matches ? '300px' : '450px');
+        const getEditorPreviewStyle = () => (isCompactViewport() ? 'tab' : 'vertical');
+        const createEditor = new toastui.Editor({
+            el: document.querySelector('#createContentEditor'),
+            height: getEditorHeight(),
+            initialEditType: 'markdown',
+            previewStyle: getEditorPreviewStyle()
+        });
+
+        const editEditor = new toastui.Editor({
+            el: document.querySelector('#editContentEditor'),
+            height: getEditorHeight(),
+            initialEditType: 'markdown',
+            previewStyle: getEditorPreviewStyle()
+        });
+
+        function syncEditorViewport() {
+            const nextHeight = getEditorHeight();
+            const nextPreviewStyle = getEditorPreviewStyle();
+            [createEditor, editEditor].forEach(function (editor) {
+                editor.setHeight(nextHeight);
+                if (typeof editor.changePreviewStyle === 'function') {
+                    editor.changePreviewStyle(nextPreviewStyle);
+                }
+            });
+        }
+
+        window.addEventListener('resize', syncEditorViewport);
+        syncEditorViewport();
+
+        function getContentFromRowElement(element) {
+            const row = element.closest('tr');
+            if (!row) {
+                return '';
+            }
+            const source = row.querySelector('.notice-content-source');
+            return source ? source.value : '';
+        }
+
+        document.getElementById('newNoticeBtn').addEventListener('click', function () {
+            openModal(createModal);
             document.getElementById('createForm').reset();
             createEditor.setMarkdown('');
         });
-        
-        // 공지사항 상세 보기 모달 열기
+
         function showNoticeDetail(title, content, date, isPinned, type) {
             document.getElementById('detailTitle').textContent = title;
             document.getElementById('detailDate').textContent = '작성일: ' + date;
-            // 유형 표시
+
             let typeText = '';
             let typeClass = '';
-            switch(type) {
+            switch (type) {
                 case 'App':
                     typeText = '앱';
                     typeClass = 'badge badge-primary';
@@ -1038,50 +1369,43 @@
                     typeText = '앱';
                     typeClass = 'badge badge-primary';
             }
-            document.getElementById('detailType').innerHTML = `<span class="${typeClass}">${typeText}</span> `;
+            document.getElementById('detailType').innerHTML = `<span class="${typeClass}">${typeText}</span>`;
             const statusText = isPinned === 'True' ? '상단고정' : '일반';
             const statusClass = isPinned === 'True' ? 'badge badge-success' : 'badge badge-secondary';
             document.getElementById('detailStatus').innerHTML = `<span class="${statusClass}">${statusText}</span>`;
 
-            // 마크다운 렌더링 (Toast UI Viewer)
             const detailContentEl = document.getElementById('detailContent');
-            // 기존 Viewer 인스턴스 제거
             if (window.detailViewer) {
                 window.detailViewer.destroy();
                 window.detailViewer = null;
             }
-            // detailContent 내부 비우기
             detailContentEl.innerHTML = '';
-            // Viewer 생성
             window.detailViewer = new toastui.Editor.factory({
                 el: detailContentEl,
                 viewer: true,
                 initialValue: content
             });
 
-            noticeDetailModal.style.display = 'block';
-            modalBackdrop.style.display = 'block';
             noticeDetailModal.classList.add('notice-detail-modal');
+            openModal(noticeDetailModal);
         }
-        
-        // 클릭 가능한 셀에 이벤트 리스너 추가
-        document.querySelectorAll('.clickable').forEach(cell => {
-            cell.addEventListener('click', function() {
+
+        document.querySelectorAll('.clickable').forEach(function (cell) {
+            cell.addEventListener('click', function () {
                 const title = this.getAttribute('data-title');
-                const content = this.getAttribute('data-content');
+                const content = getContentFromRowElement(this);
                 const date = this.getAttribute('data-date');
                 const isPinned = this.getAttribute('data-pinned');
                 const type = this.getAttribute('data-type');
                 showNoticeDetail(title, content, date, isPinned, type);
             });
         });
-        
-        // 수정 버튼 클릭 이벤트
-        document.querySelectorAll('.edit-btn').forEach(button => {
-            button.addEventListener('click', function() {
+
+        document.querySelectorAll('.edit-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
                 const id = this.getAttribute('data-id');
                 const title = this.getAttribute('data-title');
-                const content = this.getAttribute('data-content');
+                const content = getContentFromRowElement(this);
                 const isPinned = this.getAttribute('data-pinned') === 'True';
                 const type = this.getAttribute('data-type');
 
@@ -1089,16 +1413,13 @@
                 document.getElementById('editTitle').value = title;
                 document.getElementById('editPinned').checked = isPinned;
                 document.getElementById('editType').value = type;
-
-                openEditModal(content);
-                editModal.style.display = 'block';
-                modalBackdrop.style.display = 'block';
+                editEditor.setMarkdown(content || '');
+                openModal(editModal);
             });
         });
-        
-        // 삭제 버튼 클릭 이벤트
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', function() {
+
+        document.querySelectorAll('.delete-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
                 const id = this.getAttribute('data-id');
                 if (confirm('정말 삭제하시겠습니까?')) {
                     const form = document.createElement('form');
@@ -1109,67 +1430,32 @@
                 }
             });
         });
-        
-        // 모달 닫기 버튼들
-        document.querySelectorAll('.modal-close, .modal-close-btn').forEach(button => {
+
+        document.querySelectorAll('.modal-close, .modal-close-btn').forEach(function (button) {
             button.addEventListener('click', closeAllModals);
         });
-        
-        // 모달 외부 클릭시 닫기
         modalBackdrop.addEventListener('click', closeAllModals);
-        
-        function closeAllModals() {
-            createModal.style.display = 'none';
-            editModal.style.display = 'none';
-            noticeDetailModal.style.display = 'none';
-            modalBackdrop.style.display = 'none';
-            // 모달 크기 조정 클래스 제거
-            noticeDetailModal.classList.remove('notice-detail-modal');
-            // 상세보기 Viewer 인스턴스 제거
-            if (window.detailViewer) {
-                window.detailViewer.destroy();
-                window.detailViewer = null;
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') {
+                return;
             }
-        }
-        
-        // ESC 키로 모달 닫기
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
+            if (modalBackdrop.style.display === 'block') {
                 closeAllModals();
+                return;
+            }
+            if (sidebar.classList.contains('active')) {
+                closeSidebar();
             }
         });
 
-        // Toast UI Editor 초기화 및 submit 시 마크다운 값 hidden input에 넣는 JS
-        // 작성용 에디터
-        const createEditor = new toastui.Editor({
-            el: document.querySelector('#createContentEditor'),
-            height: '450px',
-            initialEditType: 'markdown',
-            previewStyle: 'vertical'
-        });
-
-        // 수정용 에디터
-        const editEditor = new toastui.Editor({
-            el: document.querySelector('#editContentEditor'),
-            height: '450px',
-            initialEditType: 'markdown',
-            previewStyle: 'vertical'
-        });
-
-        // 작성 폼 제출 시 마크다운 내용을 hidden input에 넣음
-        document.getElementById('createForm').addEventListener('submit', function(e) {
+        document.getElementById('createForm').addEventListener('submit', function () {
             document.getElementById('createContent').value = createEditor.getMarkdown();
         });
 
-        // 수정 폼 제출 시 마크다운 내용을 hidden input에 넣음
-        document.getElementById('editForm').addEventListener('submit', function(e) {
+        document.getElementById('editForm').addEventListener('submit', function () {
             document.getElementById('editContent').value = editEditor.getMarkdown();
         });
-
-        // 수정 모달 열릴 때 기존 내용 세팅 (실제 데이터 바인딩 필요)
-        function openEditModal(existingMarkdown) {
-            editEditor.setMarkdown(existingMarkdown || '');
-        }
     </script>
 </body>
 </html> 
