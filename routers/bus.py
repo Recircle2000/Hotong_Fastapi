@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 import asyncio
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Optional, Tuple
 import httpx
 import os
 import json
@@ -79,15 +79,19 @@ active_connections: Set[WebSocket] = set()
 bus_clients_event = asyncio.Event()
 
 # 시간표 데이터 저장
-bus_timetable = {}
+bus_timetable: Dict[str, dict] = {}
+# 파싱된 시간표 캐시 (문자열 파싱 비용 절감)
+parsed_bus_timetable: Dict[str, List[Tuple[int, int]]] = {}
 # 시간표 파일의 마지막 수정 시간
 last_timetable_update = 0
+# 재사용 HTTP 클라이언트
+bus_http_client: Optional[httpx.AsyncClient] = None
 
 logging.basicConfig(level=logging.INFO)
 
 
 def load_bus_timetable():
-    global last_timetable_update, bus_timetable
+    global last_timetable_update, bus_timetable, parsed_bus_timetable
     try:
         file_path = 'bus_times.json'
         current_mtime = os.path.getmtime(file_path)
@@ -95,6 +99,19 @@ def load_bus_timetable():
             with open(file_path, 'r', encoding='utf-8') as f:
                 bus_timetable.clear()
                 bus_timetable.update(json.load(f))
+                parsed_bus_timetable.clear()
+                for route_name in SCHEDULED_ROUTES:
+                    if route_name not in bus_timetable:
+                        continue
+                    timetable = bus_timetable[route_name].get("시간표", [])
+                    parsed_times: List[Tuple[int, int]] = []
+                    for departure_time in timetable:
+                        try:
+                            departure_hour, departure_minute = map(int, departure_time.split(":"))
+                            parsed_times.append((departure_hour, departure_minute))
+                        except Exception:
+                            continue
+                    parsed_bus_timetable[route_name] = parsed_times
                 last_timetable_update = current_mtime
                 logging.debug(f"버스 시간표가 업데이트되었습니다: {datetime.fromtimestamp(current_mtime)}")
     except Exception as e:
@@ -120,21 +137,17 @@ def should_check_route(route_name):
         return is_check
 
     # 시간표 기반 노선들
-    if route_name in SCHEDULED_ROUTES and route_name in bus_timetable:
+    if route_name in SCHEDULED_ROUTES and route_name in parsed_bus_timetable:
         # 시간표 확인
-        timetable = bus_timetable[route_name]["시간표"]
+        timetable = parsed_bus_timetable[route_name]
 
         # 현재 시간
         current_datetime = datetime.now()
-        current_time_str = current_datetime.strftime("%H:%M")
 
         # 노선의 운행 여부 확인
-        for departure_time in timetable:
-            # 출발 시간을 datetime 객체로 변환
+        for departure_hour, departure_minute in timetable:
+            # 파싱 캐시된 출발 시간을 datetime 객체로 변환
             try:
-                departure_parts = departure_time.split(":")
-                departure_hour = int(departure_parts[0])
-                departure_minute = int(departure_parts[1])
                 departure_datetime = current_datetime.replace(hour=departure_hour, minute=departure_minute, second=0,
                                                               microsecond=0)
 
@@ -173,37 +186,42 @@ def should_check_route(route_name):
     return False
 
 
-async def fetch_bus_data(route_name, route_id) -> Optional[List[dict]]:
+async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool] = None) -> Optional[List[dict]]:
+    global bus_http_client
     # 해당 노선을 체크해야 하는지 확인
-    if not should_check_route(route_name):
+    if route_should_check is None:
+        route_should_check = should_check_route(route_name)
+
+    if not route_should_check:
         # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
-        if get_cache(route_name):
-            delete_cache(route_name)
+        delete_cache(route_name)
         # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
         return None
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(build_api_url(route_id, route_name))
-            response.raise_for_status()
-            data = response.json()
+    if bus_http_client is None or bus_http_client.is_closed:
+        bus_http_client = httpx.AsyncClient()
 
-            # 데이터가 없는 경우 처리
-            if not data["response"]["body"]["items"]:
-                delete_cache(route_name)
-                return None
+    try:
+        response = await bus_http_client.get(build_api_url(route_id, route_name))
+        response.raise_for_status()
+        data = response.json()
 
-            items = data["response"]["body"]["items"]["item"]
-            if isinstance(items, dict):
-                items = [items]
-
-            # Redis에 저장 (TTL BUS_CACHE_TTL 초)
-            set_cache(route_name, items, BUS_CACHE_TTL)
-            # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
-            return items
-        except Exception as e:
-            logging.error(f"[{route_name}] API 호출 오류: {e}")
+        # 데이터가 없는 경우 처리
+        if not data["response"]["body"]["items"]:
+            delete_cache(route_name)
             return None
+
+        items = data["response"]["body"]["items"]["item"]
+        if isinstance(items, dict):
+            items = [items]
+
+        # Redis에 저장 (TTL BUS_CACHE_TTL 초)
+        set_cache(route_name, items, BUS_CACHE_TTL)
+        # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
+        return items
+    except Exception as e:
+        logging.error(f"[{route_name}] API 호출 오류: {e}")
+        return None
 
 
 async def update_bus_cache():
@@ -215,8 +233,9 @@ async def update_bus_cache():
         load_bus_timetable()
         tasks = []
         for route_name, route_id in ROUTES.items():
-            if should_check_route(route_name):
-                tasks.append(fetch_bus_data(route_name, route_id))
+            route_should_check = should_check_route(route_name)
+            if route_should_check:
+                tasks.append(fetch_bus_data(route_name, route_id, route_should_check=route_should_check))
 
         if tasks:
             await asyncio.gather(*tasks)
@@ -329,16 +348,22 @@ async def get_all_buses():
     """
     target_routes = ["24_DOWN", "81_DOWN"]
     result = {}
+    route_cache: Dict[str, Optional[List[dict]]] = {}
 
     # 1. Fetch data for all routes concurrently if needed
     fetch_tasks = []
     for route_name in target_routes:
         if route_name not in ROUTES:
             continue
-            
-        if not get_cache(route_name) and should_check_route(route_name):
-            route_id = ROUTES[route_name]
-            fetch_tasks.append(fetch_bus_data(route_name, route_id))
+
+        cached_data = get_cache(route_name)
+        route_cache[route_name] = cached_data
+
+        if not cached_data:
+            route_should_check = should_check_route(route_name)
+            if route_should_check:
+                route_id = ROUTES[route_name]
+                fetch_tasks.append(fetch_bus_data(route_name, route_id, route_should_check=route_should_check))
 
     if fetch_tasks:
         await asyncio.gather(*fetch_tasks)
@@ -347,8 +372,10 @@ async def get_all_buses():
     for route_name in target_routes:
         if route_name not in ROUTES:
             continue
-            
-        cached_data = get_cache(route_name)
+
+        cached_data = route_cache.get(route_name)
+        if not cached_data:
+            cached_data = get_cache(route_name)
 
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
@@ -375,8 +402,9 @@ async def get_bus_by_route(route_name: str):
     cached_data = get_cache(route_name)
     if not cached_data:
         # 캐시에 없으면 실시간 조회 시도
-        if should_check_route(route_name):
-            await fetch_bus_data(route_name, ROUTES[route_name])
+        route_should_check = should_check_route(route_name)
+        if route_should_check:
+            await fetch_bus_data(route_name, ROUTES[route_name], route_should_check=route_should_check)
             cached_data = get_cache(route_name)
     
     if not cached_data:
@@ -384,6 +412,14 @@ async def get_bus_by_route(route_name: str):
         raise HTTPException(status_code=404, detail="No bus data found for this route")
         
     return {route_name: cached_data}
+
+
+@router.on_event("shutdown")
+async def shutdown_event():
+    global bus_http_client
+    if bus_http_client and not bus_http_client.is_closed:
+        await bus_http_client.aclose()
+        bus_http_client = None
 
 
 @router.post("/cache/invalidate")

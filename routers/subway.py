@@ -26,6 +26,14 @@ SUBWAY_CACHE_TTL = 10  # 30초마다 업데이트
 # 웹소켓 연결 관리
 active_connections: Set[WebSocket] = set()
 subway_clients_event = asyncio.Event()
+http_client: Optional[httpx.AsyncClient] = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    global http_client
+    if http_client is None or http_client.is_closed:
+        http_client = httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0))
+    return http_client
 
 def build_api_url(station_name: str, start_index: int = 0, end_index: int = 20) -> str:
     """
@@ -45,23 +53,23 @@ async def fetch_station_data(station_name: str) -> Optional[List[dict]]:
     """
     url = build_api_url(station_name)
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            data = response.json()
-            
-            if "realtimeArrivalList" in data:
-                return data["realtimeArrivalList"]
-            else:
-                # API가 오류를 반환하거나 데이터 구조가 없는 경우 처리
-                code = data.get("code")
-                if code == "INFO-200":
-                    # 데이터가 없는 경우 (정상 상황)
-                    logging.info(f"No realtime data for {station_name} (INFO-200)")
-                    return []
-                
-                logging.warning(f"No realtimeArrivalList found for {station_name}: {data}")
+        client = get_http_client()
+        response = await client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        if "realtimeArrivalList" in data:
+            return data["realtimeArrivalList"]
+        else:
+            # API가 오류를 반환하거나 데이터 구조가 없는 경우 처리
+            code = data.get("code")
+            if code == "INFO-200":
+                # 데이터가 없는 경우 (정상 상황)
+                logging.info(f"No realtime data for {station_name} (INFO-200)")
                 return []
+            
+            logging.warning(f"No realtimeArrivalList found for {station_name}: {data}")
+            return []
     except Exception as e:
         logging.error(f"Error fetching subway data for {station_name}: {e}")
         return None
@@ -102,6 +110,9 @@ async def broadcast_subway_data(websocket: WebSocket = None):
                 await connection.send_text(message)
             except Exception as e:
                 logging.error(f"WebSocket broadcast error: {e}")
+                active_connections.discard(connection)
+        if not active_connections:
+            subway_clients_event.clear()
 
 async def update_subway_cache():
     """
@@ -199,14 +210,14 @@ async def fetch_train_schedule(line_name: str, station_name: str, direction: str
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     url = f"http://openapi.seoul.go.kr:8088/{SEOUL_SUBWAY_KEY}/json/getTrainSch/1/100//N/{direction}/{day_type}/{line_name}//{encoded_station}///////{now_str}"
     
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url)
-            data = response.json()
-            return data
-        except Exception as e:
-            logging.error(f"Failed to fetch schedule for {station_name} {direction} {day_type}: {e}")
-            return None
+    client = get_http_client()
+    try:
+        response = await client.get(url)
+        data = response.json()
+        return data
+    except Exception as e:
+        logging.error(f"Failed to fetch schedule for {station_name} {direction} {day_type}: {e}")
+        return None
 
 async def update_schedule_cache_daily():
     """
@@ -232,10 +243,13 @@ async def update_schedule_cache_daily():
             first_run = False
             
         try:
+            stations = []
             if should_update:
                 logging.info("Starting daily subway schedule update...")
                 
                 stations = ["천안", "아산"]
+            else:
+                logging.info("Skipping initial daily subway schedule update because schedule data already exists.")
             directions = ["상행", "하행"]
             day_types = ["평일", "주말"]
             line_name = "1호선" # 천안/아산은 1호선
@@ -319,7 +333,7 @@ async def update_schedule_cache_daily():
                     logging.error(f"Database error during schedule update: {db_e}")
                 finally:
                     db.close()
-            else:
+            elif should_update:
                 logging.warning("No schedule data fetched.")
 
         except Exception as e:
@@ -342,7 +356,9 @@ schedule_cache_task: Optional[asyncio.Task] = None
 
 @router.on_event("startup")
 async def startup_event():
-    global subway_cache_task, schedule_cache_task
+    global subway_cache_task, schedule_cache_task, http_client
+    if http_client is None or http_client.is_closed:
+        http_client = get_http_client()
     
     # 백그라운드 작업 시작 (중복 실행 방지)
     if subway_cache_task is None or subway_cache_task.done():
@@ -350,6 +366,14 @@ async def startup_event():
         
     if schedule_cache_task is None or schedule_cache_task.done():
         schedule_cache_task = asyncio.create_task(update_schedule_cache_daily())
+
+
+@router.on_event("shutdown")
+async def shutdown_event():
+    global http_client
+    if http_client is not None and not http_client.is_closed:
+        await http_client.aclose()
+        http_client = None
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
