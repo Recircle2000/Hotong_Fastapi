@@ -286,6 +286,7 @@ async def admin_shuttle_page(
 @router.get("/admin/emergency-notices")
 async def admin_emergency_notice_page(
     request: Request,
+    error: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
@@ -296,6 +297,7 @@ async def admin_emergency_notice_page(
             "request": request,
             "notices": notices,
             "now_kst": get_now_kst_naive(),
+            "error": error,
         },
     )
 
@@ -306,6 +308,7 @@ async def create_emergency_notice(
     category: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
+    created_at: str = Form(None),
     end_at: str = Form(...),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
@@ -315,13 +318,16 @@ async def create_emergency_notice(
     except ValueError:
         raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
 
+    created_at_dt = parse_datetime_local(created_at) if created_at else get_now_kst_naive()
     end_at_dt = parse_datetime_local(end_at)
+    if created_at_dt > end_at_dt:
+        return RedirectResponse(url="/admin/emergency-notices?error=invalid_time_range", status_code=303)
 
     new_notice = EmergencyNotice(
         category=category_enum,
         title=title.strip(),
         content=content.strip(),
-        created_at=get_now_kst_naive(),
+        created_at=created_at_dt,
         end_at=end_at_dt,
     )
     db.add(new_notice)
@@ -336,6 +342,7 @@ async def update_emergency_notice(
     category: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
+    created_at: str = Form(None),
     end_at: str = Form(...),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
@@ -345,7 +352,10 @@ async def update_emergency_notice(
     except ValueError:
         raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
 
+    created_at_dt = parse_datetime_local(created_at) if created_at else None
     end_at_dt = parse_datetime_local(end_at)
+    if created_at_dt and created_at_dt > end_at_dt:
+        return RedirectResponse(url="/admin/emergency-notices?error=invalid_time_range", status_code=303)
     notice = db.query(EmergencyNotice).filter(EmergencyNotice.id == notice_id).first()
     if notice is None:
         raise HTTPException(status_code=404, detail="긴급공지 정보를 찾을 수 없습니다.")
@@ -353,6 +363,8 @@ async def update_emergency_notice(
     notice.category = category_enum
     notice.title = title.strip()
     notice.content = content.strip()
+    if created_at_dt:
+        notice.created_at = created_at_dt
     notice.end_at = end_at_dt
     db.commit()
     return RedirectResponse(url="/admin/emergency-notices", status_code=303)
