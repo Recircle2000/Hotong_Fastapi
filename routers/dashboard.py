@@ -15,11 +15,30 @@ import jwt
 import os
 from utils.security import SECRET_KEY, ALGORITHM
 from typing import Optional
+from urllib.parse import quote, urlsplit
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 KST = timezone(timedelta(hours=9))
+
+
+def sanitize_redirect_path(redirect: Optional[str], default_path: str = "/admin") -> str:
+    if not redirect:
+        return default_path
+
+    candidate = redirect.strip()
+    if not candidate or candidate == "None":
+        return default_path
+    if any(ord(ch) < 32 for ch in candidate):
+        return default_path
+
+    parsed = urlsplit(candidate)
+    if parsed.scheme or parsed.netloc:
+        return default_path
+    if not candidate.startswith("/") or candidate.startswith("//"):
+        return default_path
+    return candidate
 
 
 def get_now_kst_naive() -> datetime:
@@ -122,10 +141,7 @@ def admin_login(
     
     # 토큰 저장을 위한 응답 생성
     # None 값이거나 빈 문자열인 경우 기본 경로로 리다이렉트
-    if redirect and redirect != "None" and redirect.strip():
-        redirect_url = redirect
-    else:
-        redirect_url = "/admin"
+    redirect_url = sanitize_redirect_path(redirect)
         
     response = RedirectResponse(url=redirect_url, status_code=303)
     
@@ -169,7 +185,18 @@ async def get_admin_user(
         except jwt.PyJWTError:
             pass
     
-    # 인증 실패
+    # 인증 실패: 브라우저 요청은 로그인 페이지로 리다이렉트
+    accepts_html = "text/html" in (request.headers.get("accept") or "").lower()
+    if accepts_html:
+        redirect_target = request.url.path
+        if request.url.query:
+            redirect_target = f"{redirect_target}?{request.url.query}"
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail="인증 필요",
+            headers={"Location": f"/admin/login?redirect={quote(redirect_target, safe='')}"},
+        )
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="인증 필요",

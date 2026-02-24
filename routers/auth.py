@@ -58,20 +58,20 @@ async def login(
     # 폼 데이터 요청인 경우
     if "application/x-www-form-urlencoded" in content_type:
         form_data = await request.form()
-        username = form_data.get("email") or form_data.get("username")
-        password = form_data.get("password")
-        is_browser_form = True
+        grant_type = form_data.get("grant_type") or request.query_params.get("grant_type")
+        if grant_type == "password":
+            username = form_data.get("username")
+            password = form_data.get("password")
+            is_browser_form = False
+        else:
+            username = form_data.get("email") or form_data.get("username")
+            password = form_data.get("password")
+            is_browser_form = True
     # JSON 요청인 경우
     elif "application/json" in content_type:
         json_data = await request.json()
-        username = json_data.get("username")
+        username = json_data.get("username") or json_data.get("email")
         password = json_data.get("password")
-        is_browser_form = False
-    # OAuth2 요청인 경우 (특수 처리)
-    elif "application/x-www-form-urlencoded" in content_type and request.query_params.get("grant_type") == "password":
-        form_data = await request.form()
-        username = form_data.get("username")
-        password = form_data.get("password")
         is_browser_form = False
     else:
         # 다른 요청 타입은 지원하지 않음
@@ -110,11 +110,16 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
     
-    # 관리자 권한 체크 (브라우저 로그인의 경우)
-    if is_browser_form and not getattr(user_record, "is_admin", False):
-        return RedirectResponse(
-            url="/admin/login?error=관리자 권한이 없습니다", 
-            status_code=status.HTTP_303_SEE_OTHER
+    # 관리자 권한 체크
+    if not getattr(user_record, "is_admin", False):
+        if is_browser_form:
+            return RedirectResponse(
+                url="/admin/login?error=관리자 권한이 없습니다",
+                status_code=status.HTTP_303_SEE_OTHER
+            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 권한이 필요합니다",
         )
 
     # JWT 토큰 생성

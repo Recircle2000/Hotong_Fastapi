@@ -6,18 +6,21 @@ import time
 import json
 from datetime import datetime, timedelta
 from utils.redis_client import redis_client
-from database import engine
+from database import engine, get_db
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 import asyncio
 from utils.api_monitor import get_api_stats
+from models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-def get_admin_session(request: Request):
+def get_admin_session(request: Request, db: Session = Depends(get_db)):
     """어드민 세션 확인"""
     user_id = request.session.get("user_id")
-    if not user_id:
+    user = db.query(User).filter(User.id == user_id).first() if user_id else None
+    if not user or not getattr(user, "is_admin", False):
         accepts_html = "text/html" in (request.headers.get("accept") or "").lower()
         if accepts_html:
             raise HTTPException(
