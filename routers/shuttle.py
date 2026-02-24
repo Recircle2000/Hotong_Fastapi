@@ -13,6 +13,7 @@ from utils.redis_client import get_cache, set_cache, delete_pattern
 from utils.serializer import serialize_models
 
 router = APIRouter()
+RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX = "resolved_schedule_type"
 
 # 캐시 get/set 공통화 헬퍼 함수
 def get_or_set_cache(key: str, db_query_func, serializer):
@@ -28,6 +29,14 @@ def get_or_set_cache(key: str, db_query_func, serializer):
 
 # schedule_type 결정 유틸 함수
 def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
+    cache_key = f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:{target_date.isoformat()}"
+    cached_data = get_cache(cache_key)
+    if isinstance(cached_data, dict):
+        cached_schedule_type = cached_data.get("schedule_type")
+        cached_schedule_type_name = cached_data.get("schedule_type_name")
+        if cached_schedule_type and cached_schedule_type_name:
+            return cached_schedule_type, cached_schedule_type_name
+
     date_str = target_date.strftime('%Y-%m-%d')
     weekday = target_date.weekday()  # 0=월요일, 6=일요일
     # 1. 기본 타입 결정
@@ -72,7 +81,12 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
                 applicable_exception_type = exception_type
                 break
     if applicable_exception:
-        return applicable_exception.schedule_type, applicable_exception_type.schedule_type_name
+        result = {
+            "schedule_type": applicable_exception.schedule_type,
+            "schedule_type_name": applicable_exception_type.schedule_type_name
+        }
+        set_cache(cache_key, result)
+        return result["schedule_type"], result["schedule_type_name"]
     else:
         schedule_type = base_schedule_type
     # 4. 활성화 여부 확인 및 이름 반환
@@ -85,7 +99,12 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
             status_code=404,
             detail=f"Schedule type '{schedule_type}' is not active for date {target_date}"
         )
-    return schedule_type, schedule_type_info.schedule_type_name
+    result = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_info.schedule_type_name
+    }
+    set_cache(cache_key, result)
+    return result["schedule_type"], result["schedule_type_name"]
 
 class ScheduleStopResponse(BaseModel):
     station_id: int
@@ -485,6 +504,7 @@ def create_schedule_type(
     
     # 캐시 무효화
     delete_pattern("schedule_types")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return new_schedule_type
 
@@ -541,6 +561,7 @@ def update_schedule_type(
     delete_pattern("schedule_types")
     delete_pattern("schedules-by-date:*")
     delete_pattern("schedule_exceptions")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return db_schedule_type
 
@@ -600,6 +621,7 @@ def delete_schedule_type(
     
     # 캐시 무효화
     delete_pattern("schedule_types")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"일정 유형 '{schedule_type}'이 삭제되었습니다."}
 
@@ -903,6 +925,7 @@ def create_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     # 예외 일정과 일정 유형 이름 함께 반환
     response = {
@@ -1016,6 +1039,7 @@ def update_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     # 현재 일정 유형 이름 가져오기
     if not schedule_type_name:
@@ -1076,6 +1100,7 @@ def delete_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"예외 일정 ID {exception_id}가 삭제되었습니다."}
 
