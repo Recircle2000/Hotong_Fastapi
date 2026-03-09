@@ -1,0 +1,8 @@
+* text=auto
+
+# Keep repository text files on LF to avoid cross-platform churn.
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf

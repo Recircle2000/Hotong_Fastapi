@@ -4,6 +4,11 @@
 .test3
 /.venv/
 
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # Docker
 .dockerignore
 docker-*.env
