@@ -5,35 +5,21 @@ from sqlalchemy.orm import Session
 from models.notice import Notice
 from models.emergency_notice import EmergencyNotice, EmergencyNoticeCategory
 from database import get_db
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fastapi import Response
-from starlette.middleware.sessions import SessionMiddleware
 from models import User
-from utils.security import verify_password, get_current_user, get_current_admin
+from utils.security import verify_password
 from fastapi.security import OAuth2PasswordBearer
 import jwt
-import os
 from utils.security import SECRET_KEY, ALGORITHM
 from typing import Optional
+from urllib.parse import quote
+
+from services.dashboard_utils import get_now_kst_naive, parse_datetime_local, sanitize_redirect_path
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
-KST = timezone(timedelta(hours=9))
-
-
-def get_now_kst_naive() -> datetime:
-    return datetime.now(KST).replace(tzinfo=None)
-
-
-def parse_datetime_local(value: str) -> datetime:
-    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            return datetime.strptime(value, fmt)
-        except ValueError:
-            continue
-    raise HTTPException(status_code=400, detail="종료시간 형식이 올바르지 않습니다.")
-
 @router.get("/apis")
 async def get_api_list(request: Request):
     """
@@ -122,10 +108,7 @@ def admin_login(
     
     # 토큰 저장을 위한 응답 생성
     # None 값이거나 빈 문자열인 경우 기본 경로로 리다이렉트
-    if redirect and redirect != "None" and redirect.strip():
-        redirect_url = redirect
-    else:
-        redirect_url = "/admin"
+    redirect_url = sanitize_redirect_path(redirect)
         
     response = RedirectResponse(url=redirect_url, status_code=303)
     
@@ -169,7 +152,18 @@ async def get_admin_user(
         except jwt.PyJWTError:
             pass
     
-    # 인증 실패
+    # 인증 실패: 브라우저 요청은 로그인 페이지로 리다이렉트
+    accepts_html = "text/html" in (request.headers.get("accept") or "").lower()
+    if accepts_html:
+        redirect_target = request.url.path
+        if request.url.query:
+            redirect_target = f"{redirect_target}?{request.url.query}"
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail="인증 필요",
+            headers={"Location": f"/admin/login?redirect={quote(redirect_target, safe='')}"},
+        )
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="인증 필요",
@@ -286,6 +280,7 @@ async def admin_shuttle_page(
 @router.get("/admin/emergency-notices")
 async def admin_emergency_notice_page(
     request: Request,
+    error: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
 ):
@@ -296,6 +291,7 @@ async def admin_emergency_notice_page(
             "request": request,
             "notices": notices,
             "now_kst": get_now_kst_naive(),
+            "error": error,
         },
     )
 
@@ -306,6 +302,7 @@ async def create_emergency_notice(
     category: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
+    created_at: str = Form(None),
     end_at: str = Form(...),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
@@ -315,13 +312,16 @@ async def create_emergency_notice(
     except ValueError:
         raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
 
+    created_at_dt = parse_datetime_local(created_at) if created_at else get_now_kst_naive()
     end_at_dt = parse_datetime_local(end_at)
+    if created_at_dt > end_at_dt:
+        return RedirectResponse(url="/admin/emergency-notices?error=invalid_time_range", status_code=303)
 
     new_notice = EmergencyNotice(
         category=category_enum,
         title=title.strip(),
         content=content.strip(),
-        created_at=get_now_kst_naive(),
+        created_at=created_at_dt,
         end_at=end_at_dt,
     )
     db.add(new_notice)
@@ -336,6 +336,7 @@ async def update_emergency_notice(
     category: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
+    created_at: str = Form(None),
     end_at: str = Form(...),
     db: Session = Depends(get_db),
     current_admin = Depends(get_admin_user)
@@ -345,7 +346,10 @@ async def update_emergency_notice(
     except ValueError:
         raise HTTPException(status_code=400, detail="유효하지 않은 구분 값입니다.")
 
+    created_at_dt = parse_datetime_local(created_at) if created_at else None
     end_at_dt = parse_datetime_local(end_at)
+    if created_at_dt and created_at_dt > end_at_dt:
+        return RedirectResponse(url="/admin/emergency-notices?error=invalid_time_range", status_code=303)
     notice = db.query(EmergencyNotice).filter(EmergencyNotice.id == notice_id).first()
     if notice is None:
         raise HTTPException(status_code=404, detail="긴급공지 정보를 찾을 수 없습니다.")
@@ -353,6 +357,8 @@ async def update_emergency_notice(
     notice.category = category_enum
     notice.title = title.strip()
     notice.content = content.strip()
+    if created_at_dt:
+        notice.created_at = created_at_dt
     notice.end_at = end_at_dt
     db.commit()
     return RedirectResponse(url="/admin/emergency-notices", status_code=303)

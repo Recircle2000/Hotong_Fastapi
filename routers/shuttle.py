@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from pydantic import BaseModel
 from datetime import time, date
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from utils.security import get_current_admin
 from holidayskr import is_holiday
 
@@ -13,14 +10,31 @@ from models.shuttle import Schedule, ScheduleStop, ShuttleStation, ShuttleRoute
 from models.schedule_types import ScheduleType, ScheduleException
 from utils.redis_client import get_cache, set_cache, delete_pattern
 from utils.serializer import serialize_models
+from schemas.shuttle import (
+    RouteResponse,
+    ScheduleCreate,
+    ScheduleExceptionCreate,
+    ScheduleExceptionResponse,
+    ScheduleExceptionUpdate,
+    ScheduleResponse,
+    ScheduleStopResponse,
+    ScheduleTypeByDateResponse,
+    ScheduleTypeCreate,
+    ScheduleTypeResponse,
+    ScheduleTypeUpdate,
+    ScheduleUpdate,
+    StationResponse,
+    StationScheduleResponse,
+    StationSchedulesByDateResponse,
+)
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX = "resolved_schedule_type"
 
 # 캐시 get/set 공통화 헬퍼 함수
 def get_or_set_cache(key: str, db_query_func, serializer):
     cached = get_cache(key)
-    if cached:
+    if cached is not None:
         return cached
     data = db_query_func()
     if not data:
@@ -31,6 +45,14 @@ def get_or_set_cache(key: str, db_query_func, serializer):
 
 # schedule_type 결정 유틸 함수
 def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
+    cache_key = f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:{target_date.isoformat()}"
+    cached_data = get_cache(cache_key)
+    if isinstance(cached_data, dict):
+        cached_schedule_type = cached_data.get("schedule_type")
+        cached_schedule_type_name = cached_data.get("schedule_type_name")
+        if cached_schedule_type and cached_schedule_type_name:
+            return cached_schedule_type, cached_schedule_type_name
+
     date_str = target_date.strftime('%Y-%m-%d')
     weekday = target_date.weekday()  # 0=월요일, 6=일요일
     # 1. 기본 타입 결정
@@ -46,185 +68,59 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
     if is_holiday(date_str):
         base_schedule_type = "Holiday"
     # 3. 예외 일정 매칭
-    schedule_exceptions = db.query(ScheduleException).filter(
+    schedule_exceptions = db.query(ScheduleException, ScheduleType).join(
+        ScheduleType,
+        ScheduleException.schedule_type == ScheduleType.schedule_type
+    ).filter(
         ScheduleException.start_date <= target_date,
         ScheduleException.end_date >= target_date,
-        ScheduleException.is_activate == True
+        ScheduleException.is_activate.is_(True),
+        ScheduleType.is_activate.is_(True)
     ).all()
     applicable_exception = None
+    applicable_exception_type = None
     if schedule_exceptions:
-        for exception in schedule_exceptions:
-            exception_type_active = db.query(ScheduleType).filter(
-                ScheduleType.schedule_type == exception.schedule_type,
-                ScheduleType.is_activate == True
-            ).first()
-            if exception_type_active:
-                should_apply_exception = False
-                if weekday == 5:
-                    should_apply_exception = exception.include_saturday
-                elif weekday == 4:
-                    should_apply_exception = exception.include_weekday_friday
-                elif weekday == 6:
-                    should_apply_exception = exception.include_sunday
-                elif base_schedule_type == "Holiday":
-                    should_apply_exception = exception.include_holiday
-                else:
-                    should_apply_exception = exception.include_weekday
-                if should_apply_exception:
-                    applicable_exception = exception
-                    break
+        for exception, exception_type in schedule_exceptions:
+            should_apply_exception = False
+            if weekday == 5:
+                should_apply_exception = exception.include_saturday
+            elif weekday == 4:
+                should_apply_exception = exception.include_weekday_friday
+            elif weekday == 6:
+                should_apply_exception = exception.include_sunday
+            elif base_schedule_type == "Holiday":
+                should_apply_exception = exception.include_holiday
+            else:
+                should_apply_exception = exception.include_weekday
+            if should_apply_exception:
+                applicable_exception = exception
+                applicable_exception_type = exception_type
+                break
     if applicable_exception:
-        schedule_type = applicable_exception.schedule_type
+        result = {
+            "schedule_type": applicable_exception.schedule_type,
+            "schedule_type_name": applicable_exception_type.schedule_type_name
+        }
+        set_cache(cache_key, result)
+        return result["schedule_type"], result["schedule_type_name"]
     else:
         schedule_type = base_schedule_type
     # 4. 활성화 여부 확인 및 이름 반환
     schedule_type_info = db.query(ScheduleType).filter(
-        ScheduleType.schedule_type == schedule_type
+        ScheduleType.schedule_type == schedule_type,
+        ScheduleType.is_activate.is_(True)
     ).first()
-    if not schedule_type_info or not schedule_type_info.is_activate:
+    if not schedule_type_info:
         raise HTTPException(
             status_code=404,
             detail=f"Schedule type '{schedule_type}' is not active for date {target_date}"
         )
-    return schedule_type, schedule_type_info.schedule_type_name
-
-class ScheduleStopResponse(BaseModel):
-    station_id: int
-    arrival_time: time
-    stop_order: int
-    station_name: str
-
-    class Config:
-        from_attributes = True
-
-class StationScheduleResponse(BaseModel):
-    schedule_id: int
-    route_id: int
-    station_name: str
-    arrival_time: time
-    stop_order: int
-    schedule_type: str
-
-    class Config:
-        from_attributes = True
-
-class StationResponse(BaseModel):
-    id: int
-    name: str
-    latitude: float
-    longitude: float
-    description: str | None
-    image_url: str | None
-
-    class Config:
-        from_attributes = True
-
-class ScheduleTypeResponse(BaseModel):
-    schedule_type: str
-    schedule_type_name: str
-    is_activate: bool
-
-    class Config:
-        from_attributes = True
-
-class ScheduleTypeCreate(BaseModel):
-    schedule_type: str
-    schedule_type_name: str
-    is_activate: bool = True
-
-class ScheduleTypeUpdate(BaseModel):
-    schedule_type_name: str | None = None
-    is_activate: bool | None = None
-
-class ScheduleExceptionResponse(BaseModel):
-    id: int
-    start_date: date
-    end_date: date
-    schedule_type: str
-    reason: str | None
-    schedule_type_name: str | None = None  # 클라이언트에서 표시하기 위해 추가
-    is_activate: bool
-    include_weekday: bool
-    include_weekday_friday: bool
-    include_saturday: bool
-    include_sunday: bool
-    include_holiday: bool
-
-    class Config:
-        from_attributes = True
-
-class ScheduleExceptionCreate(BaseModel):
-    start_date: date
-    end_date: date
-    schedule_type: str
-    reason: str | None = None
-    is_activate: bool = True
-    include_weekday: bool = True
-    include_weekday_friday: bool = True
-    include_saturday: bool = False
-    include_sunday: bool = False
-    include_holiday: bool = False
-
-class ScheduleExceptionUpdate(BaseModel):
-    start_date: date | None = None
-    end_date: date | None = None
-    schedule_type: str | None = None
-    reason: str | None = None
-    is_activate: bool | None = None
-    include_weekday: bool | None = None
-    include_weekday_friday: bool | None = None
-    include_saturday: bool | None = None
-    include_sunday: bool | None = None
-    include_holiday: bool | None = None
-
-class RouteResponse(BaseModel):
-    id: int
-    route_name: str
-    direction: str
-    description: str | None
-
-    class Config:
-        from_attributes = True
-
-# 새로운 스키마 추가
-class ScheduleStopCreate(BaseModel):
-    station_id: int
-    arrival_time: time
-    stop_order: int
-
-class ScheduleCreate(BaseModel):
-    route_id: int
-    schedule_type: str
-    start_time: time
-    end_time: time
-    stops: List[ScheduleStopCreate]
-
-class ScheduleUpdate(BaseModel):
-    route_id: int | None = None
-    schedule_type: str | None = None
-    start_time: time | None = None
-    end_time: time | None = None
-    stops: List[ScheduleStopCreate] | None = None
-
-class StationSchedulesByDateResponse(BaseModel):
-    schedule_type: str
-    schedule_type_name: str
-    date: date
-    station_id: int
-    station_name: str
-    schedules: List[StationScheduleResponse]
-
-    class Config:
-        from_attributes = True
-
-class ScheduleResponse(BaseModel):
-    id: int
-    route_id: int
-    schedule_type: str
-    start_time: time
-    end_time: time
-    class Config:
-        from_attributes = True
+    result = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_info.schedule_type_name
+    }
+    set_cache(cache_key, result)
+    return result["schedule_type"], result["schedule_type_name"]
 
 @router.get("/schedules", response_model=List[ScheduleResponse])
 def get_schedules(
@@ -257,7 +153,7 @@ def get_schedules_by_date(
     """
     cache_key = f"schedules-by-date:{route_id}:{date}"
     cached_data = get_cache(cache_key)
-    if cached_data:
+    if cached_data is not None:
         return cached_data
     # schedule_type 결정 (유틸 함수 사용)
     schedule_type, schedule_type_name = resolve_schedule_type(db, date)
@@ -279,6 +175,17 @@ def get_schedules_by_date(
     set_cache(cache_key, result)
     return result
 
+@router.get("/schedule-type-by-date", response_model=ScheduleTypeByDateResponse)
+def get_schedule_type_by_date(
+    date: date,
+    db: Session = Depends(get_db)
+):
+    """
+    주어진 날짜에 적용되는 셔틀 일정 유형을 조회합니다.
+    """
+    _, schedule_type_name = resolve_schedule_type(db, date)
+    return {"schedule_type_name": schedule_type_name}
+
 @router.get("/schedules/{schedule_id}/stops", response_model=List[ScheduleStopResponse])
 def get_schedule_stops(
     schedule_id: int,
@@ -292,7 +199,7 @@ def get_schedule_stops(
     
     # Redis 캐시 확인
     cached_data = get_cache(cache_key)
-    if cached_data:
+    if cached_data is not None:
         return cached_data
     
     # 캐시가 없는 경우 DB에서 조회
@@ -473,6 +380,7 @@ def create_schedule_type(
     
     # 캐시 무효화
     delete_pattern("schedule_types")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return new_schedule_type
 
@@ -529,6 +437,7 @@ def update_schedule_type(
     delete_pattern("schedule_types")
     delete_pattern("schedules-by-date:*")
     delete_pattern("schedule_exceptions")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return db_schedule_type
 
@@ -588,6 +497,7 @@ def delete_schedule_type(
     
     # 캐시 무효화
     delete_pattern("schedule_types")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"일정 유형 '{schedule_type}'이 삭제되었습니다."}
 
@@ -615,12 +525,19 @@ def create_schedule(
     )
     db.add(new_schedule)
     db.flush()  # ID 할당을 위해 flush
+
+    requested_station_ids = {stop.station_id for stop in schedule_data.stops}
+    existing_station_ids = set()
+    if requested_station_ids:
+        existing_station_ids = {
+            station_id for (station_id,) in db.query(ShuttleStation.id).filter(
+                ShuttleStation.id.in_(requested_station_ids)
+            ).all()
+        }
     
     # 3. 스케줄 정류장 객체 생성
     for stop_data in schedule_data.stops:
-        # 정류장이 존재하는지 확인
-        station = db.query(ShuttleStation).filter(ShuttleStation.id == stop_data.station_id).first()
-        if not station:
+        if stop_data.station_id not in existing_station_ids:
             db.rollback()
             raise HTTPException(status_code=404, detail=f"Station with id {stop_data.station_id} not found")
         
@@ -679,14 +596,21 @@ def update_schedule(
     
     # 4. stops 업데이트 (있을 경우)
     if schedule_data.stops is not None:
+        requested_station_ids = {stop.station_id for stop in schedule_data.stops}
+        existing_station_ids = set()
+        if requested_station_ids:
+            existing_station_ids = {
+                station_id for (station_id,) in db.query(ShuttleStation.id).filter(
+                    ShuttleStation.id.in_(requested_station_ids)
+                ).all()
+            }
+
         # 기존 정류장 정보 삭제
         db.query(ScheduleStop).filter(ScheduleStop.schedule_id == schedule_id).delete()
         
         # 새 정류장 정보 추가
         for stop_data in schedule_data.stops:
-            # 정류장이 존재하는지 확인
-            station = db.query(ShuttleStation).filter(ShuttleStation.id == stop_data.station_id).first()
-            if not station:
+            if stop_data.station_id not in existing_station_ids:
                 db.rollback()
                 raise HTTPException(status_code=404, detail=f"Station with id {stop_data.station_id} not found")
             
@@ -726,8 +650,6 @@ def delete_schedule(
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail=f"Schedule with id {schedule_id} not found")
-    
-    route_id = schedule.route_id  # 캐시 무효화를 위해 저장
     
     # 2. 스케줄 삭제
     try:
@@ -786,7 +708,7 @@ def get_schedule_exceptions(db: Session = Depends(get_db)):
     
     # Redis 캐시 확인
     cached_data = get_cache(cache_key)
-    if cached_data:
+    if cached_data is not None:
         return cached_data
     
     # 캐시가 없는 경우 DB에서 조회
@@ -879,6 +801,7 @@ def create_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     # 예외 일정과 일정 유형 이름 함께 반환
     response = {
@@ -918,9 +841,6 @@ def update_schedule_exception(
             status_code=404,
             detail=f"예외 일정 ID {exception_id}를 찾을 수 없습니다."
         )
-    
-    # 수정할 데이터 준비
-    update_data = {}
     
     # 날짜 업데이트 (둘 다 제공된 경우에만 검증)
     start_date = exception_data.start_date or exception.start_date
@@ -995,6 +915,7 @@ def update_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     # 현재 일정 유형 이름 가져오기
     if not schedule_type_name:
@@ -1055,6 +976,7 @@ def delete_schedule_exception(
     # 캐시 무효화
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
+    delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"예외 일정 ID {exception_id}가 삭제되었습니다."}
 
@@ -1070,7 +992,7 @@ def get_station_schedules_by_date(
     """
     cache_key = f"station_schedules:{station_id}:{date}"
     cached_data = get_cache(cache_key)
-    if cached_data:
+    if cached_data is not None:
         return cached_data
     station = db.query(ShuttleStation).filter(
         ShuttleStation.id == station_id

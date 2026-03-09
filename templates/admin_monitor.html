@@ -16,11 +16,16 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
             color: #333;
+            overflow-x: hidden;
+        }
+
+        body.sidebar-open {
+            overflow: hidden;
         }
 
         .wrapper {
             display: flex;
-            min-height: 100vh;
+            min-height: 100dvh;
         }
 
         .sidebar {
@@ -28,10 +33,19 @@
             background: #343a40;
             color: white;
             position: fixed;
-            height: 100vh;
+            height: 100dvh;
             z-index: 1000;
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 990;
         }
 
         .sidebar-header {
@@ -369,9 +383,18 @@
             font-size: 0.85rem;
         }
 
+        .table-heading {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
         @media (max-width: 992px) {
             .sidebar {
                 transform: translateX(-100%);
+            }
+
+            .sidebar-backdrop.active {
+                display: block;
             }
 
             .main-content {
@@ -394,6 +417,15 @@
 
             .dashboard-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.1rem;
+                line-height: 1.35;
             }
         }
     </style>
@@ -426,6 +458,7 @@
                 </a>
             </div>
         </aside>
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <!-- 메인 콘텐츠 -->
         <div class="main-content">
@@ -634,6 +667,10 @@
             let cpuChart;
             let cpuData = [];
             let timeLabels = [];
+            let isRefreshing = false;
+            const body = document.body;
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
             // 차트 초기화
             function initChart() {
@@ -750,14 +787,24 @@
                     const processList = document.getElementById('processList');
                     processList.innerHTML = '';
 
-                    data.top_processes.forEach(proc => {
+                    (data.top_processes || []).forEach(proc => {
                         const item = document.createElement('div');
                         item.className = 'process-item';
-                        item.innerHTML = `
-                        <div class="process-name">${proc.name} (${proc.pid})</div>
-                        <div class="process-cpu">${proc.cpu_percent.toFixed(1)}%</div>
-                        <div class="process-memory">${proc.memory_percent.toFixed(1)}%</div>
-                    `;
+                        const processName = document.createElement('div');
+                        processName.className = 'process-name';
+                        processName.textContent = `${proc.name} (${proc.pid})`;
+
+                        const processCpu = document.createElement('div');
+                        processCpu.className = 'process-cpu';
+                        processCpu.textContent = `${proc.cpu_percent.toFixed(1)}%`;
+
+                        const processMemory = document.createElement('div');
+                        processMemory.className = 'process-memory';
+                        processMemory.textContent = `${proc.memory_percent.toFixed(1)}%`;
+
+                        item.appendChild(processName);
+                        item.appendChild(processCpu);
+                        item.appendChild(processMemory);
                         processList.appendChild(item);
                     });
 
@@ -801,7 +848,15 @@
                     const data = await response.json();
 
                     if (data.error) {
-                        document.getElementById('dbInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                        document.getElementById('dbConnections').textContent = '-';
+                        document.getElementById('totalQueries').textContent = '-';
+                        document.getElementById('slowQueries').textContent = '-';
+                        const tableSizes = document.getElementById('tableSizes');
+                        tableSizes.innerHTML = '';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message';
+                        errorDiv.textContent = data.error;
+                        tableSizes.appendChild(errorDiv);
                         return;
                     }
 
@@ -814,15 +869,21 @@
 
                     // 테이블 크기 정보
                     const tableSizes = document.getElementById('tableSizes');
-                    tableSizes.innerHTML = '<div style="font-weight: 600; margin-bottom: 0.5rem;">테이블 크기 (MB)</div>';
+                    tableSizes.innerHTML = '';
+                    const heading = document.createElement('div');
+                    heading.className = 'table-heading';
+                    heading.textContent = '테이블 크기 (MB)';
+                    tableSizes.appendChild(heading);
 
-                    data.table_sizes.forEach(table => {
+                    (data.table_sizes || []).forEach(table => {
                         const item = document.createElement('div');
                         item.className = 'table-item';
-                        item.innerHTML = `
-                        <span>${table.name}</span>
-                        <span>${table.size_mb} MB</span>
-                    `;
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = table.name;
+                        const sizeSpan = document.createElement('span');
+                        sizeSpan.textContent = `${table.size_mb} MB`;
+                        item.appendChild(nameSpan);
+                        item.appendChild(sizeSpan);
                         tableSizes.appendChild(item);
                     });
 
@@ -838,7 +899,11 @@
                     const data = await response.json();
 
                     if (data.error) {
-                        document.getElementById('redisInfo').innerHTML = `<div class="error-message">${data.error}</div>`;
+                        document.getElementById('redisMemory').textContent = data.error;
+                        document.getElementById('redisClients').textContent = '-';
+                        document.getElementById('redisOps').textContent = '-';
+                        document.getElementById('redisHitRate').textContent = '-';
+                        document.getElementById('redisUptime').textContent = '-';
                         return;
                     }
 
@@ -900,40 +965,93 @@
 
             // 모든 정보 새로고침
             async function refreshAll() {
-                await Promise.all([
-                    updateSystemInfo(),
-                    updateAppInfo(),
-                    updateDbInfo(),
-                    updateRedisInfo(),
-                    updateLogs(),
-                    updateApiStats()
-                ]);
+                if (isRefreshing) {
+                    return;
+                }
+                isRefreshing = true;
+                try {
+                    await Promise.all([
+                        updateSystemInfo(),
+                        updateAppInfo(),
+                        updateDbInfo(),
+                        updateRedisInfo(),
+                        updateLogs(),
+                        updateApiStats()
+                    ]);
+                } finally {
+                    isRefreshing = false;
+                }
             }
 
-            // 자동 새로고침 토글
+            function startAutoRefresh() {
+                if (refreshInterval || !autoRefreshEnabled || document.visibilityState === 'hidden') {
+                    return;
+                }
+                refreshInterval = setInterval(refreshAll, 5000);
+            }
+
+            function stopAutoRefresh() {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+            }
+
+            function openSidebar() {
+                sidebar.classList.add('active');
+                sidebarBackdrop.classList.add('active');
+                body.classList.add('sidebar-open');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('active');
+                sidebarBackdrop.classList.remove('active');
+                body.classList.remove('sidebar-open');
+            }
+
             document.getElementById('autoRefresh').addEventListener('change', function () {
                 autoRefreshEnabled = this.checked;
-
                 if (autoRefreshEnabled) {
-                    refreshInterval = setInterval(refreshAll, 5000);
+                    startAutoRefresh();
                 } else {
-                    clearInterval(refreshInterval);
+                    stopAutoRefresh();
                 }
             });
 
-            // 사이드바 토글
             document.getElementById('sidebarToggle').addEventListener('click', function () {
-                document.getElementById('sidebar').classList.toggle('active');
+                if (sidebar.classList.contains('active')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+            sidebarBackdrop.addEventListener('click', closeSidebar);
+            document.querySelectorAll('.sidebar .nav-item').forEach(function (item) {
+                item.addEventListener('click', closeSidebar);
+            });
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    stopAutoRefresh();
+                } else if (autoRefreshEnabled) {
+                    refreshAll();
+                    startAutoRefresh();
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && sidebar.classList.contains('active')) {
+                    closeSidebar();
+                }
             });
 
             // 초기화
-            document.addEventListener('DOMContentLoaded', function () {
-                initChart();
-                refreshAll();
+            initChart();
+            refreshAll();
 
                 // 자동 새로고침 시작
-                refreshInterval = setInterval(refreshAll, 5000);
-            });
+            startAutoRefresh();
+            window.addEventListener('beforeunload', stopAutoRefresh);
         </script>
 </body>
 

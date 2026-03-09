@@ -55,10 +55,20 @@ def delete_pattern(pattern: str) -> int:
     패턴에 일치하는 모든 키를 삭제합니다.
     """
     try:
-        keys = redis_client.keys(pattern)
-        if keys:
-            return redis_client.delete(*keys)
-        return 0
+        deleted_count = 0
+        batch = []
+        batch_size = 500
+
+        for key in redis_client.scan_iter(match=pattern, count=1000):
+            batch.append(key)
+            if len(batch) >= batch_size:
+                deleted_count += redis_client.delete(*batch)
+                batch.clear()
+
+        if batch:
+            deleted_count += redis_client.delete(*batch)
+
+        return deleted_count
     except Exception as e:
         print(f"Redis 패턴 삭제 오류: {e}")
         return 0 

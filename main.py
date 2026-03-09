@@ -13,10 +13,14 @@ import utils.api_monitor as api_monitor_module
 
 app = FastAPI()
 
+session_secret_key = os.getenv("SESSION_SECRET_KEY") or os.getenv("SECRET_KEY")
+if not session_secret_key:
+    raise RuntimeError("SESSION_SECRET_KEY or SECRET_KEY environment variable must be set")
+
 # API 모니터링 미들웨어 추가
 app.add_middleware(APIMonitorMiddleware)
 
-app.add_middleware(SessionMiddleware, secret_key="supersecretkey123!@#")
+app.add_middleware(SessionMiddleware, secret_key=session_secret_key)
 
 # 정적 파일 폴더가 없는 경우 생성
 if not os.path.exists("static"):

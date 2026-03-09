@@ -4,20 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 외부api 중복 호출 문제 해결">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 긴급 공지 엔드포인트 및 대시보드 추가">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/schedule_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/schedule_types.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/shuttle.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/shuttle.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/subway.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/subway.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/shuttle_admin.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/shuttle_admin.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotPersistence">
+    <persistenceIdMap>
+      <entry key="_C:/Users/User/PycharmProjects/gotohoseo_backend" value="2wws9fOvl8imbTTZCkdcm5Ve0p4" />
+    </persistenceIdMap>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
@@ -68,7 +66,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/User/Desktop/smart-cctv-backen&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/User/PycharmProjects/gotohoseo_backend&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
@@ -160,6 +158,9 @@
       <workItem from="1768471062833" duration="67000" />
       <workItem from="1769588473723" duration="622000" />
       <workItem from="1771156093149" duration="31000" />
+      <workItem from="1771250210810" duration="78000" />
+      <workItem from="1772653976273" duration="549000" />
+      <workItem from="1772654551165" duration="560000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -401,7 +402,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768471121827</updated>
     </task>
-    <option name="localTasksCounter" value="31" />
+    <task id="LOCAL-00031" summary="feat: 긴급 공지 엔드포인트 및 대시보드 추가">
+      <option name="closed" value="true" />
+      <created>1771250256364</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1771250256364</updated>
+    </task>
+    <option name="localTasksCounter" value="32" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -419,7 +428,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="build:Docker 설정 업데이트, nginx 서비스 추가" />
     <MESSAGE value="db: 해킹 복원" />
     <MESSAGE value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
     <MESSAGE value="db: DB 마이그레이션" />
@@ -444,7 +452,8 @@
     <MESSAGE value="feat: 비동기적으로 모든 노선의 데이터를 동시에 조회하도록 개선" />
     <MESSAGE value="chore: 24번 및 81번 버스 노선의 조회 대상 축소&#10;&#10;-메인메뉴 위젯에 쓰이는 엔드포인트는 상행 노선을 조회할 필요가 없음." />
     <MESSAGE value="feat: 외부api 중복 호출 문제 해결" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 외부api 중복 호출 문제 해결" />
+    <MESSAGE value="feat: 긴급 공지 엔드포인트 및 대시보드 추가" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 긴급 공지 엔드포인트 및 대시보드 추가" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -463,5 +472,13 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/gotohoseo_backend$__.coverage" NAME="fastAPI 커버리지 결과" MODIFIED="1746964338686" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
   </component>
 </project>

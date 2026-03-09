@@ -33,11 +33,17 @@
             font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
             background: var(--background);
             color: var(--text);
+            overflow-x: hidden;
+        }
+
+        body.sidebar-open,
+        body.modal-open {
+            overflow: hidden;
         }
 
         .wrapper {
             display: flex;
-            min-height: 100vh;
+            min-height: 100dvh;
         }
 
         .sidebar {
@@ -45,10 +51,19 @@
             background: var(--dark);
             color: var(--white);
             position: fixed;
-            height: 100vh;
+            height: 100dvh;
             z-index: 1000;
             transition: var(--transition);
             box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 990;
         }
 
         .sidebar-header {
@@ -136,6 +151,7 @@
             flex: 1;
             margin-left: var(--sidebar-width);
             padding: 1.5rem;
+            min-width: 0;
         }
 
         .header {
@@ -207,6 +223,7 @@
 
         .table-wrap {
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
@@ -232,6 +249,10 @@
             word-break: break-word;
         }
 
+        .table-empty {
+            text-align: center;
+        }
+
         .badge {
             display: inline-block;
             padding: 0.2rem 0.6rem;
@@ -243,6 +264,11 @@
         .badge-valid {
             background: rgba(22, 163, 74, 0.15);
             color: var(--success);
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.16);
+            color: #b45309;
         }
 
         .badge-expired {
@@ -269,10 +295,13 @@
             inset: 50% auto auto 50%;
             transform: translate(-50%, -50%);
             width: min(800px, 95vw);
+            max-height: min(92dvh, 900px);
             background: #fff;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             z-index: 1110;
+            overflow: hidden;
+            flex-direction: column;
         }
 
         .modal-header,
@@ -293,6 +322,12 @@
 
         .modal-body {
             padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .modal-body .toastui-editor-defaultUI,
+        .modal-body .toastui-editor-main {
+            min-width: 0;
         }
 
         .form-group {
@@ -338,6 +373,10 @@
                 transform: translateX(0);
             }
 
+            .sidebar-backdrop.active {
+                display: block;
+            }
+
             .main-content {
                 margin-left: 0;
             }
@@ -349,12 +388,168 @@
             .title {
                 font-size: 1.3rem;
             }
+
+            .header {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem 0.9rem;
+            }
+
+            .section {
+                padding: 0.9rem;
+            }
+
+            .header {
+                margin-bottom: 0.8rem;
+            }
+
+            .table-wrap {
+                overflow-x: visible;
+            }
+
+            table {
+                width: 100%;
+                min-width: 100%;
+                border-collapse: separate;
+                border-spacing: 0 0.75rem;
+                margin-top: -0.75rem;
+            }
+
+            table thead {
+                display: none;
+            }
+
+            table tbody,
+            table tr,
+            table td {
+                display: block;
+                width: 100%;
+            }
+
+            table tr {
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
+            table td {
+                padding: 0.72rem;
+                border-bottom: 1px solid #eef2f7;
+                font-size: 0.88rem;
+                display: grid;
+                grid-template-columns: 92px minmax(0, 1fr);
+                gap: 0.55rem;
+                align-items: start;
+                overflow-wrap: anywhere;
+                white-space: normal;
+            }
+
+            table td:last-child {
+                border-bottom: none;
+            }
+
+            table td::before {
+                content: attr(data-label);
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: var(--secondary);
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            .action-group {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            table td[data-label="Actions"] .btn {
+                width: 100%;
+            }
+
+            .col-id,
+            .col-created {
+                display: block;
+            }
+
+            .content-cell {
+                max-width: none;
+            }
+
+            .modal {
+                width: calc(100% - 1rem);
+                max-height: calc(100dvh - 1rem);
+            }
+
+            .modal-header,
+            .modal-body,
+            .modal-footer {
+                padding: 1rem;
+            }
+
+            .modal-body {
+                max-height: calc(100dvh - 175px);
+            }
+
+            .modal-footer {
+                flex-wrap: wrap;
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 calc(50% - 0.25rem);
+            }
+
+            .modal-footer .btn:only-child {
+                flex-basis: 100%;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header {
+                flex-wrap: wrap;
+            }
+
+            .header > .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .main-content {
+                padding: 0.9rem 0.7rem;
+            }
+
+            .title {
+                font-size: 1.15rem;
+            }
+
+            table td {
+                grid-template-columns: 1fr;
+                gap: 0.3rem;
+                padding: 0.65rem 0.7rem;
+            }
+
+            table td::before {
+                text-transform: none;
+                font-size: 0.72rem;
+            }
+
+            .modal {
+                width: calc(100% - 0.5rem);
+                max-height: calc(100dvh - 0.5rem);
+            }
+
+            .modal-footer .btn {
+                flex: 1 1 100%;
+            }
         }
     </style>
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
     <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
-    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" />
-    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer-all.min.js"></script>
 </head>
 <body>
 <div class="wrapper">
@@ -372,6 +567,7 @@
             <a href="/admin/logout" class="logout-btn">로그아웃</a>
         </div>
     </aside>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <main class="main-content">
         <div class="header">
@@ -387,11 +583,11 @@
                 <table>
                     <thead>
                     <tr>
-                        <th>ID</th>
+                        <th class="col-id">ID</th>
                         <th>구분</th>
                         <th>제목</th>
                         <th>내용</th>
-                        <th>작성시간</th>
+                        <th class="col-created">활성화시간</th>
                         <th>종료시간</th>
                         <th>상태</th>
                         <th>관리</th>
@@ -400,25 +596,27 @@
                     <tbody>
                     {% for notice in notices %}
                         <tr>
-                            <td>{{ notice.id }}</td>
-                            <td>
+                            <td data-label="ID" class="col-id">{{ notice.id }}</td>
+                            <td data-label="Category">
                                 {% if notice.category.value == "shuttle" %}셔틀 긴급공지{% endif %}
                                 {% if notice.category.value == "asan_citybus" %}아산 시내버스 긴급공지{% endif %}
                                 {% if notice.category.value == "cheonan_citybus" %}천안 시내버스 긴급공지{% endif %}
                                 {% if notice.category.value == "subway" %}지하철 긴급공지{% endif %}
                             </td>
-                            <td>{{ notice.title }}</td>
-                            <td class="content-cell">{{ notice.content }}</td>
-                            <td>{{ notice.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                            <td>{{ notice.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                            <td>
-                                {% if notice.end_at >= now_kst %}
+                            <td data-label="Title">{{ notice.title }}</td>
+                            <td data-label="Content" class="content-cell">{{ notice.content }}</td>
+                            <td data-label="활성화시간" class="col-created">{{ notice.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                            <td data-label="종료시간">{{ notice.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                            <td data-label="Status">
+                                {% if notice.created_at > now_kst %}
+                                    <span class="badge badge-pending">대기</span>
+                                {% elif notice.end_at >= now_kst %}
                                     <span class="badge badge-valid">유효</span>
                                 {% else %}
                                     <span class="badge badge-expired">만료</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Actions">
                                 <textarea class="notice-content-source" hidden>{{ notice.content }}</textarea>
                                 <div class="action-group">
                                     <button
@@ -427,6 +625,7 @@
                                         data-id="{{ notice.id }}"
                                         data-category="{{ notice.category.value }}"
                                         data-title="{{ notice.title|replace('"', '&quot;')|replace("'", '&#39;') }}"
+                                        data-created-at="{{ notice.created_at.strftime('%Y-%m-%dT%H:%M') }}"
                                         data-end-at="{{ notice.end_at.strftime('%Y-%m-%dT%H:%M') }}"
                                     >
                                         수정
@@ -443,7 +642,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="8">등록된 긴급공지가 없습니다.</td>
+                            <td colspan="8" class="table-empty">등록된 긴급공지가 없습니다.</td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -479,6 +678,10 @@
                 <label for="createContent">내용</label>
                 <div id="createContentEditor"></div>
                 <input id="createContent" type="hidden" name="content" required>
+            </div>
+            <div class="form-group">
+                <label for="createCreatedAt">활성화시간</label>
+                <input id="createCreatedAt" type="datetime-local" name="created_at" required>
             </div>
             <div class="form-group">
                 <label for="createEndAt">종료시간</label>
@@ -518,6 +721,10 @@
                 <input id="editContent" type="hidden" name="content" required>
             </div>
             <div class="form-group">
+                <label for="editCreatedAt">활성화시간</label>
+                <input id="editCreatedAt" type="datetime-local" name="created_at" required>
+            </div>
+            <div class="form-group">
                 <label for="editEndAt">종료시간</label>
                 <input id="editEndAt" type="datetime-local" name="end_at" required>
             </div>
@@ -535,35 +742,79 @@
     const editModal = document.getElementById("editModal");
     const createForm = document.getElementById("createForm");
     const editForm = document.getElementById("editForm");
+    const body = document.body;
+    const sidebar = document.getElementById("sidebar");
+    const sidebarBackdrop = document.getElementById("sidebarBackdrop");
     const sidebarToggle = document.getElementById("sidebarToggle");
+    const serverError = {{ error | tojson }};
+    const isCompactViewport = () => window.matchMedia("(max-width: 992px)").matches;
+    const getEditorHeight = () => (window.matchMedia("(max-width: 768px)").matches ? "300px" : "420px");
+    const getEditorPreviewStyle = () => (isCompactViewport() ? "tab" : "vertical");
     const createEditor = new toastui.Editor({
         el: document.querySelector("#createContentEditor"),
-        height: "420px",
+        height: getEditorHeight(),
         initialEditType: "markdown",
-        previewStyle: "vertical"
+        previewStyle: getEditorPreviewStyle()
     });
     const editEditor = new toastui.Editor({
         el: document.querySelector("#editContentEditor"),
-        height: "420px",
+        height: getEditorHeight(),
         initialEditType: "markdown",
-        previewStyle: "vertical"
+        previewStyle: getEditorPreviewStyle()
     });
 
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener("click", function () {
-            document.getElementById("sidebar").classList.toggle("active");
+    function syncEditorViewport() {
+        const nextHeight = getEditorHeight();
+        const nextPreviewStyle = getEditorPreviewStyle();
+        [createEditor, editEditor].forEach(function (editor) {
+            editor.setHeight(nextHeight);
+            if (typeof editor.changePreviewStyle === "function") {
+                editor.changePreviewStyle(nextPreviewStyle);
+            }
         });
     }
 
+    window.addEventListener("resize", syncEditorViewport);
+    syncEditorViewport();
+
+    function openSidebar() {
+        sidebar.classList.add("active");
+        sidebarBackdrop.classList.add("active");
+        body.classList.add("sidebar-open");
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove("active");
+        sidebarBackdrop.classList.remove("active");
+        body.classList.remove("sidebar-open");
+    }
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener("click", function () {
+            if (sidebar.classList.contains("active")) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+    }
+    sidebarBackdrop.addEventListener("click", closeSidebar);
+    document.querySelectorAll(".sidebar .nav-item").forEach(function (item) {
+        item.addEventListener("click", closeSidebar);
+    });
+
     function openModal(modal) {
-        modal.style.display = "block";
+        closeSidebar();
+        modal.style.display = "flex";
         modalBackdrop.style.display = "block";
+        body.classList.add("modal-open");
     }
 
     function closeModals() {
         createModal.style.display = "none";
         editModal.style.display = "none";
         modalBackdrop.style.display = "none";
+        body.classList.remove("modal-open");
     }
 
     function setDefaultCreateEndAt() {
@@ -575,10 +826,36 @@
         endAtInput.value = localDate.toISOString().slice(0, 16);
     }
 
+    function setDefaultCreateCreatedAt() {
+        const createdAtInput = document.getElementById("createCreatedAt");
+        const now = new Date();
+        const offset = now.getTimezoneOffset();
+        const localDate = new Date(now.getTime() - offset * 60000);
+        createdAtInput.value = localDate.toISOString().slice(0, 16);
+    }
+
+    function isInvalidTimeRange(createdAtValue, endAtValue) {
+        if (!createdAtValue || !endAtValue) {
+            return false;
+        }
+        return new Date(createdAtValue).getTime() > new Date(endAtValue).getTime();
+    }
+
+    function validateTimeRange(createdAtInputId, endAtInputId) {
+        const createdAtValue = document.getElementById(createdAtInputId).value;
+        const endAtValue = document.getElementById(endAtInputId).value;
+        if (isInvalidTimeRange(createdAtValue, endAtValue)) {
+            alert("활성화시간은 종료시간보다 늦을 수 없습니다.");
+            return false;
+        }
+        return true;
+    }
+
     document.getElementById("openCreateModal").addEventListener("click", function () {
         createForm.reset();
         createEditor.setMarkdown("");
         document.getElementById("createContent").value = "";
+        setDefaultCreateCreatedAt();
         setDefaultCreateEndAt();
         openModal(createModal);
     });
@@ -594,18 +871,29 @@
             document.getElementById("editTitle").value = button.getAttribute("data-title");
             editEditor.setMarkdown(content || "");
             document.getElementById("editContent").value = content || "";
+            document.getElementById("editCreatedAt").value = button.getAttribute("data-created-at");
             document.getElementById("editEndAt").value = button.getAttribute("data-end-at");
             openModal(editModal);
         });
     });
 
-    createForm.addEventListener("submit", function () {
+    createForm.addEventListener("submit", function (event) {
         document.getElementById("createContent").value = createEditor.getMarkdown();
+        if (!validateTimeRange("createCreatedAt", "createEndAt")) {
+            event.preventDefault();
+        }
     });
 
-    editForm.addEventListener("submit", function () {
+    editForm.addEventListener("submit", function (event) {
         document.getElementById("editContent").value = editEditor.getMarkdown();
+        if (!validateTimeRange("editCreatedAt", "editEndAt")) {
+            event.preventDefault();
+        }
     });
+
+    if (serverError === "invalid_time_range") {
+        alert("활성화시간은 종료시간보다 늦을 수 없습니다.");
+    }
 
     document.querySelectorAll(".delete-btn").forEach(function (button) {
         button.addEventListener("click", function () {
@@ -627,7 +915,13 @@
     modalBackdrop.addEventListener("click", closeModals);
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape") {
-            closeModals();
+            if (createModal.style.display === "flex" || editModal.style.display === "flex") {
+                closeModals();
+                return;
+            }
+            if (sidebar.classList.contains("active")) {
+                closeSidebar();
+            }
         }
     });
 </script>

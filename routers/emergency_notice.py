@@ -41,6 +41,7 @@ def get_latest_emergency_notice(
         db.query(EmergencyNotice)
         .filter(
             EmergencyNotice.category == category,
+            EmergencyNotice.created_at <= now_kst,
             EmergencyNotice.end_at >= now_kst,
         )
         .order_by(EmergencyNotice.created_at.desc())
