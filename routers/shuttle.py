@@ -181,6 +181,7 @@ class RouteResponse(BaseModel):
     id: int
     route_name: str
     direction: str
+    description: str | None
 
     class Config:
         from_attributes = True
@@ -1122,4 +1123,3 @@ def get_station_schedules_by_date(
     }
     set_cache(cache_key, response)
     return response
-

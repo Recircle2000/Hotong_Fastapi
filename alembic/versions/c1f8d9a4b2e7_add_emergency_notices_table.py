@@ -1,7 +1,7 @@
 """Add emergency_notices table
 
 Revision ID: c1f8d9a4b2e7
-Revises: 724cf9e70448
+Revises: 62607c543e63
 Create Date: 2026-02-16 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "c1f8d9a4b2e7"
-down_revision: Union[str, None] = "724cf9e70448"
+down_revision: Union[str, None] = "62607c543e63"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -19,6 +19,7 @@ class ShuttleRoute(Base):
     id = Column(Integer, primary_key=True, index=True)
     route_name = Column(String(255), nullable=False)
     direction = Column(Enum('UP', 'DOWN', name='direction_enum'), nullable=False)
+    description = Column(String(500), nullable=True)
     
     stations = relationship("ShuttleStation", secondary="shuttle_station_routes", back_populates="routes")
     schedules = relationship("Schedule", back_populates="route")
