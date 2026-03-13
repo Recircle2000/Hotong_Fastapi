@@ -746,7 +746,10 @@
     const sidebar = document.getElementById("sidebar");
     const sidebarBackdrop = document.getElementById("sidebarBackdrop");
     const sidebarToggle = document.getElementById("sidebarToggle");
-    const serverError = {{ error | tojson }};
+    
+    // 문자열 변환으로 처리.
+    const serverError = "{{ error if error else '' }}";
+    
     const isCompactViewport = () => window.matchMedia("(max-width: 992px)").matches;
     const getEditorHeight = () => (window.matchMedia("(max-width: 768px)").matches ? "300px" : "420px");
     const getEditorPreviewStyle = () => (isCompactViewport() ? "tab" : "vertical");
