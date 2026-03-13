@@ -8,6 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
 
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 from database import get_db
 from models import Base, User
 from routers import admin_v2
