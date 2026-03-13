@@ -1,0 +1,185 @@
+@import "tailwindcss";
+
+:root {
+  color: #0f172a;
+  background: #f1f5f9;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family:
+    "Pretendard Variable",
+    "Pretendard",
+    "Noto Sans KR",
+    "Segoe UI",
+    sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a[href],
+select,
+input[type="checkbox"],
+input[type="radio"],
+summary,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes admin-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+.motion-enter {
+  animation: admin-fade-up 0.42s var(--motion-ease-out) both;
+}
+
+.motion-enter-delay-1 {
+  animation-delay: 0.06s;
+}
+
+.motion-enter-delay-2 {
+  animation-delay: 0.12s;
+}
+
+.panel-motion {
+  animation: admin-fade-up 0.4s var(--motion-ease-out) both;
+  transition:
+    transform 180ms var(--motion-ease-smooth),
+    box-shadow 180ms var(--motion-ease-smooth),
+    border-color 180ms var(--motion-ease-smooth);
+  will-change: transform, box-shadow;
+}
+
+.panel-motion:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 32px -24px rgba(15, 23, 42, 0.38),
+    0 10px 16px -14px rgba(15, 23, 42, 0.22);
+}
+
+.modal-backdrop-motion {
+  animation: admin-fade-in 0.18s ease-out both;
+  backdrop-filter: blur(4px);
+}
+
+.modal-shell-motion {
+  animation: admin-scale-in 0.22s var(--motion-ease-out) both;
+}
+
+.toast-motion {
+  animation: toast-slide-in 0.22s var(--motion-ease-out) both;
+}
+
+.toast-editor-shell .toastui-editor-defaultUI,
+.toast-viewer-shell .toastui-editor-contents {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.toast-editor-shell .toastui-editor-defaultUI {
+  border-color: #cbd5e1;
+}
+
+.toast-editor-shell .toastui-editor-toolbar {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+
+.toast-editor-shell .toastui-editor-toolbar-icons {
+  filter: none;
+}
+
+.toast-editor-shell .toastui-editor-md-container,
+.toast-editor-shell .toastui-editor-ww-container,
+.toast-viewer-shell .toastui-editor-contents {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.toast-viewer-shell .toastui-editor-contents {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.toast-editor-shell .toastui-editor-mode-switch {
+  background: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

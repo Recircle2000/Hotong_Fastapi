@@ -1,0 +1,85 @@
+name: CI-CD
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release
+  push:
+    branches:
+      - main
+      - release
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install backend dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+
+      - name: Run backend tests
+        run: python -m unittest discover -s tests -p "test_admin_v2.py"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-admin/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend-admin
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend-admin
+        run: npm run build
+
+  deploy:
+    needs: ci
+    if: github.event_name != 'pull_request' && github.ref_name == 'release'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add known hosts
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+        run: |
+          ssh -p "22" "${DEPLOY_USER}@${DEPLOY_HOST}" "
+            set -euo pipefail
+            DEPLOY_PATH=\${DEPLOY_PATH:-/home/ubuntu/Hotong_backend_release}
+            cd \"\${DEPLOY_PATH}\"
+            git fetch origin '${DEPLOY_BRANCH}'
+            git checkout '${DEPLOY_BRANCH}'
+            git pull --ff-only origin '${DEPLOY_BRANCH}'
+            bash scripts/deploy_server.sh
+          "
