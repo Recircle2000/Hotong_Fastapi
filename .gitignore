@@ -16,7 +16,7 @@ docker-*.env
 # Volume data
 redis-data/
 
-#nginx
-nginx/
-
 .cursor/
+frontend-admin/node_modules/
+frontend-admin/dist/
+nginx/static/admin-v2/
