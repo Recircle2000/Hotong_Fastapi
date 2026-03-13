@@ -1,9 +1,10 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { ToastEditor } from "../components/ToastEditor";
 import { ToastViewer } from "../components/ToastViewer";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import {
   ApiError,
   createNotice,
@@ -12,6 +13,7 @@ import {
   updateNotice,
 } from "../lib/api";
 import type { Notice, NoticePayload, NoticeType } from "../lib/types";
+import { useToast } from "../toast/ToastProvider";
 
 const NOTICE_TYPE_OPTIONS: Array<{ value: NoticeType; label: string }> = [
   { value: "App", label: "앱" },
@@ -53,6 +55,8 @@ function formatDate(value: string | null) {
 export function NoticesPage() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { showToast } = useToast();
+  useDocumentTitle("공지 관리");
   const [notices, setNotices] = useState<Notice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +129,7 @@ export function NoticesPage() {
 
     try {
       await deleteNotice(notice.id);
+      showToast("공지를 삭제했습니다.", "success");
       await loadNotices();
       if (detailNotice?.id === notice.id) {
         setDetailNotice(null);
@@ -135,9 +140,9 @@ export function NoticesPage() {
           await handleUnauthorized();
           return;
         }
-        setError(deleteError.message);
+        showToast(deleteError.message, "error");
       } else {
-        setError("공지 삭제 중 오류가 발생했습니다.");
+        showToast("공지 삭제 중 오류가 발생했습니다.", "error");
       }
     }
   }
@@ -155,8 +160,10 @@ export function NoticesPage() {
     try {
       if (formMode === "create") {
         await createNotice(formState);
+        showToast("공지를 등록했습니다.", "success");
       } else if (editingNotice) {
         await updateNotice(editingNotice.id, formState);
+        showToast("공지를 수정했습니다.", "success");
       }
 
       setIsFormOpen(false);
@@ -183,15 +190,42 @@ export function NoticesPage() {
           <div className="text-lg font-semibold">호통 대시보드</div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24">
-          <div className="rounded-lg bg-white/10 px-4 py-3 text-sm font-medium">
-            공지 관리
-          </div>
-          <a
-            href="/admin"
-            className="mt-2 block rounded-lg px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white"
+          <NavLink
+            to="/notices"
+            className={({ isActive }) =>
+              `block rounded-lg px-4 py-3 text-sm transition ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`
+            }
           >
-            기존 관리자
-          </a>
+            공지 관리
+          </NavLink>
+          <NavLink
+            to="/emergency-notices"
+            className={({ isActive }) =>
+              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`
+            }
+          >
+            긴급공지 관리
+          </NavLink>
+          <NavLink
+            to="/shuttle"
+            className={({ isActive }) =>
+              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`
+            }
+          >
+            셔틀 관리
+          </NavLink>
         </nav>
         <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
           <button
@@ -208,7 +242,7 @@ export function NoticesPage() {
         <div className="min-w-0">
           <header className="border-b border-slate-200 bg-white">
             <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="motion-enter flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h1 className="text-2xl font-semibold text-slate-900">공지 관리</h1>
                   <p className="mt-1 text-sm text-slate-500">공지 등록, 수정, 삭제</p>
@@ -217,12 +251,42 @@ export function NoticesPage() {
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
                     {user?.email}
                   </div>
-                  <a
-                    href="/admin"
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 lg:hidden"
+                  <NavLink
+                    to="/notices"
+                    className={({ isActive }) =>
+                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`
+                    }
                   >
-                    기존 관리자
-                  </a>
+                    공지
+                  </NavLink>
+                  <NavLink
+                    to="/emergency-notices"
+                    className={({ isActive }) =>
+                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`
+                    }
+                  >
+                    긴급공지
+                  </NavLink>
+                  <NavLink
+                    to="/shuttle"
+                    className={({ isActive }) =>
+                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`
+                    }
+                  >
+                    셔틀
+                  </NavLink>
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -240,14 +304,14 @@ export function NoticesPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:max-w-xl">
+              <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-2 xl:max-w-xl">
                 <SummaryCard label="전체 공지" value={String(notices.length)} />
                 <SummaryCard label="상단 고정" value={String(pinnedCount)} />
               </div>
             </div>
           </header>
 
-          <main className="px-4 py-6 sm:px-6 lg:px-8">
+          <main className="motion-enter motion-enter-delay-2 px-4 py-6 sm:px-6 lg:px-8">
             {error ? (
               <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {error}
@@ -500,7 +564,7 @@ export function NoticesPage() {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+    <div className="panel-motion rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
       <div className="text-xs font-medium text-slate-500">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>
     </div>
@@ -519,9 +583,9 @@ function Modal({
   wide?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+    <div className="modal-backdrop-motion fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ${
+        className={`modal-shell-motion max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ${
           wide ? "max-w-5xl" : "max-w-4xl"
         }`}
       >

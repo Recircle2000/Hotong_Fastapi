@@ -41,6 +41,7 @@ class AdminV2ApiTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         Base.metadata.drop_all(bind=cls.engine)
+        cls.engine.dispose()
         os.close(cls.db_fd)
         os.unlink(cls.db_path)
 
@@ -164,6 +165,68 @@ class AdminV2ApiTests(unittest.TestCase):
 
         session_response = self.client.get("/api/admin-v2/auth/session")
         self.assertEqual(session_response.status_code, 401)
+
+    def test_emergency_notice_crud_and_status(self):
+        login_response = self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        created = self.client.post(
+            "/api/admin-v2/emergency-notices",
+            json={
+                "category": "shuttle",
+                "title": "셔틀 우회 안내",
+                "content": "정문 공사로 우회합니다.",
+                "created_at": "2099-03-14T09:00:00",
+                "end_at": "2099-03-14T12:00:00",
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["category"], "shuttle")
+        self.assertEqual(created.json()["status"], "pending")
+
+        listing = self.client.get("/api/admin-v2/emergency-notices")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(len(listing.json()), 1)
+        self.assertEqual(listing.json()[0]["category_label"], "셔틀 긴급공지")
+
+        updated = self.client.put(
+            f"/api/admin-v2/emergency-notices/{created.json()['id']}",
+            json={
+                "category": "subway",
+                "title": "지하철 지연",
+                "content": "1호선 지연 중입니다.",
+                "created_at": "2099-03-14T10:00:00",
+                "end_at": "2099-03-14T13:00:00",
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["category"], "subway")
+
+        deleted = self.client.delete(f"/api/admin-v2/emergency-notices/{created.json()['id']}")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(self.client.get("/api/admin-v2/emergency-notices").json(), [])
+
+    def test_emergency_notice_rejects_invalid_time_range(self):
+        login_response = self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        response = self.client.post(
+            "/api/admin-v2/emergency-notices",
+            json={
+                "category": "shuttle",
+                "title": "잘못된 시간",
+                "content": "종료 시각 검증",
+                "created_at": "2099-03-14T12:00:00",
+                "end_at": "2099-03-14T11:00:00",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
 
 
 if __name__ == "__main__":

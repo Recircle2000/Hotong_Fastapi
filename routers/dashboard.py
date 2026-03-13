@@ -10,6 +10,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from models.emergency_notice import EmergencyNotice, EmergencyNoticeCategory
+from services.admin_emergency_notice import (
+    INVALID_TIME_RANGE_MESSAGE,
+    create_admin_emergency_notice,
+    delete_admin_emergency_notice,
+    list_admin_emergency_notices,
+    update_admin_emergency_notice,
+)
 from services.admin_auth import (
     AUTH_REQUIRED_MESSAGE,
     AdminAuthError,
@@ -220,7 +227,7 @@ async def admin_emergency_notice_page(
     current_admin=Depends(get_admin_user),
 ):
     del current_admin
-    notices = db.query(EmergencyNotice).order_by(EmergencyNotice.created_at.desc()).all()
+    notices = list_admin_emergency_notices(db)
     return templates.TemplateResponse(
         "admin_emergency_notice.html",
         {

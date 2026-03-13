@@ -37,3 +37,22 @@ class AdminNoticeResponse(BaseModel):
     notice_type: str
     is_pinned: bool
     created_at: datetime | None
+
+
+class AdminEmergencyNoticePayload(BaseModel):
+    category: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1, max_length=255)
+    content: str = Field(..., min_length=1)
+    created_at: datetime
+    end_at: datetime
+
+
+class AdminEmergencyNoticeResponse(BaseModel):
+    id: int
+    category: str
+    category_label: str
+    title: str
+    content: str
+    created_at: datetime
+    end_at: datetime
+    status: str

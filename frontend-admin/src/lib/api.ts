@@ -1,4 +1,10 @@
-import type { Notice, NoticePayload, SessionResponse } from "./types";
+import type {
+  EmergencyNotice,
+  EmergencyNoticePayload,
+  Notice,
+  NoticePayload,
+  SessionResponse,
+} from "./types";
 
 const API_BASE = "/api/admin-v2";
 
@@ -98,6 +104,30 @@ export function updateNotice(id: number, payload: NoticePayload) {
 
 export function deleteNotice(id: number) {
   return apiRequest<void>(`/notices/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getEmergencyNotices() {
+  return apiRequest<EmergencyNotice[]>("/emergency-notices");
+}
+
+export function createEmergencyNotice(payload: EmergencyNoticePayload) {
+  return apiRequest<EmergencyNotice>("/emergency-notices", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateEmergencyNotice(id: number, payload: EmergencyNoticePayload) {
+  return apiRequest<EmergencyNotice>(`/emergency-notices/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteEmergencyNotice(id: number) {
+  return apiRequest<void>(`/emergency-notices/${id}`, {
     method: "DELETE",
   });
 }

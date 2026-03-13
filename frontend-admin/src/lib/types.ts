@@ -26,3 +26,30 @@ export interface NoticePayload {
   notice_type: NoticeType;
   is_pinned: boolean;
 }
+
+export type EmergencyNoticeCategory =
+  | "shuttle"
+  | "asan_citybus"
+  | "cheonan_citybus"
+  | "subway";
+
+export type EmergencyNoticeStatus = "pending" | "active" | "expired";
+
+export interface EmergencyNotice {
+  id: number;
+  category: EmergencyNoticeCategory;
+  category_label: string;
+  title: string;
+  content: string;
+  created_at: string;
+  end_at: string;
+  status: EmergencyNoticeStatus;
+}
+
+export interface EmergencyNoticePayload {
+  category: EmergencyNoticeCategory;
+  title: string;
+  content: string;
+  created_at: string;
+  end_at: string;
+}

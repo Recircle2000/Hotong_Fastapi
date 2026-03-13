@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas.admin_v2 import (
+    AdminEmergencyNoticePayload,
+    AdminEmergencyNoticeResponse,
     AdminLoginRequest,
     AdminLogoutResponse,
     AdminNoticePayload,
@@ -19,6 +21,13 @@ from services.admin_auth import (
     clear_admin_session,
     login_admin_session,
     resolve_admin_user,
+)
+from services.admin_emergency_notice import (
+    create_admin_emergency_notice,
+    delete_admin_emergency_notice,
+    list_admin_emergency_notices,
+    serialize_emergency_notice,
+    update_admin_emergency_notice,
 )
 from services.admin_notice import (
     create_admin_notice,
@@ -130,4 +139,73 @@ async def delete_admin_v2_notice(
     del current_admin
     if not delete_admin_notice(db, notice_id=notice_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="공지사항을 찾을 수 없습니다.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/emergency-notices", response_model=list[AdminEmergencyNoticeResponse])
+async def get_admin_v2_emergency_notices(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return [
+        serialize_emergency_notice(notice)
+        for notice in list_admin_emergency_notices(db)
+    ]
+
+
+@router.post(
+    "/emergency-notices",
+    response_model=AdminEmergencyNoticeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_admin_v2_emergency_notice(
+    payload: AdminEmergencyNoticePayload,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    notice = create_admin_emergency_notice(
+        db,
+        category=payload.category,
+        title=payload.title,
+        content=payload.content,
+        created_at=payload.created_at,
+        end_at=payload.end_at,
+    )
+    return serialize_emergency_notice(notice)
+
+
+@router.put("/emergency-notices/{notice_id}", response_model=AdminEmergencyNoticeResponse)
+async def update_admin_v2_emergency_notice(
+    notice_id: int,
+    payload: AdminEmergencyNoticePayload,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    notice = update_admin_emergency_notice(
+        db,
+        notice_id=notice_id,
+        category=payload.category,
+        title=payload.title,
+        content=payload.content,
+        created_at=payload.created_at,
+        end_at=payload.end_at,
+    )
+    return serialize_emergency_notice(notice)
+
+
+@router.delete("/emergency-notices/{notice_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_admin_v2_emergency_notice(
+    notice_id: int,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    if not delete_admin_emergency_notice(db, notice_id=notice_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="긴급공지 정보를 찾을 수 없습니다.",
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
