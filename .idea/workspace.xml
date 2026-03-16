@@ -4,8 +4,22 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: 긴급 공지 엔드포인트 및 대시보드 추가">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: column추가 - 셔틀 정류장 관리">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bus_times.json" beforeDir="false" afterPath="$PROJECT_DIR$/bus_times.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/lib/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/lib/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/lib/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/lib/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/EmergencyNoticePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/EmergencyNoticePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/NoticesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/NoticesPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/ShuttlePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/ShuttlePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/tsconfig.app.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/tsconfig.app.tsbuildinfo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/tsconfig.node.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/tsconfig.node.tsbuildinfo" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-admin/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/vite.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/schemas/admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/schemas/admin_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_admin_v2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -16,6 +30,9 @@
     <persistenceIdMap>
       <entry key="_C:/Users/User/PycharmProjects/gotohoseo_backend" value="2wws9fOvl8imbTTZCkdcm5Ve0p4" />
     </persistenceIdMap>
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="126" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
@@ -47,33 +64,49 @@
     &quot;repository&quot;: &quot;hoseo-transport-BE&quot;
   }
 }</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 6
 }</component>
   <component name="ProjectId" id="2wws9fOvl8imbTTZCkdcm5Ve0p4" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+  <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;FastAPI.fastAPI.executor&quot;: &quot;Run&quot;,
-    &quot;FastAPI.이름이 지정되지 않았습니다.executor&quot;: &quot;Run&quot;,
-    &quot;HTTP 요청.test_main 내 전체.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/User/PycharmProjects/gotohoseo_backend&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "FastAPI.fastAPI.executor": "Run",
+    "FastAPI.이름이 지정되지 않았습니다.executor": "Run",
+    "HTTP 요청.test_main 내 전체.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "develop",
+    "last_opened_file_path": "C:/Users/User/PycharmProjects/gotohoseo_backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "C:\\Users\\User\\PycharmProjects\\gotohoseo_backend\\frontend-admin\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "mysql"
+    ]
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="FastAPI.fastAPI">
     <configuration name="test_main 내 전체" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" temporary="true" path="$PROJECT_DIR$/test_main.http">
       <method v="2" />
@@ -92,6 +125,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="launchJavascriptDebuger" value="false" />
       <method v="2" />
     </configuration>
@@ -109,8 +143,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-PY-243.25659.43" />
-        <option value="bundled-python-sdk-181015f7ab06-4df51de95216-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.25659.43" />
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.31033.139" />
+        <option value="bundled-python-sdk-2653e85de345-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.31033.139" />
       </set>
     </attachedChunks>
   </component>
@@ -161,6 +195,9 @@
       <workItem from="1771250210810" duration="78000" />
       <workItem from="1772653976273" duration="549000" />
       <workItem from="1772654551165" duration="560000" />
+      <workItem from="1773672333629" duration="383000" />
+      <workItem from="1773672742278" duration="12000" />
+      <workItem from="1773683811164" duration="5890000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -410,7 +447,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771250256364</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="feat: column추가 - 셔틀 정류장 관리">
+      <option name="closed" value="true" />
+      <created>1773689090470</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1773689090471</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -428,7 +473,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="db: 해킹 복원" />
     <MESSAGE value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
     <MESSAGE value="db: DB 마이그레이션" />
     <MESSAGE value="feat: 예외 시간표 평일, 토요일, 일요일,공유일 선택 적용 기능 추가" />
@@ -453,7 +497,8 @@
     <MESSAGE value="chore: 24번 및 81번 버스 노선의 조회 대상 축소&#10;&#10;-메인메뉴 위젯에 쓰이는 엔드포인트는 상행 노선을 조회할 필요가 없음." />
     <MESSAGE value="feat: 외부api 중복 호출 문제 해결" />
     <MESSAGE value="feat: 긴급 공지 엔드포인트 및 대시보드 추가" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 긴급 공지 엔드포인트 및 대시보드 추가" />
+    <MESSAGE value="feat: column추가 - 셔틀 정류장 관리" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: column추가 - 셔틀 정류장 관리" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
