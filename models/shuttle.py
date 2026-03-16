@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Double, Enum, ForeignKey, Time
+from sqlalchemy import Boolean, Column, Double, Enum, ForeignKey, Integer, String, Time, text
 from sqlalchemy.orm import relationship
 from models import Base
 
@@ -11,6 +11,7 @@ class ShuttleStation(Base):
     longitude = Column(Double, nullable=False)
     description = Column(String(500), nullable=True)
     image_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("1"))
     routes = relationship("ShuttleRoute", secondary="shuttle_station_routes", back_populates="stations")
 
 class ShuttleRoute(Base):
