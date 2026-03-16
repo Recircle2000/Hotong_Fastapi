@@ -224,7 +224,7 @@ export function ShuttleStationsPage() {
     <div className="min-h-screen bg-slate-100 text-slate-900 lg:pl-60">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200 bg-slate-900 text-white lg:flex">
         <div className="border-b border-white/10 px-6 py-5">
-          <div className="text-lg font-semibold">교통 대시보드</div>
+          <div className="text-lg font-semibold">호통 대시보드</div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24">
           <NavLink
