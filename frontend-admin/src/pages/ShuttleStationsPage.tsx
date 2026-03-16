@@ -404,9 +404,10 @@ export function ShuttleStationsPage() {
                       {stations.map((station) => (
                         <tr key={station.id} className="border-t border-slate-200">
                           <td className="px-5 py-4">
+                            <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
                             <button
                               type="button"
-                              className="font-medium text-slate-900 hover:text-blue-700"
+                              className="mt-1 font-medium text-slate-900 hover:text-blue-700"
                               onClick={() => setDetailStation(station)}
                             >
                               {station.name}
@@ -465,13 +466,16 @@ export function ShuttleStationsPage() {
                       className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <button
-                          type="button"
-                          className="text-left text-base font-semibold text-slate-900"
-                          onClick={() => setDetailStation(station)}
-                        >
-                          {station.name}
-                        </button>
+                        <div>
+                          <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
+                          <button
+                            type="button"
+                            className="mt-1 text-left text-base font-semibold text-slate-900"
+                            onClick={() => setDetailStation(station)}
+                          >
+                            {station.name}
+                          </button>
+                        </div>
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                             station.is_active
