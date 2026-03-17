@@ -4,22 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="feat: column추가 - 셔틀 정류장 관리">
+    <list default="true" id="9c2d9a97-df4c-4d90-b84a-ceef9001d666" name="변경" comment="chore: 오타 수정">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bus_times.json" beforeDir="false" afterPath="$PROJECT_DIR$/bus_times.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/lib/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/lib/api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/lib/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/lib/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/EmergencyNoticePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/EmergencyNoticePage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/NoticesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/NoticesPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/src/pages/ShuttlePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/src/pages/ShuttlePage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/tsconfig.app.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/tsconfig.app.tsbuildinfo" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/tsconfig.node.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/tsconfig.node.tsbuildinfo" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend-admin/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-admin/vite.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin_v2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/bus.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/schemas/admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/schemas/admin_v2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_admin_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_admin_v2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -197,7 +184,7 @@
       <workItem from="1772654551165" duration="560000" />
       <workItem from="1773672333629" duration="383000" />
       <workItem from="1773672742278" duration="12000" />
-      <workItem from="1773683811164" duration="5890000" />
+      <workItem from="1773683811164" duration="7485000" />
     </task>
     <task id="LOCAL-00001" summary="feat: 셔틀 정류장별 스케줄 날짜별 조회 엔드포인트 추가">
       <option name="closed" value="true" />
@@ -455,7 +442,47 @@
       <option name="project" value="LOCAL" />
       <updated>1773689090471</updated>
     </task>
-    <option name="localTasksCounter" value="33" />
+    <task id="LOCAL-00033" summary="feat: 셔틀 정류장 관리 대시보드 추가">
+      <option name="closed" value="true" />
+      <created>1773691046484</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691046484</updated>
+    </task>
+    <task id="LOCAL-00034" summary="feat: 셔틀 정류장 페이지에 ID 표시 추가">
+      <option name="closed" value="true" />
+      <created>1773691187563</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691187563</updated>
+    </task>
+    <task id="LOCAL-00035" summary="feat: 시내버스 시간표 업데이트 251101버전">
+      <option name="closed" value="true" />
+      <created>1773691207366</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691207366</updated>
+    </task>
+    <task id="LOCAL-00036" summary="feat: 모달 밖 클릭해도 닫히게 수정(backdrop)">
+      <option name="closed" value="true" />
+      <created>1773691681189</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691681189</updated>
+    </task>
+    <task id="LOCAL-00037" summary="chore: 오타 수정">
+      <option name="closed" value="true" />
+      <created>1773691796633</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691796633</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -473,11 +500,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="feat: 서버 모니터링 기능 추가 및 API 모니터링 미들웨어 설정" />
-    <MESSAGE value="db: DB 마이그레이션" />
-    <MESSAGE value="feat: 예외 시간표 평일, 토요일, 일요일,공유일 선택 적용 기능 추가" />
-    <MESSAGE value="build:" />
-    <MESSAGE value="feat: 천안캠퍼스 시내버스 추가" />
     <MESSAGE value="perf: 웹소켓 연결 없을 시 버스 위치 데이터를 업데이트 하지 않도록 최적화" />
     <MESSAGE value="feat: 신기능을 위한 수정" />
     <MESSAGE value="fix: 공지사항 작성/수정 모달 크기 조정" />
@@ -498,7 +520,12 @@
     <MESSAGE value="feat: 외부api 중복 호출 문제 해결" />
     <MESSAGE value="feat: 긴급 공지 엔드포인트 및 대시보드 추가" />
     <MESSAGE value="feat: column추가 - 셔틀 정류장 관리" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: column추가 - 셔틀 정류장 관리" />
+    <MESSAGE value="feat: 셔틀 정류장 관리 대시보드 추가" />
+    <MESSAGE value="feat: 셔틀 정류장 페이지에 ID 표시 추가" />
+    <MESSAGE value="feat: 시내버스 시간표 업데이트 251101버전" />
+    <MESSAGE value="feat: 모달 밖 클릭해도 닫히게 수정(backdrop)" />
+    <MESSAGE value="chore: 오타 수정" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: 오타 수정" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
