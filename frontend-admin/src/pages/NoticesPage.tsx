@@ -226,6 +226,18 @@ export function NoticesPage() {
           >
             셔틀 관리
           </NavLink>
+          <NavLink
+            to="/shuttle-stations"
+            className={({ isActive }) =>
+              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`
+            }
+          >
+            정류장 관리
+          </NavLink>
         </nav>
         <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
           <button
@@ -286,6 +298,18 @@ export function NoticesPage() {
                     }
                   >
                     셔틀
+                  </NavLink>
+                  <NavLink
+                    to="/shuttle-stations"
+                    className={({ isActive }) =>
+                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
+                        isActive
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`
+                    }
+                  >
+                    정류장
                   </NavLink>
                   <button
                     type="button"
@@ -583,11 +607,15 @@ function Modal({
   wide?: boolean;
 }) {
   return (
-    <div className="modal-backdrop-motion fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+    <div
+      className="modal-backdrop-motion fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
+      onClick={onClose}
+    >
       <div
         className={`modal-shell-motion max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl ${
           wide ? "max-w-5xl" : "max-w-4xl"
         }`}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-slate-900">{title}</h2>

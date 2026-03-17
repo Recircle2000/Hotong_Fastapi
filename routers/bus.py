@@ -61,6 +61,27 @@ ROUTES = {
     "81_DOWN": "CAB285000293",  # 각원사 회차지 출발 (하행)
 }
 
+CHEONAN_ROUTE_NAMES = {"24_UP", "24_DOWN", "81_UP", "81_DOWN"}
+WS_ROUTE_GROUPS: Dict[str, Tuple[str, ...]] = {
+    "all": tuple(ROUTES.keys()),
+    "asan_down": tuple(
+        route_name for route_name in ROUTES
+        if route_name not in CHEONAN_ROUTE_NAMES and route_name.endswith("_DOWN")
+    ),
+    "asan_up": tuple(
+        route_name for route_name in ROUTES
+        if route_name not in CHEONAN_ROUTE_NAMES and route_name.endswith("_UP")
+    ),
+    "cheonan_down": tuple(
+        route_name for route_name in ROUTES
+        if route_name in CHEONAN_ROUTE_NAMES and route_name.endswith("_DOWN")
+    ),
+    "cheonan_up": tuple(
+        route_name for route_name in ROUTES
+        if route_name in CHEONAN_ROUTE_NAMES and route_name.endswith("_UP")
+    ),
+}
+
 # 주요 노선 (항상 체크)
 MAIN_ROUTES = ["순환5_DOWN", "순환5_UP", "24_UP", "24_DOWN", "81_UP", "81_DOWN", "1000_DOWN", "1000_UP"]
 
@@ -76,6 +97,9 @@ MAIN_ROUTES_END_TIME = time(23, 50)  # 오후 10시 15분
 
 # 웹소켓 연결 관리
 active_connections: Set[WebSocket] = set()
+filtered_connections: Dict[str, Set[WebSocket]] = {
+    group_name: set() for group_name in WS_ROUTE_GROUPS if group_name != "all"
+}
 bus_clients_event = asyncio.Event()
 
 # 시간표 데이터 저장
@@ -86,8 +110,93 @@ parsed_bus_timetable: Dict[str, List[Tuple[int, int]]] = {}
 last_timetable_update = 0
 # 재사용 HTTP 클라이언트
 bus_http_client: Optional[httpx.AsyncClient] = None
+route_fetch_tasks: Dict[str, asyncio.Task] = {}
 
 logging.basicConfig(level=logging.INFO)
+
+
+def get_total_active_connections() -> int:
+    return len(active_connections) + sum(len(connections) for connections in filtered_connections.values())
+
+
+def build_bus_message(route_names: Optional[Tuple[str, ...]] = None) -> str:
+    result = {}
+    target_routes = route_names or WS_ROUTE_GROUPS["all"]
+
+    for route_name in target_routes:
+        cached_data = get_cache(route_name)
+        if cached_data:
+            filtered_data = []
+            for bus in cached_data:
+                filtered_bus = {k: v for k, v in bus.items() if k not in ["nodeid", "routetp"]}
+                filtered_data.append(filtered_bus)
+            result[route_name] = filtered_data
+
+    return json.dumps(result)
+
+
+def get_requested_route_names() -> Tuple[str, ...]:
+    if active_connections:
+        return WS_ROUTE_GROUPS["all"]
+
+    requested_routes = set()
+    for group_name, connections in filtered_connections.items():
+        if connections:
+            requested_routes.update(WS_ROUTE_GROUPS[group_name])
+
+    return tuple(route_name for route_name in ROUTES if route_name in requested_routes)
+
+
+async def fetch_bus_data_deduplicated(
+        route_name: str,
+        route_id: str,
+        route_should_check: Optional[bool] = None,
+        use_cache: bool = True,
+) -> Optional[List[dict]]:
+    if route_should_check is None:
+        route_should_check = should_check_route(route_name)
+
+    if not route_should_check:
+        delete_cache(route_name)
+        return None
+
+    if use_cache:
+        cached_data = get_cache(route_name)
+        if cached_data is not None:
+            return cached_data
+
+    existing_task = route_fetch_tasks.get(route_name)
+    if existing_task and not existing_task.done():
+        return await existing_task
+
+    task = asyncio.create_task(
+        fetch_bus_data(route_name, route_id, route_should_check=route_should_check)
+    )
+    route_fetch_tasks[route_name] = task
+
+    try:
+        return await task
+    finally:
+        if route_fetch_tasks.get(route_name) is task:
+            route_fetch_tasks.pop(route_name, None)
+
+
+async def ensure_route_data(route_names: Tuple[str, ...], use_cache: bool = True):
+    tasks = []
+
+    for route_name in route_names:
+        route_should_check = should_check_route(route_name)
+        tasks.append(
+            fetch_bus_data_deduplicated(
+                route_name,
+                ROUTES[route_name],
+                route_should_check=route_should_check,
+                use_cache=use_cache,
+            )
+        )
+
+    if tasks:
+        await asyncio.gather(*tasks)
 
 
 def load_bus_timetable():
@@ -202,7 +311,9 @@ async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool
         bus_http_client = httpx.AsyncClient()
 
     try:
-        response = await bus_http_client.get(build_api_url(route_id, route_name))
+        api_url = build_api_url(route_id, route_name)
+        logging.info(f"[{route_name}] External bus API request: {api_url}")
+        response = await bus_http_client.get(api_url)
         response.raise_for_status()
         data = response.json()
 
@@ -229,22 +340,19 @@ async def update_bus_cache():
     while True:
         # 접속자 생길 때까지 대기
         await bus_clients_event.wait()
-        
-        load_bus_timetable()
-        tasks = []
-        for route_name, route_id in ROUTES.items():
-            route_should_check = should_check_route(route_name)
-            if route_should_check:
-                tasks.append(fetch_bus_data(route_name, route_id, route_should_check=route_should_check))
 
-        if tasks:
-            await asyncio.gather(*tasks)
+        load_bus_timetable()
+        requested_route_names = get_requested_route_names()
+
+        if requested_route_names:
+            await ensure_route_data(requested_route_names)
         else:
-            logging.debug("현재 체크할 노선이 없습니다")
-        
+            logging.debug("현재 요청된 노선이 없습니다")
+
         # 데이터가 있든 없든 브로드캐스트 (빈 상태 전송)
         await broadcast_bus_data()
-        
+        await broadcast_filtered_bus_data()
+
         # logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
         await asyncio.sleep(5)
 
@@ -284,6 +392,28 @@ async def broadcast_bus_data(websocket: WebSocket = None):
 
 
 # WebSocket 엔드포인트
+async def broadcast_filtered_bus_data():
+    if not any(filtered_connections.values()):
+        return
+
+    group_messages = {
+        group_name: build_bus_message(WS_ROUTE_GROUPS[group_name])
+        for group_name, connections in filtered_connections.items()
+        if connections
+    }
+
+    for group_name, connections in filtered_connections.items():
+        if not connections:
+            continue
+
+        message = group_messages[group_name]
+        for connection in list(connections):
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logging.error(f"❌WebSocket 전송 오류: ({group_name}): {e}")
+
+
 @router.websocket("/ws/bus")
 async def websocket_endpoint(websocket: WebSocket):
     """
@@ -293,18 +423,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.add(websocket)
     bus_clients_event.set()
-    logging.info(f"✅ 클라이언트 접속: {len(active_connections)}명")
+    logging.info(f"✅ 클라이언트 접속: {get_total_active_connections()}명")
 
     try:
-        # 최초 연결 시 버스 데이터 즉시 업데이트 후 전송
-        # 캐시에 데이터가 있다면 바로 전송하고, 없다면 fetch
-        # await broadcast_bus_data(websocket) # 캐시 데이터 우선 전송 (부분 데이터 노출 방지를 위해 주석 처리)
-        
-        # 최신 데이터 fetch 및 전송 (백그라운드 루프가 돌겠지만 즉시성 보장) -> 중복 호출 원인이므로 제거
-        # tasks = [fetch_bus_data(route_name, route_id) for route_name, route_id in ROUTES.items() if should_check_route(route_name)]
-        # if tasks:
-        #     await asyncio.gather(*tasks)
-        
+        await ensure_route_data(WS_ROUTE_GROUPS["all"])
+
         # 데이터가 있든 없든 최초 1회는 상태를 알려줌 (빈 객체라도 전송)
         await broadcast_bus_data(websocket)
 
@@ -322,10 +445,59 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.error(f"WebSocket 연결 오류: {e}")
     finally:
         active_connections.discard(websocket)
-        logging.info(f"❌ 클라이언트 접속 제거 (남은 클라이언트: {len(active_connections)}명)")
-        if not active_connections:
+        logging.info(f"❌ 클라이언트 접속 제거 (남은 클라이언트: {get_total_active_connections()}명)")
+        if get_total_active_connections() == 0:
             bus_clients_event.clear()
             logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
+
+async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
+    route_names = WS_ROUTE_GROUPS[group_name]
+
+    await websocket.accept()
+    filtered_connections[group_name].add(websocket)
+    bus_clients_event.set()
+    logging.info(f"✅ 클라이언트 접속 ({group_name}): {get_total_active_connections()}명")
+
+    try:
+        await ensure_route_data(route_names)
+        await websocket.send_text(build_bus_message(route_names))
+
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+
+    except WebSocketDisconnect:
+        logging.info(f"클라이언트 접속 종료 ({group_name})")
+    except Exception as e:
+        logging.error(f"WebSocket 연결 오류 ({group_name}): {e}")
+    finally:
+        filtered_connections[group_name].discard(websocket)
+        logging.info(f"❌ 클라이언트 접속 제거 ({group_name}, 남은 클라이언트: {get_total_active_connections()}명)")
+        if get_total_active_connections() == 0:
+            bus_clients_event.clear()
+            logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
+
+
+@router.websocket("/ws/bus/asan/down")
+async def websocket_asan_down(websocket: WebSocket):
+    await handle_filtered_bus_websocket(websocket, "asan_down")
+
+
+@router.websocket("/ws/bus/asan/up")
+async def websocket_asan_up(websocket: WebSocket):
+    await handle_filtered_bus_websocket(websocket, "asan_up")
+
+
+@router.websocket("/ws/bus/cheonan/down")
+async def websocket_cheonan_down(websocket: WebSocket):
+    await handle_filtered_bus_websocket(websocket, "cheonan_down")
+
+
+@router.websocket("/ws/bus/cheonan/up")
+async def websocket_cheonan_up(websocket: WebSocket):
+    await handle_filtered_bus_websocket(websocket, "cheonan_up")
+
 
 # Global task reference to prevent duplicate execution
 bus_cache_task: Optional[asyncio.Task] = None
@@ -348,34 +520,14 @@ async def get_all_buses():
     """
     target_routes = ["24_DOWN", "81_DOWN"]
     result = {}
-    route_cache: Dict[str, Optional[List[dict]]] = {}
 
-    # 1. Fetch data for all routes concurrently if needed
-    fetch_tasks = []
+    await ensure_route_data(tuple(target_routes))
+
     for route_name in target_routes:
         if route_name not in ROUTES:
             continue
 
         cached_data = get_cache(route_name)
-        route_cache[route_name] = cached_data
-
-        if not cached_data:
-            route_should_check = should_check_route(route_name)
-            if route_should_check:
-                route_id = ROUTES[route_name]
-                fetch_tasks.append(fetch_bus_data(route_name, route_id, route_should_check=route_should_check))
-
-    if fetch_tasks:
-        await asyncio.gather(*fetch_tasks)
-    
-    # 2. Construct response from cache
-    for route_name in target_routes:
-        if route_name not in ROUTES:
-            continue
-
-        cached_data = route_cache.get(route_name)
-        if not cached_data:
-            cached_data = get_cache(route_name)
 
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
@@ -399,14 +551,9 @@ async def get_bus_by_route(route_name: str):
     if route_name not in ROUTES:
         raise HTTPException(status_code=404, detail="Route not found")
 
+    await ensure_route_data((route_name,))
     cached_data = get_cache(route_name)
-    if not cached_data:
-        # 캐시에 없으면 실시간 조회 시도
-        route_should_check = should_check_route(route_name)
-        if route_should_check:
-            await fetch_bus_data(route_name, ROUTES[route_name], route_should_check=route_should_check)
-            cached_data = get_cache(route_name)
-    
+
     if not cached_data:
         # 그래도 없으면 데이터 없음 처리
         raise HTTPException(status_code=404, detail="No bus data found for this route")
