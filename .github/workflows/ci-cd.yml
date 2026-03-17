@@ -78,6 +78,7 @@ jobs:
             set -euo pipefail
             DEPLOY_PATH=\${DEPLOY_PATH:-/home/ubuntu/Hotong_backend_release}
             cd \"\${DEPLOY_PATH}\"
+            git restore frontend-admin/tsconfig.app.tsbuildinfo frontend-admin/tsconfig.node.tsbuildinfo 2>/dev/null || true
             git fetch origin '${DEPLOY_BRANCH}'
             git checkout '${DEPLOY_BRANCH}'
             git pull --ff-only origin '${DEPLOY_BRANCH}'
