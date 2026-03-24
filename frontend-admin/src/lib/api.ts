@@ -1,4 +1,6 @@
 import type {
+  AdminShuttleStation,
+  AdminShuttleStationPayload,
   EmergencyNotice,
   EmergencyNoticePayload,
   Notice,
@@ -128,6 +130,33 @@ export function updateEmergencyNotice(id: number, payload: EmergencyNoticePayloa
 
 export function deleteEmergencyNotice(id: number) {
   return apiRequest<void>(`/emergency-notices/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getAdminShuttleStations() {
+  return apiRequest<AdminShuttleStation[]>("/shuttle-stations");
+}
+
+export function createAdminShuttleStation(payload: AdminShuttleStationPayload) {
+  return apiRequest<AdminShuttleStation>("/shuttle-stations", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateAdminShuttleStation(
+  id: number,
+  payload: AdminShuttleStationPayload,
+) {
+  return apiRequest<AdminShuttleStation>(`/shuttle-stations/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteAdminShuttleStation(id: number) {
+  return apiRequest<void>(`/shuttle-stations/${id}`, {
     method: "DELETE",
   });
 }

@@ -290,17 +290,17 @@ def get_stations(
     모든 셔틀 정류장 목록을 조회합니다.
     station_id가 제공되면 해당 정류장만 조회합니다.
     """
-    cache_key = f"stations:{station_id if station_id else 'all'}"
+    cache_key = f"stations:active:{station_id if station_id else 'all'}"
     def db_query():
+        query = db.query(ShuttleStation).filter(ShuttleStation.is_active.is_(True))
         if station_id:
-            station = db.query(ShuttleStation).filter(
+            station = query.filter(
                 ShuttleStation.id == station_id
             ).first()
             if not station:
                 return []
             return [station]
-        else:
-            return db.query(ShuttleStation).all()
+        return query.all()
     return get_or_set_cache(cache_key, db_query, serialize_models)
 
 @router.get("/routes", response_model=List[RouteResponse])

@@ -53,3 +53,22 @@ export interface EmergencyNoticePayload {
   created_at: string;
   end_at: string;
 }
+
+export interface AdminShuttleStation {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  description: string | null;
+  image_url: string | null;
+  is_active: boolean;
+}
+
+export interface AdminShuttleStationPayload {
+  name: string;
+  latitude: number;
+  longitude: number;
+  description: string | null;
+  image_url: string | null;
+  is_active: boolean;
+}

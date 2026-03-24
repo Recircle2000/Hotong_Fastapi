@@ -230,6 +230,75 @@ class AdminV2ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_shuttle_station_crud(self):
+        login_response = self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        created = self.client.post(
+            "/api/admin-v2/shuttle-stations",
+            json={
+                "name": "정문",
+                "latitude": 36.7691,
+                "longitude": 127.0739,
+                "description": "학교 정문 정류장",
+                "image_url": "https://example.com/station-main.jpg",
+                "is_active": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertTrue(created.json()["is_active"])
+
+        created_inactive = self.client.post(
+            "/api/admin-v2/shuttle-stations",
+            json={
+                "name": "후문",
+                "latitude": 36.7685,
+                "longitude": 127.0751,
+                "description": None,
+                "image_url": None,
+                "is_active": False,
+            },
+        )
+        self.assertEqual(created_inactive.status_code, 201)
+        self.assertFalse(created_inactive.json()["is_active"])
+
+        listing = self.client.get("/api/admin-v2/shuttle-stations")
+        self.assertEqual(listing.status_code, 200)
+        stations = listing.json()
+        self.assertEqual(len(stations), 2)
+        self.assertEqual(stations[0]["name"], "정문")
+        self.assertTrue(stations[0]["is_active"])
+        self.assertEqual(stations[1]["name"], "후문")
+        self.assertFalse(stations[1]["is_active"])
+
+        updated = self.client.put(
+            f"/api/admin-v2/shuttle-stations/{created_inactive.json()['id']}",
+            json={
+                "name": "후문 변경",
+                "latitude": 36.7688,
+                "longitude": 127.0755,
+                "description": "순환 셔틀 임시 정류장",
+                "image_url": "",
+                "is_active": True,
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["name"], "후문 변경")
+        self.assertTrue(updated.json()["is_active"])
+        self.assertIsNone(updated.json()["image_url"])
+
+        deleted = self.client.delete(f"/api/admin-v2/shuttle-stations/{created.json()['id']}")
+        self.assertEqual(deleted.status_code, 204)
+
+        final_listing = self.client.get("/api/admin-v2/shuttle-stations")
+        self.assertEqual(final_listing.status_code, 200)
+        final_stations = final_listing.json()
+        self.assertEqual(len(final_stations), 1)
+        self.assertEqual(final_stations[0]["name"], "후문 변경")
+
 
 if __name__ == "__main__":
     unittest.main()

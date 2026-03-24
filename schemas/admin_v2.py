@@ -56,3 +56,22 @@ class AdminEmergencyNoticeResponse(BaseModel):
     created_at: datetime
     end_at: datetime
     status: str
+
+
+class AdminShuttleStationPayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    description: str | None = Field(default=None, max_length=500)
+    image_url: str | None = Field(default=None, max_length=500)
+    is_active: bool = True
+
+
+class AdminShuttleStationResponse(BaseModel):
+    id: int
+    name: str
+    latitude: float
+    longitude: float
+    description: str | None
+    image_url: str | None
+    is_active: bool
