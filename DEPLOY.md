@@ -14,9 +14,14 @@ certs/
 `.env` 파일을 생성하고 다음 변수들을 설정:
 ```
 REDIS_PASSWORD=your_redis_password
-DATABASE_URL=your_database_url
+SUPABASE_URL=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+SUPABASE_PASSWORD=your_supabase_database_password
+DATABASE_SCHEMA=bus_service
 # 기타 필요한 환경 변수들...
 ```
+
+`SUPABASE_URL`에는 Supabase 대시보드의 session pooler DSN 템플릿을 넣고, 비밀번호 자리는 `[YOUR-PASSWORD]` placeholder로 유지합니다. 실제 비밀번호는 `SUPABASE_PASSWORD`에 별도로 넣습니다.
+기본 스키마는 `DATABASE_SCHEMA=bus_service`를 사용합니다.
 
 ## 배포 과정
 
@@ -38,6 +43,20 @@ cp /path/to/your/privkey.pem ./certs/
 cp .env.example .env
 # .env 파일을 편집하여 실제 값으로 설정
 ```
+
+### 3-1. Alembic 이력 정렬
+Supabase에 스키마를 이미 마이그레이션했다면 DDL을 다시 실행하지 말고 revision만 맞춥니다.
+
+```bash
+alembic current
+alembic stamp d4e5f6a7b8c9
+alembic upgrade head
+alembic current
+alembic check
+```
+
+기존에 `d4e5f6a7b8c9`까지 stamp만 해둔 환경이라면 `alembic upgrade head`를 다시 실행해서
+`9a8f1b2c3d4e` repair migration까지 반영해야 `schedule_types` / `schedule_exceptions` 누락이 복구됩니다.
 
 ### 4. Docker Compose로 실행
 ```bash

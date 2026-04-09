@@ -865,7 +865,7 @@
                     document.getElementById('totalQueries').textContent =
                         data.queries.total.toLocaleString();
                     document.getElementById('slowQueries').textContent =
-                        data.queries.slow.toLocaleString();
+                        data.queries.slow == null ? 'N/A' : data.queries.slow.toLocaleString();
 
                     // 테이블 크기 정보
                     const tableSizes = document.getElementById('tableSizes');
