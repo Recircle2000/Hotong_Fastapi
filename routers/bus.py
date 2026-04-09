@@ -1,6 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 import asyncio
 from typing import List, Dict, Set, Optional, Tuple
+from dataclasses import dataclass, field
 import httpx
 import os
 import json
@@ -113,6 +114,88 @@ bus_http_client: Optional[httpx.AsyncClient] = None
 route_fetch_tasks: Dict[str, asyncio.Task] = {}
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+LOG_ROUTE_LIST_LIMIT = 6
+
+
+@dataclass
+class BusSyncLogContext:
+    group: str
+    started_at: float = field(default_factory=time_module.perf_counter)
+    requested: Set[str] = field(default_factory=set)
+    cache_hit: Set[str] = field(default_factory=set)
+    dedup_reuse: Set[str] = field(default_factory=set)
+    external_request: Set[str] = field(default_factory=set)
+    external_success: Set[str] = field(default_factory=set)
+    external_empty: Set[str] = field(default_factory=set)
+    skipped: Set[str] = field(default_factory=set)
+    failed: Set[str] = field(default_factory=set)
+
+
+def get_ordered_route_names(route_names: Set[str]) -> List[str]:
+    return [route_name for route_name in ROUTES if route_name in route_names]
+
+
+def format_route_summary(route_names: Set[str]) -> str:
+    ordered_routes = get_ordered_route_names(route_names)
+    displayed_routes = ordered_routes[:LOG_ROUTE_LIST_LIMIT]
+    remaining_count = len(ordered_routes) - len(displayed_routes)
+    route_text = ",".join(displayed_routes)
+
+    if remaining_count > 0:
+        route_text = f"{route_text},+{remaining_count}" if route_text else f"+{remaining_count}"
+
+    return f"{len(ordered_routes)}[{route_text}]"
+
+
+def format_failure_summary(route_names: Set[str]) -> str:
+    if not route_names:
+        return "0"
+    return format_route_summary(route_names)
+
+
+def log_bus_sync_summary(log_context: BusSyncLogContext):
+    log_context.failed.update(
+        log_context.external_request - log_context.external_success - log_context.external_empty
+    )
+
+    duration_ms = int((time_module.perf_counter() - log_context.started_at) * 1000)
+    message = (
+        f"[BUS_WS][sync] group={log_context.group} "
+        f"requested={format_route_summary(log_context.requested)} "
+        f"cache_hit={format_route_summary(log_context.cache_hit)} "
+        f"dedup_reuse={format_route_summary(log_context.dedup_reuse)} "
+        f"external_request={format_route_summary(log_context.external_request)} "
+        f"external_success={format_route_summary(log_context.external_success)} "
+        f"failed={format_failure_summary(log_context.failed)} "
+        f"duration={duration_ms}ms"
+    )
+
+    if log_context.external_empty:
+        message += f" external_empty={format_route_summary(log_context.external_empty)}"
+    if log_context.skipped:
+        message += f" skipped={format_route_summary(log_context.skipped)}"
+
+    logger.info(message)
+
+
+def get_active_ws_group_name() -> str:
+    if active_connections:
+        return "all"
+
+    active_groups = [
+        group_name
+        for group_name, connections in filtered_connections.items()
+        if connections
+    ]
+
+    if len(active_groups) == 1:
+        return active_groups[0]
+    if len(active_groups) > 1:
+        return "mixed"
+    return "none"
 
 
 def get_total_active_connections() -> int:
@@ -152,25 +235,40 @@ async def fetch_bus_data_deduplicated(
         route_id: str,
         route_should_check: Optional[bool] = None,
         use_cache: bool = True,
+        log_context: Optional[BusSyncLogContext] = None,
 ) -> Optional[List[dict]]:
     if route_should_check is None:
         route_should_check = should_check_route(route_name)
 
     if not route_should_check:
         delete_cache(route_name)
+        if log_context:
+            log_context.skipped.add(route_name)
         return None
 
     if use_cache:
         cached_data = get_cache(route_name)
         if cached_data is not None:
+            if log_context:
+                log_context.cache_hit.add(route_name)
             return cached_data
 
     existing_task = route_fetch_tasks.get(route_name)
     if existing_task and not existing_task.done():
+        if log_context:
+            log_context.dedup_reuse.add(route_name)
         return await existing_task
 
+    if log_context:
+        log_context.external_request.add(route_name)
+
     task = asyncio.create_task(
-        fetch_bus_data(route_name, route_id, route_should_check=route_should_check)
+        fetch_bus_data(
+            route_name,
+            route_id,
+            route_should_check=route_should_check,
+            log_context=log_context,
+        )
     )
     route_fetch_tasks[route_name] = task
 
@@ -181,22 +279,35 @@ async def fetch_bus_data_deduplicated(
             route_fetch_tasks.pop(route_name, None)
 
 
-async def ensure_route_data(route_names: Tuple[str, ...], use_cache: bool = True):
+async def ensure_route_data(
+        route_names: Tuple[str, ...],
+        use_cache: bool = True,
+        log_context: Optional[BusSyncLogContext] = None,
+):
     tasks = []
+
+    if log_context:
+        log_context.requested.update(route_names)
 
     for route_name in route_names:
         route_should_check = should_check_route(route_name)
+        if log_context and not route_should_check:
+            log_context.skipped.add(route_name)
         tasks.append(
             fetch_bus_data_deduplicated(
                 route_name,
                 ROUTES[route_name],
                 route_should_check=route_should_check,
                 use_cache=use_cache,
+                log_context=log_context,
             )
         )
 
     if tasks:
         await asyncio.gather(*tasks)
+
+    if log_context:
+        log_bus_sync_summary(log_context)
 
 
 def load_bus_timetable():
@@ -295,7 +406,12 @@ def should_check_route(route_name):
     return False
 
 
-async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool] = None) -> Optional[List[dict]]:
+async def fetch_bus_data(
+        route_name,
+        route_id,
+        route_should_check: Optional[bool] = None,
+        log_context: Optional[BusSyncLogContext] = None,
+) -> Optional[List[dict]]:
     global bus_http_client
     # 해당 노선을 체크해야 하는지 확인
     if route_should_check is None:
@@ -312,7 +428,7 @@ async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool
 
     try:
         api_url = build_api_url(route_id, route_name)
-        logging.info(f"[{route_name}] External bus API request: {api_url}")
+        logger.debug(f"[BUS_API][request] route={route_name} url={api_url}")
         response = await bus_http_client.get(api_url)
         response.raise_for_status()
         data = response.json()
@@ -320,6 +436,8 @@ async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool
         # 데이터가 없는 경우 처리
         if not data["response"]["body"]["items"]:
             delete_cache(route_name)
+            if log_context:
+                log_context.external_empty.add(route_name)
             return None
 
         items = data["response"]["body"]["items"]["item"]
@@ -328,10 +446,12 @@ async def fetch_bus_data(route_name, route_id, route_should_check: Optional[bool
 
         # Redis에 저장 (TTL BUS_CACHE_TTL 초)
         set_cache(route_name, items, BUS_CACHE_TTL)
+        if log_context:
+            log_context.external_success.add(route_name)
         # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
         return items
     except Exception as e:
-        logging.error(f"[{route_name}] API 호출 오류: {e}")
+        logger.error(f"[BUS_WS][api_error] route={route_name} error={e}")
         return None
 
 
@@ -345,7 +465,10 @@ async def update_bus_cache():
         requested_route_names = get_requested_route_names()
 
         if requested_route_names:
-            await ensure_route_data(requested_route_names)
+            await ensure_route_data(
+                requested_route_names,
+                log_context=BusSyncLogContext(group=get_active_ws_group_name()),
+            )
         else:
             logging.debug("현재 요청된 노선이 없습니다")
 
@@ -423,10 +546,13 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.add(websocket)
     bus_clients_event.set()
-    logging.info(f"✅ 클라이언트 접속: {get_total_active_connections()}명")
+    logger.info(f"[BUS_WS][connect] group=all total_clients={get_total_active_connections()}")
 
     try:
-        await ensure_route_data(WS_ROUTE_GROUPS["all"])
+        await ensure_route_data(
+            WS_ROUTE_GROUPS["all"],
+            log_context=BusSyncLogContext(group="all"),
+        )
 
         # 데이터가 있든 없든 최초 1회는 상태를 알려줌 (빈 객체라도 전송)
         await broadcast_bus_data(websocket)
@@ -440,15 +566,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text("pong")
 
     except WebSocketDisconnect:
-        logging.info("클라이언트 접속 종료")
+        logger.info(f"[BUS_WS][disconnect] group=all total_clients={max(get_total_active_connections() - 1, 0)}")
     except Exception as e:
-        logging.error(f"WebSocket 연결 오류: {e}")
+        logger.error(f"[BUS_WS][socket_error] group=all error={e}")
     finally:
         active_connections.discard(websocket)
-        logging.info(f"❌ 클라이언트 접속 제거 (남은 클라이언트: {get_total_active_connections()}명)")
+        logger.info(f"[BUS_WS][removed] group=all total_clients={get_total_active_connections()}")
         if get_total_active_connections() == 0:
             bus_clients_event.clear()
-            logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
+            logger.info("[BUS_WS][idle] total_clients=0 background_paused=true")
 
 async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
     route_names = WS_ROUTE_GROUPS[group_name]
@@ -456,10 +582,13 @@ async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
     await websocket.accept()
     filtered_connections[group_name].add(websocket)
     bus_clients_event.set()
-    logging.info(f"✅ 클라이언트 접속 ({group_name}): {get_total_active_connections()}명")
+    logger.info(f"[BUS_WS][connect] group={group_name} total_clients={get_total_active_connections()}")
 
     try:
-        await ensure_route_data(route_names)
+        await ensure_route_data(
+            route_names,
+            log_context=BusSyncLogContext(group=group_name),
+        )
         await websocket.send_text(build_bus_message(route_names))
 
         while True:
@@ -468,15 +597,17 @@ async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
                 await websocket.send_text("pong")
 
     except WebSocketDisconnect:
-        logging.info(f"클라이언트 접속 종료 ({group_name})")
+        logger.info(
+            f"[BUS_WS][disconnect] group={group_name} total_clients={max(get_total_active_connections() - 1, 0)}"
+        )
     except Exception as e:
-        logging.error(f"WebSocket 연결 오류 ({group_name}): {e}")
+        logger.error(f"[BUS_WS][socket_error] group={group_name} error={e}")
     finally:
         filtered_connections[group_name].discard(websocket)
-        logging.info(f"❌ 클라이언트 접속 제거 ({group_name}, 남은 클라이언트: {get_total_active_connections()}명)")
+        logger.info(f"[BUS_WS][removed] group={group_name} total_clients={get_total_active_connections()}")
         if get_total_active_connections() == 0:
             bus_clients_event.clear()
-            logging.info("모든 클라이언트 연결 종료. 백그라운드 작업 일시 중지.")
+            logger.info("[BUS_WS][idle] total_clients=0 background_paused=true")
 
 
 @router.websocket("/ws/bus/asan/down")

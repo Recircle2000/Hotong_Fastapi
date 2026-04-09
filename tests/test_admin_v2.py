@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ["SUPABASE_URL"] = "sqlite:///:memory:"
+os.environ.pop("SUPABASE_PASSWORD", None)
 
 from database import get_db
 from models import Base, User

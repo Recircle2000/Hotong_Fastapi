@@ -6,6 +6,7 @@ import time
 import json
 from datetime import datetime, timedelta
 from utils.redis_client import redis_client
+from db_config import get_database_schema
 from database import engine, get_db
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+DATABASE_SCHEMA = get_database_schema(str(engine.url))
 
 def get_admin_session(request: Request, db: Session = Depends(get_db)):
     """어드민 세션 확인"""
@@ -109,36 +111,49 @@ async def get_database_info(_: bool = Depends(get_admin_session)):
     """데이터베이스 정보 API"""
     try:
         with engine.connect() as conn:
-            # 활성 연결 수
-            active_connections = conn.execute(text("SHOW STATUS LIKE 'Threads_connected'")).fetchone()
-            max_connections = conn.execute(text("SHOW VARIABLES LIKE 'max_connections'")).fetchone()
-            
-            # 쿼리 통계
-            queries = conn.execute(text("SHOW STATUS LIKE 'Queries'")).fetchone()
-            slow_queries = conn.execute(text("SHOW STATUS LIKE 'Slow_queries'")).fetchone()
-            
-            # 테이블 크기 정보
+            connection_stats = conn.execute(text("""
+                SELECT
+                    (
+                        SELECT COUNT(*)
+                        FROM pg_stat_activity
+                        WHERE datname = current_database()
+                    ) AS active,
+                    current_setting('max_connections')::int AS max
+            """)).mappings().one()
+
+            query_stats = conn.execute(text("""
+                SELECT COALESCE(xact_commit + xact_rollback, 0) AS total
+                FROM pg_stat_database
+                WHERE datname = current_database()
+            """)).mappings().first()
+
             table_sizes = conn.execute(text("""
-                SELECT 
-                    table_name,
-                    ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
-                FROM information_schema.tables 
-                WHERE table_schema = DATABASE()
-                ORDER BY (data_length + index_length) DESC
+                SELECT
+                    c.relname AS table_name,
+                    ROUND(pg_total_relation_size(c.oid) / 1024.0 / 1024.0, 2) AS size_mb
+                FROM pg_class AS c
+                JOIN pg_namespace AS n
+                    ON n.oid = c.relnamespace
+                WHERE c.relkind = 'r'
+                    AND n.nspname = :schema_name
+                ORDER BY pg_total_relation_size(c.oid) DESC
                 LIMIT 10
-            """)).fetchall()
+            """), {"schema_name": DATABASE_SCHEMA or "public"}).mappings().all()
             
             return {
                 "timestamp": datetime.now().isoformat(),
                 "connections": {
-                    "active": active_connections[1] if active_connections else 0,
-                    "max": max_connections[1] if max_connections else 0
+                    "active": connection_stats["active"],
+                    "max": connection_stats["max"],
                 },
                 "queries": {
-                    "total": queries[1] if queries else 0,
-                    "slow": slow_queries[1] if slow_queries else 0
+                    "total": query_stats["total"] if query_stats else 0,
+                    "slow": None,
                 },
-                "table_sizes": [{"name": row[0], "size_mb": row[1]} for row in table_sizes]
+                "table_sizes": [
+                    {"name": row["table_name"], "size_mb": float(row["size_mb"])}
+                    for row in table_sizes
+                ],
             }
     except Exception as e:
         return {
