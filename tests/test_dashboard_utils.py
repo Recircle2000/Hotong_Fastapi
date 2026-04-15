@@ -1,9 +1,14 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
-from services.dashboard_utils import get_now_kst_naive, parse_datetime_local, sanitize_redirect_path
+from services.dashboard_utils import (
+    get_now_kst_naive,
+    parse_datetime_local,
+    sanitize_redirect_path,
+    to_kst_naive,
+)
 
 
 class DashboardUtilsTests(unittest.TestCase):
@@ -32,6 +37,18 @@ class DashboardUtilsTests(unittest.TestCase):
     def test_get_now_kst_naive_returns_naive_datetime(self):
         now = get_now_kst_naive()
         self.assertIsNone(now.tzinfo)
+
+    def test_to_kst_naive_keeps_naive_datetime_unchanged(self):
+        value = datetime(2026, 3, 5, 9, 30, 0)
+        self.assertEqual(to_kst_naive(value), value)
+
+    def test_to_kst_naive_converts_aware_datetime_to_kst_naive(self):
+        utc = timezone.utc
+        value = datetime(2026, 3, 5, 0, 30, 0, tzinfo=utc)
+        converted = to_kst_naive(value)
+
+        self.assertEqual(converted, datetime(2026, 3, 5, 9, 30, 0))
+        self.assertIsNone(converted.tzinfo)
 
 
 if __name__ == "__main__":

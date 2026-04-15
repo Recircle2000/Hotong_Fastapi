@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Optional
 from urllib.parse import quote
 
@@ -31,7 +32,12 @@ from services.admin_notice import (
     list_admin_notices,
     update_admin_notice,
 )
-from services.dashboard_utils import get_now_kst_naive, parse_datetime_local, sanitize_redirect_path
+from services.dashboard_utils import (
+    get_now_kst_naive,
+    parse_datetime_local,
+    sanitize_redirect_path,
+    to_kst_naive,
+)
 
 
 router = APIRouter()
@@ -227,7 +233,17 @@ async def admin_emergency_notice_page(
     current_admin=Depends(get_admin_user),
 ):
     del current_admin
-    notices = list_admin_emergency_notices(db)
+    notices = [
+        SimpleNamespace(
+            id=notice.id,
+            category=notice.category,
+            title=notice.title,
+            content=notice.content,
+            created_at=to_kst_naive(notice.created_at),
+            end_at=to_kst_naive(notice.end_at),
+        )
+        for notice in list_admin_emergency_notices(db)
+    ]
     return templates.TemplateResponse(
         "admin_emergency_notice.html",
         {
