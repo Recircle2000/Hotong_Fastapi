@@ -7,6 +7,7 @@ from utils.redis_client import redis_client
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from sqlalchemy import text
 from database import engine
 from utils.api_monitor import APIMonitorMiddleware
 import utils.api_monitor as api_monitor_module
@@ -68,7 +69,7 @@ async def startup_event():
     # 데이터베이스 연결 확인
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         print("데이터베이스 연결 성공")
     except Exception as e:
         print(f"데이터베이스 연결 실패: {e}")
@@ -86,7 +87,7 @@ def health_check():
     db_status = "healthy"
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
     except Exception:
         db_status = "unhealthy"
     

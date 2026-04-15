@@ -11,7 +11,7 @@ class ShuttleStation(Base):
     longitude = Column(Double, nullable=False)
     description = Column(String(500), nullable=True)
     image_url = Column(String(500), nullable=True)
-    is_active = Column(Boolean, nullable=False, default=True, server_default=text("1"))
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
     routes = relationship("ShuttleRoute", secondary="shuttle_station_routes", back_populates="stations")
 
 class ShuttleRoute(Base):

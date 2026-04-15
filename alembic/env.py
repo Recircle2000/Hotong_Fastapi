@@ -1,11 +1,14 @@
 from logging.config import fileConfig
 import logging
 from alembic import context
-from sqlalchemy import engine_from_config, pool, create_engine
+from db_config import (
+    create_configured_engine,
+    get_database_schema,
+    get_database_url,
+    get_set_search_path_sql,
+)
 from models import Base
-import os
 from dotenv import load_dotenv
-import urllib.parse
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +20,13 @@ config = context.config
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
-DB_URL = os.getenv("DATABASE_URL")
-logger.info(f"원본 DB_URL: {DB_URL}")
+DB_URL = get_database_url()
+DB_SCHEMA = get_database_schema(DB_URL)
+logger.info(
+    "Alembic database configuration loaded for %s%s",
+    "sqlite" if DB_URL.startswith("sqlite") else "postgresql",
+    f" schema={DB_SCHEMA}" if DB_SCHEMA else "",
+)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -55,7 +63,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        include_schemas=True
+        version_table_schema=DB_SCHEMA,
     )
 
     with context.begin_transaction():
@@ -70,21 +78,20 @@ def run_migrations_online() -> None:
 
     """
     try:
-        # URL을 직접 사용하여 엔진 생성
-        # 이미 URL 인코딩이 되어 있으므로 그대로 사용
-        engine = create_engine(
-            DB_URL,
-            pool_size=10, 
-            max_overflow=20,
-            pool_recycle=3600,
-            pool_pre_ping=True
-        )
+        engine = create_configured_engine(DB_URL)
         
         logger.info("SQLAlchemy 엔진 생성됨")
         
         with engine.connect() as connection:
+            if DB_SCHEMA:
+                connection.exec_driver_sql(get_set_search_path_sql(DB_SCHEMA))
+                connection.commit()
+                connection.dialect.default_schema_name = DB_SCHEMA
+
             context.configure(
-                connection=connection, target_metadata=target_metadata
+                connection=connection,
+                target_metadata=target_metadata,
+                version_table_schema=DB_SCHEMA,
             )
 
             with context.begin_transaction():
