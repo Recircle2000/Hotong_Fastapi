@@ -29,6 +29,12 @@ def get_now_kst_naive() -> datetime:
     return datetime.now(KST).replace(tzinfo=None)
 
 
+def to_kst_naive(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(KST).replace(tzinfo=None)
+
+
 def parse_datetime_local(value: str) -> datetime:
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"):
         try:

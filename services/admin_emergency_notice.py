@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from models.emergency_notice import EmergencyNotice, EmergencyNoticeCategory
-from services.dashboard_utils import get_now_kst_naive
+from services.dashboard_utils import get_now_kst_naive, to_kst_naive
 
 INVALID_TIME_RANGE_MESSAGE = "생성 시각은 종료 시각보다 늦을 수 없습니다."
 EMERGENCY_NOTICE_NOT_FOUND_MESSAGE = "긴급공지 정보를 찾을 수 없습니다."
@@ -35,10 +35,12 @@ def get_emergency_notice_status(
     notice: EmergencyNotice,
     now_kst: datetime | None = None,
 ) -> str:
-    current_time = now_kst or get_now_kst_naive()
-    if notice.created_at > current_time:
+    current_time = to_kst_naive(now_kst) if now_kst else get_now_kst_naive()
+    created_at = to_kst_naive(notice.created_at)
+    end_at = to_kst_naive(notice.end_at)
+    if created_at > current_time:
         return "pending"
-    if notice.end_at >= current_time:
+    if end_at >= current_time:
         return "active"
     return "expired"
 
@@ -48,14 +50,16 @@ def serialize_emergency_notice(
     now_kst: datetime | None = None,
 ) -> dict[str, object]:
     category = parse_emergency_notice_category(notice.category)
+    created_at = to_kst_naive(notice.created_at)
+    end_at = to_kst_naive(notice.end_at)
     return {
         "id": notice.id,
         "category": category.value,
         "category_label": EMERGENCY_NOTICE_CATEGORY_LABELS[category],
         "title": notice.title,
         "content": notice.content,
-        "created_at": notice.created_at,
-        "end_at": notice.end_at,
+        "created_at": created_at,
+        "end_at": end_at,
         "status": get_emergency_notice_status(notice, now_kst=now_kst),
     }
 
@@ -74,8 +78,9 @@ def create_admin_emergency_notice(
     end_at: datetime,
 ) -> EmergencyNotice:
     category_enum = parse_emergency_notice_category(category)
-    created_at_value = created_at or get_now_kst_naive()
-    if created_at_value > end_at:
+    created_at_value = to_kst_naive(created_at) if created_at else get_now_kst_naive()
+    end_at_value = to_kst_naive(end_at)
+    if created_at_value > end_at_value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=INVALID_TIME_RANGE_MESSAGE,
@@ -86,7 +91,7 @@ def create_admin_emergency_notice(
         title=title.strip(),
         content=content.strip(),
         created_at=created_at_value,
-        end_at=end_at,
+        end_at=end_at_value,
     )
     db.add(notice)
     db.commit()
@@ -112,7 +117,9 @@ def update_admin_emergency_notice(
         )
 
     category_enum = parse_emergency_notice_category(category)
-    if created_at > end_at:
+    created_at_value = to_kst_naive(created_at)
+    end_at_value = to_kst_naive(end_at)
+    if created_at_value > end_at_value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=INVALID_TIME_RANGE_MESSAGE,
@@ -121,8 +128,8 @@ def update_admin_emergency_notice(
     notice.category = category_enum
     notice.title = title.strip()
     notice.content = content.strip()
-    notice.created_at = created_at
-    notice.end_at = end_at
+    notice.created_at = created_at_value
+    notice.end_at = end_at_value
     db.commit()
     db.refresh(notice)
     return notice

@@ -1,5 +1,8 @@
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
+import logging
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from typing import List
 from datetime import time, date
 from utils.security import get_current_admin
@@ -24,12 +27,20 @@ from schemas.shuttle import (
     ScheduleTypeUpdate,
     ScheduleUpdate,
     StationResponse,
+    StationRouteMembershipResponse,
     StationScheduleResponse,
     StationSchedulesByDateResponse,
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX = "resolved_schedule_type"
+STATION_ROUTE_MEMBERSHIPS_CACHE_KEY = "station_route_memberships:active"
+
+
+def _is_missing_relation_or_column(exc: ProgrammingError | OperationalError, *names: str) -> bool:
+    message = str(getattr(exc, "orig", exc)).lower()
+    return any(name.lower() in message for name in names)
 
 # 캐시 get/set 공통화 헬퍼 함수
 def get_or_set_cache(key: str, db_query_func, serializer):
@@ -68,15 +79,25 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
     if is_holiday(date_str):
         base_schedule_type = "Holiday"
     # 3. 예외 일정 매칭
-    schedule_exceptions = db.query(ScheduleException, ScheduleType).join(
-        ScheduleType,
-        ScheduleException.schedule_type == ScheduleType.schedule_type
-    ).filter(
-        ScheduleException.start_date <= target_date,
-        ScheduleException.end_date >= target_date,
-        ScheduleException.is_activate.is_(True),
-        ScheduleType.is_activate.is_(True)
-    ).all()
+    try:
+        schedule_exceptions = db.query(ScheduleException, ScheduleType).join(
+            ScheduleType,
+            ScheduleException.schedule_type == ScheduleType.schedule_type
+        ).filter(
+            ScheduleException.start_date <= target_date,
+            ScheduleException.end_date >= target_date,
+            ScheduleException.is_activate.is_(True),
+            ScheduleType.is_activate.is_(True)
+        ).all()
+    except (ProgrammingError, OperationalError) as exc:
+        db.rollback()
+        if _is_missing_relation_or_column(exc, "schedule_exceptions", "include_weekday_friday"):
+            logger.warning(
+                "Schedule exception schema is unavailable. Falling back to base schedule type resolution."
+            )
+            schedule_exceptions = []
+        else:
+            raise
     applicable_exception = None
     applicable_exception_type = None
     if schedule_exceptions:
@@ -106,10 +127,19 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
     else:
         schedule_type = base_schedule_type
     # 4. 활성화 여부 확인 및 이름 반환
-    schedule_type_info = db.query(ScheduleType).filter(
-        ScheduleType.schedule_type == schedule_type,
-        ScheduleType.is_activate.is_(True)
-    ).first()
+    try:
+        schedule_type_info = db.query(ScheduleType).filter(
+            ScheduleType.schedule_type == schedule_type,
+            ScheduleType.is_activate.is_(True)
+        ).first()
+    except (ProgrammingError, OperationalError) as exc:
+        db.rollback()
+        if _is_missing_relation_or_column(exc, "schedule_types"):
+            raise HTTPException(
+                status_code=503,
+                detail="schedule_types schema is missing. Run `alembic upgrade head`."
+            ) from exc
+        raise
     if not schedule_type_info:
         raise HTTPException(
             status_code=404,
@@ -302,6 +332,43 @@ def get_stations(
             return [station]
         return query.all()
     return get_or_set_cache(cache_key, db_query, serialize_models)
+
+@router.get("/stations/route-memberships", response_model=List[StationRouteMembershipResponse])
+def get_station_route_memberships(db: Session = Depends(get_db)):
+    """
+    활성 정류장별 연결된 셔틀 노선 ID 목록을 조회합니다.
+    """
+    cached_data = get_cache(STATION_ROUTE_MEMBERSHIPS_CACHE_KEY)
+    if cached_data is not None:
+        return cached_data
+
+    station_route_pairs = db.query(
+        ScheduleStop.station_id.label("station_id"),
+        Schedule.route_id.label("route_id"),
+    ).join(
+        Schedule, ScheduleStop.schedule_id == Schedule.id
+    ).join(
+        ShuttleStation, ScheduleStop.station_id == ShuttleStation.id
+    ).filter(
+        ShuttleStation.is_active.is_(True)
+    ).distinct().order_by(
+        ScheduleStop.station_id,
+        Schedule.route_id,
+    ).all()
+
+    memberships: dict[int, set[int]] = defaultdict(set)
+    for pair in station_route_pairs:
+        memberships[pair.station_id].add(pair.route_id)
+
+    result = [
+        {
+            "station_id": station_id,
+            "route_ids": sorted(route_ids),
+        }
+        for station_id, route_ids in sorted(memberships.items())
+    ]
+    set_cache(STATION_ROUTE_MEMBERSHIPS_CACHE_KEY, result)
+    return result
 
 @router.get("/routes", response_model=List[RouteResponse])
 def get_routes(
@@ -561,6 +628,7 @@ def create_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"id": new_schedule.id, "message": "Schedule created successfully"}
 
@@ -634,6 +702,7 @@ def update_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"message": "Schedule updated successfully"}
 
@@ -664,6 +733,7 @@ def delete_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"message": "Schedule deleted successfully"}
 
