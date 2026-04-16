@@ -1,3 +1,4 @@
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 import logging
 from sqlalchemy.orm import Session
@@ -26,6 +27,7 @@ from schemas.shuttle import (
     ScheduleTypeUpdate,
     ScheduleUpdate,
     StationResponse,
+    StationRouteMembershipResponse,
     StationScheduleResponse,
     StationSchedulesByDateResponse,
 )
@@ -33,6 +35,7 @@ from schemas.shuttle import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX = "resolved_schedule_type"
+STATION_ROUTE_MEMBERSHIPS_CACHE_KEY = "station_route_memberships:active"
 
 
 def _is_missing_relation_or_column(exc: ProgrammingError | OperationalError, *names: str) -> bool:
@@ -330,6 +333,43 @@ def get_stations(
         return query.all()
     return get_or_set_cache(cache_key, db_query, serialize_models)
 
+@router.get("/stations/route-memberships", response_model=List[StationRouteMembershipResponse])
+def get_station_route_memberships(db: Session = Depends(get_db)):
+    """
+    활성 정류장별 연결된 셔틀 노선 ID 목록을 조회합니다.
+    """
+    cached_data = get_cache(STATION_ROUTE_MEMBERSHIPS_CACHE_KEY)
+    if cached_data is not None:
+        return cached_data
+
+    station_route_pairs = db.query(
+        ScheduleStop.station_id.label("station_id"),
+        Schedule.route_id.label("route_id"),
+    ).join(
+        Schedule, ScheduleStop.schedule_id == Schedule.id
+    ).join(
+        ShuttleStation, ScheduleStop.station_id == ShuttleStation.id
+    ).filter(
+        ShuttleStation.is_active.is_(True)
+    ).distinct().order_by(
+        ScheduleStop.station_id,
+        Schedule.route_id,
+    ).all()
+
+    memberships: dict[int, set[int]] = defaultdict(set)
+    for pair in station_route_pairs:
+        memberships[pair.station_id].add(pair.route_id)
+
+    result = [
+        {
+            "station_id": station_id,
+            "route_ids": sorted(route_ids),
+        }
+        for station_id, route_ids in sorted(memberships.items())
+    ]
+    set_cache(STATION_ROUTE_MEMBERSHIPS_CACHE_KEY, result)
+    return result
+
 @router.get("/routes", response_model=List[RouteResponse])
 def get_routes(
     route_id: int | None = None,
@@ -588,6 +628,7 @@ def create_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"id": new_schedule.id, "message": "Schedule created successfully"}
 
@@ -661,6 +702,7 @@ def update_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"message": "Schedule updated successfully"}
 
@@ -691,6 +733,7 @@ def delete_schedule(
     delete_pattern(f"schedules-by-date:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
     
     return {"message": "Schedule deleted successfully"}
 

@@ -1,11 +1,20 @@
 import os
+import sys
 import tempfile
+import types
 import unittest
 from datetime import date
 from unittest.mock import patch
 
 from sqlalchemy import Boolean, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+os.environ["SUPABASE_URL"] = "sqlite:///:memory:"
+os.environ.pop("SUPABASE_PASSWORD", None)
+
+holidayskr_stub = types.ModuleType("holidayskr")
+holidayskr_stub.is_holiday = lambda _date: False
+sys.modules["holidayskr"] = holidayskr_stub
 
 from routers.shuttle import resolve_schedule_type
 

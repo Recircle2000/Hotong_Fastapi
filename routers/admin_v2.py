@@ -61,6 +61,7 @@ def invalidate_shuttle_station_cache() -> None:
     delete_pattern("stations:*")
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
+    delete_pattern("station_route_memberships:*")
 
 
 async def get_admin_api_user(
