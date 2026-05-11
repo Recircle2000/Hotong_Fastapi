@@ -16,7 +16,7 @@ redis_client = redis.Redis(
 # 캐시 만료 시간 (초)
 CACHE_TTL = 60 * 60 * 24 # 24시간
 
-def set_cache(key: str, data: Any, expire: int = CACHE_TTL) -> bool:
+def set_cache(key: str, data: Any, expire: int | None = CACHE_TTL) -> bool:
     """
     Redis에 데이터를 캐싱합니다.
     """

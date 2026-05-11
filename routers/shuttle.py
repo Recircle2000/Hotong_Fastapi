@@ -1,6 +1,7 @@
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 import logging
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from typing import List
@@ -15,6 +16,7 @@ from utils.redis_client import get_cache, set_cache, delete_pattern
 from utils.serializer import serialize_models
 from schemas.shuttle import (
     RouteResponse,
+    RouteStationResponse,
     ScheduleCreate,
     ScheduleExceptionCreate,
     ScheduleExceptionResponse,
@@ -370,6 +372,76 @@ def get_station_route_memberships(db: Session = Depends(get_db)):
     set_cache(STATION_ROUTE_MEMBERSHIPS_CACHE_KEY, result)
     return result
 
+@router.get("/routes/{route_id}/stations", response_model=List[RouteStationResponse])
+def get_route_stations(
+    route_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    가장 많은 활성 정류장을 지나는 회차를 기준으로 노선 정류장을 순서대로 조회합니다.
+    """
+    cache_key = f"route_stations:{route_id}:all"
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    route = db.query(ShuttleRoute.id).filter(ShuttleRoute.id == route_id).first()
+    if not route:
+        raise HTTPException(status_code=404, detail=f"Route with id {route_id} not found")
+
+    stop_count = func.count(ScheduleStop.station_id).label("stop_count")
+    reference_schedule = db.query(
+        Schedule.id.label("schedule_id"),
+        stop_count,
+    ).join(
+        ScheduleStop,
+        Schedule.id == ScheduleStop.schedule_id,
+    ).join(
+        ShuttleStation,
+        ScheduleStop.station_id == ShuttleStation.id,
+    ).filter(
+        Schedule.route_id == route_id,
+        ShuttleStation.is_active.is_(True),
+    ).group_by(
+        Schedule.id,
+        Schedule.start_time,
+    ).order_by(
+        stop_count.desc(),
+        Schedule.start_time,
+        Schedule.id,
+    ).first()
+
+    if not reference_schedule:
+        result = []
+        set_cache(cache_key, result, expire=None)
+        return result
+
+    stops = db.query(
+        ScheduleStop.stop_order,
+        ShuttleStation.id.label("station_id"),
+        ShuttleStation.name.label("station_name"),
+    ).join(
+        ShuttleStation,
+        ScheduleStop.station_id == ShuttleStation.id,
+    ).filter(
+        ScheduleStop.schedule_id == reference_schedule.schedule_id,
+        ShuttleStation.is_active.is_(True),
+    ).order_by(
+        ScheduleStop.stop_order,
+        ShuttleStation.id,
+    ).all()
+
+    result = [
+        {
+            "stop_order": stop.stop_order,
+            "station_id": stop.station_id,
+            "station_name": stop.station_name,
+        }
+        for stop in stops
+    ]
+    set_cache(cache_key, result, expire=None)
+    return result
+
 @router.get("/routes", response_model=List[RouteResponse])
 def get_routes(
     route_id: int | None = None,
@@ -629,6 +701,7 @@ def create_schedule(
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
+    delete_pattern("route_stations:*")
     
     return {"id": new_schedule.id, "message": "Schedule created successfully"}
 
@@ -703,6 +776,7 @@ def update_schedule(
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
+    delete_pattern("route_stations:*")
     
     return {"message": "Schedule updated successfully"}
 
@@ -734,6 +808,7 @@ def delete_schedule(
     delete_pattern("station_schedules:*")
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
+    delete_pattern("route_stations:*")
     
     return {"message": "Schedule deleted successfully"}
 
