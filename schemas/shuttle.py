@@ -46,6 +46,15 @@ class StationRouteMembershipResponse(BaseModel):
         from_attributes = True
 
 
+class RouteStationResponse(BaseModel):
+    stop_order: int
+    station_id: int
+    station_name: str
+
+    class Config:
+        from_attributes = True
+
+
 class ScheduleTypeResponse(BaseModel):
     schedule_type: str
     schedule_type_name: str
