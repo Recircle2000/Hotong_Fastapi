@@ -58,6 +58,7 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(self.app)
         self.cache_store = {}
+        self.cache_writes = []
 
         self.get_cache_patcher = patch(
             "routers.shuttle.get_cache",
@@ -80,9 +81,109 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
         self.set_cache_patcher.stop()
 
     def _set_cache(self, key, data, expire=None):
-        del expire
+        self.cache_writes.append((key, expire))
         self.cache_store[key] = data
         return True
+
+    def _seed_route_station_data(self):
+        with self.SessionLocal() as db:
+            db.add_all(
+                [
+                    ShuttleRoute(id=7, route_name="통합 노선", direction="UP"),
+                    ShuttleRoute(id=8, route_name="빈 노선", direction="DOWN"),
+                    ShuttleStation(
+                        id=10,
+                        name="정문",
+                        latitude=36.7691,
+                        longitude=127.0739,
+                        description=None,
+                        image_url=None,
+                        is_active=True,
+                    ),
+                    ShuttleStation(
+                        id=20,
+                        name="터미널",
+                        latitude=36.7685,
+                        longitude=127.0751,
+                        description=None,
+                        image_url=None,
+                        is_active=True,
+                    ),
+                    ShuttleStation(
+                        id=30,
+                        name="KTX",
+                        latitude=36.7670,
+                        longitude=127.0740,
+                        description=None,
+                        image_url=None,
+                        is_active=True,
+                    ),
+                    ShuttleStation(
+                        id=40,
+                        name="비활성 정류장",
+                        latitude=36.7660,
+                        longitude=127.0720,
+                        description=None,
+                        image_url=None,
+                        is_active=False,
+                    ),
+                    Schedule(
+                        id=701,
+                        route_id=7,
+                        schedule_type="Weekday",
+                        start_time=time(8, 0),
+                        end_time=time(9, 0),
+                    ),
+                    Schedule(
+                        id=702,
+                        route_id=7,
+                        schedule_type="Saturday",
+                        start_time=time(10, 0),
+                        end_time=time(11, 0),
+                    ),
+                ]
+            )
+            db.add_all(
+                [
+                    ScheduleStop(
+                        schedule_id=701,
+                        station_id=10,
+                        arrival_time=time(8, 10),
+                        stop_order=1,
+                    ),
+                    ScheduleStop(
+                        schedule_id=701,
+                        station_id=20,
+                        arrival_time=time(8, 30),
+                        stop_order=2,
+                    ),
+                    ScheduleStop(
+                        schedule_id=701,
+                        station_id=30,
+                        arrival_time=time(8, 40),
+                        stop_order=3,
+                    ),
+                    ScheduleStop(
+                        schedule_id=702,
+                        station_id=10,
+                        arrival_time=time(10, 10),
+                        stop_order=1,
+                    ),
+                    ScheduleStop(
+                        schedule_id=702,
+                        station_id=30,
+                        arrival_time=time(10, 20),
+                        stop_order=2,
+                    ),
+                    ScheduleStop(
+                        schedule_id=702,
+                        station_id=40,
+                        arrival_time=time(10, 5),
+                        stop_order=1,
+                    ),
+                ]
+            )
+            db.commit()
 
     def _seed_route_membership_data(self):
         with self.SessionLocal() as db:
@@ -256,6 +357,37 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
 
+    def test_route_stations_uses_order_from_schedule_with_most_active_stops(self):
+        self._seed_route_station_data()
+
+        response = self.client.get("/shuttle/routes/7/stations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            [
+                {"stop_order": 1, "station_id": 10, "station_name": "정문"},
+                {"stop_order": 2, "station_id": 20, "station_name": "터미널"},
+                {"stop_order": 3, "station_id": 30, "station_name": "KTX"},
+            ],
+        )
+        self.assertIn(("route_stations:7:all", None), self.cache_writes)
+
+    def test_route_stations_returns_empty_list_when_route_has_no_stops(self):
+        self._seed_route_station_data()
+
+        response = self.client.get("/shuttle/routes/8/stations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+        self.assertIn(("route_stations:8:all", None), self.cache_writes)
+
+    def test_route_stations_returns_404_when_route_does_not_exist(self):
+        response = self.client.get("/shuttle/routes/999/stations")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Route with id 999 not found")
+
     def test_invalidate_shuttle_station_cache_includes_route_membership_pattern(self):
         with patch("routers.admin_v2.delete_pattern") as mock_delete_pattern:
             admin_v2.invalidate_shuttle_station_cache()
@@ -266,6 +398,7 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
                 call("station_schedules:*"),
                 call("schedule_stops:*"),
                 call("station_route_memberships:*"),
+                call("route_stations:*"),
             ]
         )
 
@@ -295,6 +428,7 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
 
         self.assertEqual(response["message"], "Schedule created successfully")
         self.assertIn(call("station_route_memberships:*"), mock_delete_pattern.mock_calls)
+        self.assertIn(call("route_stations:*"), mock_delete_pattern.mock_calls)
 
     def test_update_schedule_invalidates_route_membership_cache(self):
         with self.SessionLocal() as db:
@@ -322,6 +456,7 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
 
         self.assertEqual(response["message"], "Schedule updated successfully")
         self.assertIn(call("station_route_memberships:*"), mock_delete_pattern.mock_calls)
+        self.assertIn(call("route_stations:*"), mock_delete_pattern.mock_calls)
 
     def test_delete_schedule_invalidates_route_membership_cache(self):
         with self.SessionLocal() as db:
@@ -337,6 +472,7 @@ class ShuttleStationRouteMembershipTests(unittest.TestCase):
 
         self.assertEqual(response["message"], "Schedule deleted successfully")
         self.assertIn(call("station_route_memberships:*"), mock_delete_pattern.mock_calls)
+        self.assertIn(call("route_stations:*"), mock_delete_pattern.mock_calls)
 
 
 if __name__ == "__main__":
