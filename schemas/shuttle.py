@@ -55,6 +55,34 @@ class RouteStationResponse(BaseModel):
         from_attributes = True
 
 
+class JourneyDestinationResponse(BaseModel):
+    station_id: int
+    station_name: str
+
+
+class JourneyOptionResponse(BaseModel):
+    schedule_id: int
+    route_id: int
+    route_name: str
+    origin_arrival_time: time
+    destination_arrival_time: time
+    origin_stop_order: int
+    destination_stop_order: int
+    duration_minutes: int
+    intermediate_stop_count: int
+
+
+class JourneySearchResponse(BaseModel):
+    schedule_type: str
+    schedule_type_name: str
+    date: date
+    origin_station_id: int
+    origin_station_name: str
+    destination_station_id: int
+    destination_station_name: str
+    journeys: List[JourneyOptionResponse]
+
+
 class ScheduleTypeResponse(BaseModel):
     schedule_type: str
     schedule_type_name: str
