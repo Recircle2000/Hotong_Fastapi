@@ -1,8 +1,9 @@
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 import logging
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+import re
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from typing import List
 from datetime import time, date
@@ -15,6 +16,8 @@ from models.schedule_types import ScheduleType, ScheduleException
 from utils.redis_client import get_cache, set_cache, delete_pattern
 from utils.serializer import serialize_models
 from schemas.shuttle import (
+    JourneyDestinationResponse,
+    JourneySearchResponse,
     RouteResponse,
     RouteStationResponse,
     ScheduleCreate,
@@ -38,6 +41,20 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX = "resolved_schedule_type"
 STATION_ROUTE_MEMBERSHIPS_CACHE_KEY = "station_route_memberships:active"
+JOURNEY_CACHE_KEY_PREFIX = "shuttle_journeys:v6"
+JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX = "shuttle_journey_destinations:v6"
+STATION_DIRECTION_SUFFIX_PATTERN = re.compile(
+    r"\s*[\[(]\s*(?:천캠|아캠|천안|아산)방향\s*[\])]\s*$"
+)
+STATION_LOGICAL_NAME_ALIASES = {
+    "아산캠퍼스 [출발]": "아산캠퍼스",
+    "아산캠퍼스 [도착]": "아산캠퍼스",
+    "천안캠퍼스 [출발]": "천안캠퍼스",
+    "천안캠퍼스 [도착]": "천안캠퍼스",
+    "천안 충무병원": "천안 충무병원",
+    "천안 충무병원 맞은편": "천안 충무병원",
+}
+CAMPUS_STATION_NAMES = {"아산캠퍼스", "천안캠퍼스"}
 
 
 def _is_missing_relation_or_column(exc: ProgrammingError | OperationalError, *names: str) -> bool:
@@ -153,6 +170,278 @@ def resolve_schedule_type(db: Session, target_date: date) -> tuple[str, str]:
     }
     set_cache(cache_key, result)
     return result["schedule_type"], result["schedule_type_name"]
+
+
+def _get_active_station(db: Session, station_id: int) -> ShuttleStation:
+    station = db.query(ShuttleStation).filter(
+        ShuttleStation.id == station_id,
+        ShuttleStation.is_active.is_(True),
+    ).first()
+    if station is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Active station with id {station_id} not found",
+        )
+    return station
+
+
+def _duration_minutes(origin_time: time, destination_time: time) -> int:
+    origin_seconds = (
+        origin_time.hour * 3600 + origin_time.minute * 60 + origin_time.second
+    )
+    destination_seconds = (
+        destination_time.hour * 3600
+        + destination_time.minute * 60
+        + destination_time.second
+    )
+    difference = destination_seconds - origin_seconds
+    if difference < 0:
+        difference += 24 * 60 * 60
+    return difference // 60
+
+
+def _directional_station_base_name(name: str) -> str | None:
+    stripped_name = name.strip()
+    aliased_name = STATION_LOGICAL_NAME_ALIASES.get(stripped_name)
+    if aliased_name is not None:
+        return aliased_name
+    base_name = STATION_DIRECTION_SUFFIX_PATTERN.sub("", stripped_name).strip()
+    return base_name if base_name != stripped_name else None
+
+
+def _logical_station_group(
+    db: Session,
+    station: ShuttleStation,
+) -> tuple[str, list[int]]:
+    base_name = _directional_station_base_name(station.name)
+    if base_name is None:
+        return station.name, [station.id]
+
+    candidates = db.query(ShuttleStation).filter(
+        ShuttleStation.is_active.is_(True),
+        ShuttleStation.name.contains(base_name),
+    ).all()
+    station_ids = sorted(
+        candidate.id
+        for candidate in candidates
+        if _directional_station_base_name(candidate.name) == base_name
+    )
+    return base_name, station_ids or [station.id]
+
+
+@router.get(
+    "/journey-destinations",
+    response_model=List[JourneyDestinationResponse],
+)
+def get_journey_destinations(
+    origin_station_id: int,
+    date: date,
+    db: Session = Depends(get_db),
+):
+    """선택한 날짜에 출발 정류장 이후로 이동 가능한 정류장을 반환합니다."""
+    origin_station = _get_active_station(db, origin_station_id)
+    origin_station_name, origin_station_ids = _logical_station_group(
+        db,
+        origin_station,
+    )
+    cache_key = (
+        f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:"
+        f"{origin_station_id}:{date.isoformat()}"
+    )
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    schedule_type, _ = resolve_schedule_type(db, date)
+    origin_stop = aliased(ScheduleStop)
+    destination_stop = aliased(ScheduleStop)
+
+    destinations = db.query(
+        ShuttleStation.id.label("station_id"),
+        ShuttleStation.name.label("station_name"),
+    ).join(
+        destination_stop,
+        destination_stop.station_id == ShuttleStation.id,
+    ).join(
+        Schedule,
+        destination_stop.schedule_id == Schedule.id,
+    ).join(
+        origin_stop,
+        and_(
+            origin_stop.schedule_id == Schedule.id,
+            origin_stop.station_id.in_(origin_station_ids),
+        ),
+    ).filter(
+        Schedule.schedule_type == schedule_type,
+        destination_stop.stop_order > origin_stop.stop_order,
+        ShuttleStation.is_active.is_(True),
+    ).distinct().order_by(
+        ShuttleStation.name,
+        ShuttleStation.id,
+    ).all()
+
+    result = [
+        {
+            "station_id": destination.station_id,
+            "station_name": destination.station_name,
+        }
+        for destination in destinations
+    ]
+    grouped_destinations = {}
+    for destination in result:
+        base_name = _directional_station_base_name(destination["station_name"])
+        group_key = base_name or f"station:{destination['station_id']}"
+        grouped_destination = grouped_destinations.get(group_key)
+        if (
+            grouped_destination is None
+            or destination["station_id"] < grouped_destination["station_id"]
+        ):
+            grouped_destinations[group_key] = {
+                "station_id": destination["station_id"],
+                "station_name": base_name or destination["station_name"],
+            }
+    result = sorted(
+        grouped_destinations.values(),
+        key=lambda destination: (
+            destination["station_name"],
+            destination["station_id"],
+        ),
+    )
+    if origin_station_name not in CAMPUS_STATION_NAMES:
+        result = [
+            destination
+            for destination in result
+            if destination["station_name"] in CAMPUS_STATION_NAMES
+        ]
+    set_cache(cache_key, result)
+    return result
+
+
+@router.get("/journeys", response_model=JourneySearchResponse)
+def get_journeys(
+    origin_station_id: int,
+    destination_station_id: int,
+    date: date,
+    db: Session = Depends(get_db),
+):
+    """출발지와 도착지를 같은 회차에서 순서대로 경유하는 직행 여정을 조회합니다."""
+    if origin_station_id == destination_station_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Origin and destination stations must be different",
+        )
+
+    origin_station = _get_active_station(db, origin_station_id)
+    destination_station = _get_active_station(db, destination_station_id)
+    origin_station_name, origin_station_ids = _logical_station_group(
+        db,
+        origin_station,
+    )
+    destination_station_name, destination_station_ids = _logical_station_group(
+        db,
+        destination_station,
+    )
+    if (
+        origin_station_name not in CAMPUS_STATION_NAMES
+        and destination_station_name not in CAMPUS_STATION_NAMES
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Intermediate stops can only be used for campus-bound journeys",
+        )
+    cache_key = (
+        f"{JOURNEY_CACHE_KEY_PREFIX}:{origin_station_id}:"
+        f"{destination_station_id}:{date.isoformat()}"
+    )
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    schedule_type, schedule_type_name = resolve_schedule_type(db, date)
+    if set(origin_station_ids).intersection(destination_station_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="Origin and destination stations must be different",
+        )
+    origin_stop = aliased(ScheduleStop)
+    destination_stop = aliased(ScheduleStop)
+
+    rows = db.query(
+        Schedule.id.label("schedule_id"),
+        Schedule.route_id,
+        ShuttleRoute.route_name,
+        origin_stop.arrival_time.label("origin_arrival_time"),
+        destination_stop.arrival_time.label("destination_arrival_time"),
+        origin_stop.stop_order.label("origin_stop_order"),
+        destination_stop.stop_order.label("destination_stop_order"),
+    ).join(
+        ShuttleRoute,
+        Schedule.route_id == ShuttleRoute.id,
+    ).join(
+        origin_stop,
+        and_(
+            origin_stop.schedule_id == Schedule.id,
+            origin_stop.station_id.in_(origin_station_ids),
+        ),
+    ).join(
+        destination_stop,
+        and_(
+            destination_stop.schedule_id == Schedule.id,
+            destination_stop.station_id.in_(destination_station_ids),
+        ),
+    ).filter(
+        Schedule.schedule_type == schedule_type,
+        origin_stop.stop_order < destination_stop.stop_order,
+    ).order_by(
+        origin_stop.arrival_time,
+        Schedule.id,
+    ).all()
+
+    journeys_by_schedule = {}
+    for row in rows:
+        journey = {
+            "schedule_id": row.schedule_id,
+            "route_id": row.route_id,
+            "route_name": row.route_name,
+            "origin_arrival_time": row.origin_arrival_time,
+            "destination_arrival_time": row.destination_arrival_time,
+            "origin_stop_order": row.origin_stop_order,
+            "destination_stop_order": row.destination_stop_order,
+            "duration_minutes": _duration_minutes(
+                row.origin_arrival_time,
+                row.destination_arrival_time,
+            ),
+            "intermediate_stop_count": max(
+                0,
+                row.destination_stop_order - row.origin_stop_order - 1,
+            ),
+        }
+        existing = journeys_by_schedule.get(row.schedule_id)
+        if (
+            existing is None
+            or journey["destination_stop_order"]
+            < existing["destination_stop_order"]
+        ):
+            journeys_by_schedule[row.schedule_id] = journey
+    journeys = sorted(
+        journeys_by_schedule.values(),
+        key=lambda journey: (
+            journey["origin_arrival_time"],
+            journey["schedule_id"],
+        ),
+    )
+    result = {
+        "schedule_type": schedule_type,
+        "schedule_type_name": schedule_type_name,
+        "date": date.isoformat(),
+        "origin_station_id": origin_station.id,
+        "origin_station_name": origin_station_name,
+        "destination_station_id": destination_station.id,
+        "destination_station_name": destination_station_name,
+        "journeys": journeys,
+    }
+    set_cache(cache_key, result)
+    return result
 
 @router.get("/schedules", response_model=List[ScheduleResponse])
 def get_schedules(
@@ -520,6 +809,8 @@ def create_schedule_type(
     # 캐시 무효화
     delete_pattern("schedule_types")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return new_schedule_type
 
@@ -577,6 +868,8 @@ def update_schedule_type(
     delete_pattern("schedules-by-date:*")
     delete_pattern("schedule_exceptions")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return db_schedule_type
 
@@ -637,6 +930,8 @@ def delete_schedule_type(
     # 캐시 무효화
     delete_pattern("schedule_types")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"일정 유형 '{schedule_type}'이 삭제되었습니다."}
 
@@ -702,6 +997,8 @@ def create_schedule(
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
     delete_pattern("route_stations:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return {"id": new_schedule.id, "message": "Schedule created successfully"}
 
@@ -777,6 +1074,8 @@ def update_schedule(
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
     delete_pattern("route_stations:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return {"message": "Schedule updated successfully"}
 
@@ -809,6 +1108,8 @@ def delete_schedule(
     delete_pattern("schedule_stops:*")
     delete_pattern("station_route_memberships:*")
     delete_pattern("route_stations:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return {"message": "Schedule deleted successfully"}
 
@@ -947,6 +1248,8 @@ def create_schedule_exception(
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     # 예외 일정과 일정 유형 이름 함께 반환
     response = {
@@ -1061,6 +1364,8 @@ def update_schedule_exception(
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     # 현재 일정 유형 이름 가져오기
     if not schedule_type_name:
@@ -1122,6 +1427,8 @@ def delete_schedule_exception(
     delete_pattern("schedule_exceptions")
     delete_pattern("schedules-by-date:*")
     delete_pattern(f"{RESOLVED_SCHEDULE_TYPE_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_DESTINATIONS_CACHE_KEY_PREFIX}:*")
+    delete_pattern(f"{JOURNEY_CACHE_KEY_PREFIX}:*")
     
     return {"message": f"예외 일정 ID {exception_id}가 삭제되었습니다."}
 
