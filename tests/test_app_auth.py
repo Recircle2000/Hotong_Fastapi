@@ -1,7 +1,11 @@
+import io
+import json
 import time
 import unittest
 from copy import deepcopy
 from uuid import uuid4
+from unittest.mock import patch
+from urllib.error import URLError
 
 import jwt
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -12,6 +16,7 @@ from jwt.exceptions import PyJWKClientConnectionError
 from auth_config import SupabaseAuthConfig
 from routers import app_auth
 from utils.supabase_security import (
+    CachedJWKResolver,
     get_auth_config_dependency,
     get_jwk_resolver_dependency,
 )
@@ -137,6 +142,54 @@ class AppAuthApiTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 503)
+
+    def test_unknown_kid_does_not_block_valid_cached_token(self):
+        jwk = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(self.public_key))
+        jwk.update(kid="test-key", use="sig", alg="ES256")
+        jwks = json.dumps({"keys": [jwk]}).encode()
+        attacker_token = jwt.encode(
+            {}, ec.generate_private_key(ec.SECP256R1()), algorithm="ES256",
+            headers={"kid": "unknown-key"},
+        )
+
+        # Exercise the real PyJWKClient cache and key lookup, mocking only HTTP.
+        for network_failure in (False, True):
+            with self.subTest(network_failure=network_failure):
+                resolver = CachedJWKResolver(self.config.jwks_url)
+                refresh_result = (
+                    URLError("offline") if network_failure else io.BytesIO(jwks)
+                )
+                with patch.dict(self.app.dependency_overrides, {
+                    get_jwk_resolver_dependency: lambda: resolver,
+                }), patch("utils.supabase_security.urllib.request.urlopen",
+                          side_effect=[io.BytesIO(jwks), refresh_result]) as fetch:
+                    token = self._token()
+                    self.assertEqual(self._get(token).status_code, 200)
+                    self.assertEqual(
+                        self._get(attacker_token).status_code,
+                        503 if network_failure else 401,
+                    )
+                    self.assertEqual(self._get(token).status_code, 200)
+                    self.assertEqual(fetch.call_count, 2)
+
+    def test_network_backoff_recovers_after_deadline(self):
+        jwk = json.loads(jwt.algorithms.ECAlgorithm.to_jwk(self.public_key))
+        jwk.update(kid="test-key", use="sig", alg="ES256")
+        jwks = json.dumps({"keys": [jwk]}).encode()
+        resolver = CachedJWKResolver(self.config.jwks_url)
+        with patch.dict(self.app.dependency_overrides, {
+            get_jwk_resolver_dependency: lambda: resolver,
+        }), patch("utils.supabase_security.urllib.request.urlopen",
+                  side_effect=[URLError("offline"), io.BytesIO(jwks)]) as fetch, \
+                patch("utils.supabase_security.time.monotonic",
+                      return_value=1000.0) as clock:
+            token = self._token()
+            self.assertEqual(self._get(token).status_code, 503)
+            self.assertEqual(self._get(token).status_code, 503)
+            self.assertEqual(fetch.call_count, 1)
+            clock.return_value = 1006.0
+            self.assertEqual(self._get(token).status_code, 200)
+            self.assertEqual(fetch.call_count, 2)
 
 
 if __name__ == "__main__":

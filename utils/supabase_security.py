@@ -1,5 +1,8 @@
+import json
 import threading
 import time
+import urllib.request
+from urllib.error import URLError
 from functools import lru_cache
 from typing import Any
 from uuid import UUID
@@ -40,8 +43,39 @@ def _service_unavailable() -> HTTPException:
     )
 
 
+class _BackoffJWKClient(PyJWKClient):
+    """Back off network failures without blocking cached signing keys."""
+
+    def __init__(self, *args: Any, failure_backoff_seconds: int, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._failure_backoff_seconds = failure_backoff_seconds
+        self._retry_after = 0.0
+        self._last_error: PyJWKClientConnectionError | None = None
+
+    def fetch_data(self) -> Any:
+        if self._last_error is not None and time.monotonic() < self._retry_after:
+            raise self._last_error
+
+        request = urllib.request.Request(url=self.uri, headers=self.headers)
+        try:
+            with urllib.request.urlopen(
+                request, timeout=self.timeout, context=self.ssl_context
+            ) as response:
+                data = json.load(response)
+        except (URLError, TimeoutError) as exc:
+            self._last_error = PyJWKClientConnectionError("Unable to fetch JWKS")
+            self._retry_after = time.monotonic() + self._failure_backoff_seconds
+            raise self._last_error from exc
+
+        self._last_error = None
+        self._retry_after = 0.0
+        if self.jwk_set_cache is not None:
+            self.jwk_set_cache.put(data)
+        return data
+
+
 class CachedJWKResolver:
-    """Resolve Supabase signing keys with a short failure backoff."""
+    """Resolve signing keys; token-specific failures never poison the cache."""
 
     def __init__(
         self,
@@ -51,34 +85,19 @@ class CachedJWKResolver:
         failure_backoff_seconds: int = 5,
         timeout_seconds: int = 3,
     ) -> None:
-        self._client = PyJWKClient(
+        self._client = _BackoffJWKClient(
             jwks_url,
             cache_keys=False,
             cache_jwk_set=True,
             lifespan=cache_lifespan_seconds,
             timeout=timeout_seconds,
+            failure_backoff_seconds=failure_backoff_seconds,
         )
-        self._failure_backoff_seconds = failure_backoff_seconds
-        self._retry_after = 0.0
-        self._last_error: PyJWKClientError | None = None
         self._lock = threading.Lock()
 
     def get_signing_key_from_jwt(self, token: str) -> Any:
         with self._lock:
-            now = time.monotonic()
-            if self._last_error is not None and now < self._retry_after:
-                raise self._last_error
-
-            try:
-                key = self._client.get_signing_key_from_jwt(token)
-            except PyJWKClientError as exc:
-                self._last_error = exc
-                self._retry_after = now + self._failure_backoff_seconds
-                raise
-
-            self._last_error = None
-            self._retry_after = 0.0
-            return key
+            return self._client.get_signing_key_from_jwt(token)
 
 
 @lru_cache(maxsize=1)
