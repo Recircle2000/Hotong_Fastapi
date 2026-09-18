@@ -275,6 +275,8 @@ export function ShuttleStationsPage() {
           >
             정류장 관리
           </NavLink>
+          <NavLink to="/taxi-locations" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시 거점 관리</NavLink>
+          <NavLink to="/taxi-parties" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시팟 현황</NavLink>
         </nav>
         <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
           <button
@@ -349,6 +351,8 @@ export function ShuttleStationsPage() {
                 >
                   정류장
                 </NavLink>
+                <NavLink to="/taxi-locations" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시 거점</NavLink>
+                <NavLink to="/taxi-parties" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시팟</NavLink>
                 <button
                   type="button"
                   onClick={handleLogout}

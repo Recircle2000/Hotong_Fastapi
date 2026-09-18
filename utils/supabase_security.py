@@ -120,17 +120,23 @@ def get_jwk_resolver_dependency() -> CachedJWKResolver:
         raise _service_unavailable() from exc
 
 
-def _is_school_email(email: object, allowed_domain: str) -> bool:
+def _is_allowed_email(
+    email: object,
+    allowed_domain: str,
+    allowed_test_emails: frozenset[str],
+) -> bool:
     if not isinstance(email, str):
         return False
     normalized = email.strip().lower()
     local_part, separator, domain = normalized.partition("@")
-    return bool(
+    is_valid = bool(
         local_part
         and separator
         and "@" not in domain
-        and domain == allowed_domain
         and not any(character.isspace() for character in normalized)
+    )
+    return is_valid and (
+        domain == allowed_domain or normalized in allowed_test_emails
     )
 
 
@@ -188,7 +194,11 @@ def verify_supabase_access_token(
         raise _unauthorized()
     if claims.get("is_anonymous") is not False:
         raise _unauthorized()
-    if not _is_school_email(claims.get("email"), config.allowed_email_domain):
+    if not _is_allowed_email(
+        claims.get("email"),
+        config.allowed_email_domain,
+        config.allowed_test_emails,
+    ):
         raise _unauthorized()
     if not _has_otp_amr(claims.get("amr")):
         raise _unauthorized()

@@ -51,6 +51,7 @@ class AppAuthApiTests(unittest.TestCase):
             jwks_url=(
                 "https://project.supabase.co/auth/v1/.well-known/jwks.json"
             ),
+            allowed_test_emails=frozenset({"tester@example.com"}),
         )
 
         cls.app = FastAPI()
@@ -99,6 +100,20 @@ class AppAuthApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"user_id": str(self.user_id)})
         self.assertEqual(response.headers["cache-control"], "no-store")
+
+    def test_exact_test_email_allowlist_is_accepted(self):
+        claims = deepcopy(self.claims)
+        claims["email"] = "  Tester@Example.com  "
+
+        response = self._get(self._token(claims))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_similar_test_email_is_rejected(self):
+        claims = deepcopy(self.claims)
+        claims["email"] = "tester+other@example.com"
+
+        self.assertEqual(self._get(self._token(claims)).status_code, 401)
 
     def test_missing_token_returns_401(self):
         response = self.client.get("/api/app-auth/me")

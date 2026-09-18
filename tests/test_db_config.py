@@ -75,6 +75,24 @@ class DatabaseConfigTests(unittest.TestCase):
         )
 
         self.assertEqual(kwargs["connect_args"]["options"], "-csearch_path=bus_service")
+        self.assertEqual(kwargs["pool_size"], 5)
+        self.assertEqual(kwargs["max_overflow"], 0)
+        self.assertEqual(kwargs["pool_timeout"], 10)
+        self.assertTrue(kwargs["pool_use_lifo"])
+
+    def test_database_pool_settings_can_be_overridden(self):
+        kwargs = get_engine_kwargs(
+            "postgresql+psycopg2://postgres.test:[YOUR-PASSWORD]@example.com:5432/postgres",
+            {
+                "DATABASE_POOL_SIZE": "4",
+                "DATABASE_MAX_OVERFLOW": "1",
+                "DATABASE_POOL_TIMEOUT": "7",
+            },
+        )
+
+        self.assertEqual(kwargs["pool_size"], 4)
+        self.assertEqual(kwargs["max_overflow"], 1)
+        self.assertEqual(kwargs["pool_timeout"], 7)
 
     def test_database_schema_can_be_overridden(self):
         self.assertEqual(

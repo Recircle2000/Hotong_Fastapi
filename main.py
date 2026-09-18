@@ -1,6 +1,6 @@
 # main.py 수정
 from fastapi import FastAPI
-from routers import app_auth, auth, bus, notice, shuttle, dashboard, admin_monitor, subway, emergency_notice, admin_v2
+from routers import app_auth, auth, bus, notice, shuttle, dashboard, admin_monitor, subway, emergency_notice, admin_v2, taxi
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from utils.redis_client import redis_client
@@ -33,6 +33,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # API 라우터 등록
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(app_auth.router)
+app.include_router(taxi.router)
+app.include_router(taxi.websocket_router)
 app.include_router(bus.router, tags=["Bus"])
 app.include_router(notice.router, tags=["Notices"])
 app.include_router(emergency_notice.router)

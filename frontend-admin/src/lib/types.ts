@@ -72,3 +72,39 @@ export interface AdminShuttleStationPayload {
   image_url: string | null;
   is_active: boolean;
 }
+
+export type TaxiLocationCategory = "campus" | "station" | "terminal" | "other";
+
+export interface AdminTaxiLocation {
+  id: number;
+  name: string;
+  category: TaxiLocationCategory;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface AdminTaxiLocationPayload {
+  name: string;
+  category: TaxiLocationCategory;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface AdminTaxiParty {
+  id: string;
+  departure_location_name: string;
+  destination_location_name: string;
+  departure_summary: string;
+  destination_summary: string | null;
+  departure_at: string;
+  current_members: number;
+  max_members: number;
+  status: string;
+  cancellation_reason: string | null;
+  created_at: string;
+}
+
+export interface AdminTaxiPartyList {
+  items: AdminTaxiParty[];
+  next_cursor: string | null;
+}

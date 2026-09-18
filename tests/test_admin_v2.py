@@ -300,6 +300,58 @@ class AdminV2ApiTests(unittest.TestCase):
         self.assertEqual(len(final_stations), 1)
         self.assertEqual(final_stations[0]["name"], "후문 변경")
 
+    def test_taxi_location_crud_and_duplicate_name(self):
+        login_response = self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        created = self.client.post(
+            "/api/admin-v2/taxi-locations",
+            json={
+                "name": "아산캠퍼스",
+                "category": "campus",
+                "sort_order": 1,
+                "is_active": True,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["category"], "campus")
+
+        duplicate = self.client.post(
+            "/api/admin-v2/taxi-locations",
+            json={
+                "name": "아산캠퍼스",
+                "category": "campus",
+                "sort_order": 2,
+                "is_active": True,
+            },
+        )
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(duplicate.json()["detail"]["code"], "LOCATION_NAME_EXISTS")
+
+        updated = self.client.put(
+            f"/api/admin-v2/taxi-locations/{created.json()['id']}",
+            json={
+                "name": "아산캠퍼스 정문",
+                "category": "campus",
+                "sort_order": 3,
+                "is_active": False,
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertFalse(updated.json()["is_active"])
+
+        listing = self.client.get("/api/admin-v2/taxi-locations")
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()[0]["name"], "아산캠퍼스 정문")
+
+        deleted = self.client.delete(
+            f"/api/admin-v2/taxi-locations/{created.json()['id']}"
+        )
+        self.assertEqual(deleted.status_code, 204)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,9 @@
 import type {
   AdminShuttleStation,
   AdminShuttleStationPayload,
+  AdminTaxiLocation,
+  AdminTaxiLocationPayload,
+  AdminTaxiPartyList,
   EmergencyNotice,
   EmergencyNoticePayload,
   Notice,
@@ -59,10 +62,16 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     : await response.text();
 
   if (!response.ok) {
-    const detail =
+    const rawDetail =
       typeof payload === "object" && payload !== null && "detail" in payload
-        ? String(payload.detail)
-        : "요청을 처리하지 못했습니다.";
+        ? payload.detail
+        : null;
+    const detail =
+      typeof rawDetail === "string"
+        ? rawDetail
+        : typeof rawDetail === "object" && rawDetail !== null && "message" in rawDetail
+          ? String(rawDetail.message)
+          : "요청을 처리하지 못했습니다.";
     throw new ApiError(response.status, detail);
   }
 
@@ -158,5 +167,48 @@ export function updateAdminShuttleStation(
 export function deleteAdminShuttleStation(id: number) {
   return apiRequest<void>(`/shuttle-stations/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function getAdminTaxiLocations() {
+  return apiRequest<AdminTaxiLocation[]>("/taxi-locations");
+}
+
+export function createAdminTaxiLocation(payload: AdminTaxiLocationPayload) {
+  return apiRequest<AdminTaxiLocation>("/taxi-locations", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateAdminTaxiLocation(id: number, payload: AdminTaxiLocationPayload) {
+  return apiRequest<AdminTaxiLocation>(`/taxi-locations/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteAdminTaxiLocation(id: number) {
+  return apiRequest<void>(`/taxi-locations/${id}`, { method: "DELETE" });
+}
+
+export function getAdminTaxiParties(params: {
+  status_filter?: string;
+  departure_location_id?: number;
+  destination_location_id?: number;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiPartyList>(`/taxi-parties${query ? `?${query}` : ""}`);
+}
+
+export function cancelAdminTaxiParty(id: string, reason: string) {
+  return apiRequest<{ success: boolean }>(`/taxi-parties/${id}/cancel`, {
+    method: "POST",
+    body: { reason },
   });
 }
