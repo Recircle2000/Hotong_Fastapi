@@ -7,6 +7,7 @@ import type {
   NoticePayload,
   SessionResponse,
 } from "./types";
+import type { ShuttleTimetableSection } from "./shuttleTypes";
 
 const API_BASE = "/api/admin-v2";
 
@@ -159,4 +160,8 @@ export function deleteAdminShuttleStation(id: number) {
   return apiRequest<void>(`/shuttle-stations/${id}`, {
     method: "DELETE",
   });
+}
+
+export function getAdminShuttleTimetable() {
+  return apiRequest<ShuttleTimetableSection[]>("/shuttle-timetable");
 }

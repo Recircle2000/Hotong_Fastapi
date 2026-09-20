@@ -695,6 +695,18 @@ export function ShuttlePage() {
           >
             정류장 관리
           </NavLink>
+          <NavLink
+            to="/shuttle/timetable"
+            className={({ isActive }) =>
+              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`
+            }
+          >
+            전체 시간표
+          </NavLink>
         </nav>
         <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
           <button
@@ -718,6 +730,12 @@ export function ShuttlePage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <NavLink
+                  to="/shuttle/timetable"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  전체 시간표 보기
+                </NavLink>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
                   {user?.email}
                 </div>
