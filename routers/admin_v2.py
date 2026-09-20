@@ -15,6 +15,7 @@ from schemas.admin_v2 import (
     AdminSessionUser,
     AdminShuttleStationPayload,
     AdminShuttleStationResponse,
+    AdminShuttleTimetableSection,
 )
 from services.admin_auth import (
     AUTH_REQUIRED_MESSAGE,
@@ -46,6 +47,7 @@ from services.admin_shuttle_station import (
     serialize_shuttle_station,
     update_admin_shuttle_station,
 )
+from services.shuttle_timetable import build_admin_shuttle_timetable
 from utils.redis_client import delete_pattern
 
 
@@ -242,6 +244,18 @@ async def get_admin_v2_shuttle_stations(
         serialize_shuttle_station(station)
         for station in list_admin_shuttle_stations(db)
     ]
+
+
+@router.get(
+    "/shuttle-timetable",
+    response_model=list[AdminShuttleTimetableSection],
+)
+async def get_admin_v2_shuttle_timetable(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return build_admin_shuttle_timetable(db)
 
 
 @router.post(

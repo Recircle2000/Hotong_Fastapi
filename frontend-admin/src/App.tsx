@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { NoticesPage } from "./pages/NoticesPage";
 import { ShuttlePage } from "./pages/ShuttlePage";
 import { ShuttleStationsPage } from "./pages/ShuttleStationsPage";
+import { ShuttleTimetablePage } from "./pages/ShuttleTimetablePage";
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
           <Route path="/emergency-notices" element={<EmergencyNoticePage />} />
           <Route path="/notices" element={<NoticesPage />} />
           <Route path="/shuttle" element={<ShuttlePage />} />
+          <Route path="/shuttle/timetable" element={<ShuttleTimetablePage />} />
           <Route path="/shuttle-stations" element={<ShuttleStationsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

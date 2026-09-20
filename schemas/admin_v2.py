@@ -75,3 +75,34 @@ class AdminShuttleStationResponse(BaseModel):
     description: str | None
     image_url: str | None
     is_active: bool
+
+
+class AdminShuttleTimetableStation(BaseModel):
+    station_id: int
+    station_name: str
+    stop_order: int
+
+
+class AdminShuttleTimetableRow(BaseModel):
+    number: int
+    schedule_id: int
+    times: list[str]
+
+
+class AdminShuttleTimetableRoute(BaseModel):
+    route_id: int
+    route_name: str
+    direction: str
+    stations: list[AdminShuttleTimetableStation]
+    rows: list[AdminShuttleTimetableRow]
+    schedule_count: int
+
+
+class AdminShuttleTimetableSection(BaseModel):
+    anchor_id: str
+    schedule_type: str
+    schedule_type_name: str
+    is_active: bool
+    routes: list[AdminShuttleTimetableRoute]
+    route_count: int
+    schedule_count: int
