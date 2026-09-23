@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from routers import auth, bus, notice, shuttle, dashboard, admin_monitor, subway, emergency_notice, admin_v2
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
-from utils.redis_client import redis_client
+from utils.redis_client import REDIS_ENABLED, redis_client
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -60,11 +60,12 @@ async def startup_event():
         print("API 모니터링 미들웨어 초기화 실패")
     
     # Redis 연결 확인
-    try:
-        redis_client.ping()
-        print("Redis 서버 연결 성공")
-    except Exception as e:
-        print(f"Redis 서버 연결 실패: {e}")
+    if REDIS_ENABLED:
+        try:
+            redis_client.ping()
+            print("Redis 서버 연결 성공")
+        except Exception as e:
+            print(f"Redis 서버 연결 실패: {e}")
     
     # 데이터베이스 연결 확인
     try:
@@ -81,7 +82,7 @@ def home():
 @app.get("/health")
 def health_check():
     # Redis 연결 상태 확인
-    redis_status = "healthy" if redis_client.ping() else "unhealthy"
+    redis_status = "disabled" if not REDIS_ENABLED else ("healthy" if redis_client.ping() else "unhealthy")
     
     # 데이터베이스 연결 상태 확인
     db_status = "healthy"

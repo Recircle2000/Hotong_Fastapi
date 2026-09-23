@@ -2,8 +2,12 @@ import redis
 import json
 import os
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
 
-# Redis 클라이언트 설정
+load_dotenv()
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").strip().lower() not in ("false", "0", "no", "off")
+
+# OFF에서는 클라이언트와 연결 풀을 생성하지 않습니다.
 redis_client = redis.Redis(
     host='redis',
     #host=os.getenv('REDIS_HOST'),
@@ -11,7 +15,7 @@ redis_client = redis.Redis(
     port=6379,
     db=0,
     decode_responses=True
-)
+) if REDIS_ENABLED else None
 
 # 캐시 만료 시간 (초)
 CACHE_TTL = 60 * 60 * 24 # 24시간
@@ -20,6 +24,8 @@ def set_cache(key: str, data: Any, expire: int | None = CACHE_TTL) -> bool:
     """
     Redis에 데이터를 캐싱합니다.
     """
+    if not REDIS_ENABLED:
+        return False
     try:
         serialized_data = json.dumps(data)
         return redis_client.set(key, serialized_data, ex=expire)
@@ -31,6 +37,8 @@ def get_cache(key: str) -> Optional[Any]:
     """
     Redis에서 캐시된 데이터를 가져옵니다.
     """
+    if not REDIS_ENABLED:
+        return None
     try:
         data = redis_client.get(key)
         if data:
@@ -44,6 +52,8 @@ def delete_cache(key: str) -> bool:
     """
     Redis에서 캐시를 삭제합니다.
     """
+    if not REDIS_ENABLED:
+        return False
     try:
         return redis_client.delete(key) > 0
     except Exception as e:
@@ -54,6 +64,8 @@ def delete_pattern(pattern: str) -> int:
     """
     패턴에 일치하는 모든 키를 삭제합니다.
     """
+    if not REDIS_ENABLED:
+        return 0
     try:
         deleted_count = 0
         batch = []
