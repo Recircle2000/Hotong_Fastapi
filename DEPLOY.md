@@ -14,6 +14,7 @@ certs/
 `.env` 파일을 생성하고 다음 변수들을 설정:
 ```
 REDIS_PASSWORD=your_redis_password
+REDIS_ENABLED=true
 SUPABASE_URL=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
 SUPABASE_PASSWORD=your_supabase_database_password
 DATABASE_SCHEMA=bus_service
@@ -69,6 +70,25 @@ docker-compose logs -f
 # 서비스 상태 확인
 docker-compose ps
 ```
+
+Redis 캐시 사용 여부는 `REDIS_ENABLED`로 전환합니다. 생략하면 기존과 같이 `true`입니다.
+셸 환경변수가 `.env`의 값보다 우선하도록 Compose의 `api` 서비스에 전달됩니다.
+
+```bash
+REDIS_ENABLED=true docker compose up -d --build
+REDIS_ENABLED=false docker compose up -d --build
+```
+
+PowerShell에서는 다음과 같이 실행합니다.
+
+```powershell
+$env:REDIS_ENABLED = "true"; docker compose up -d --build
+$env:REDIS_ENABLED = "false"; docker compose up -d --build
+```
+
+OFF에서도 Compose는 Redis 컨테이너를 시작하지만 API는 Redis 클라이언트나 연결을 생성하지 않습니다.
+셔틀의 캐시 미스 경로는 DB를 조회합니다. 버스 위치와 실시간 지하철 도착 정보는
+원본이 외부 API이므로 OFF에서는 외부 API 결과를 해당 API 프로세스의 WebSocket/HTTP 응답에 전달합니다.
 
 ## 서비스 구조
 

@@ -31,6 +31,7 @@ services:
     restart: always
     environment:
       TZ: Asia/Seoul
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
     logging:
       driver: json-file
       options:
