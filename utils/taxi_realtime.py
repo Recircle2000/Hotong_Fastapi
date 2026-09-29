@@ -9,9 +9,10 @@ from uuid import UUID
 
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from models import TaxiMessage
-from services.taxi import active_member_ids, get_party_summary, serialize_message
+from services.taxi import message_fanout, party_member_summaries
 
 
 logger = logging.getLogger(__name__)
@@ -73,35 +74,43 @@ async def publish_parties_changed(party_id: UUID) -> bool:
         return False
 
 
-async def publish_message(db: Session, message: TaxiMessage) -> None:
-    events = []
-    for user_id in active_member_ids(db, message.party_id):
-        serialized = serialize_message(db, message, user_id).model_dump(mode="json")
-        party = get_party_summary(db, message.party_id, user_id).model_dump(mode="json")
-        events.append(
-            (
-                user_id,
-                {
-                    "type": "message.created",
-                    "party_id": str(message.party_id),
-                    "message": serialized,
-                    "party": party,
-                },
-            )
+def build_message_events(db: Session, message: TaxiMessage) -> list[tuple[UUID, dict[str, Any]]]:
+    return [
+        (
+            member_id,
+            {
+                "type": "message.created",
+                "party_id": str(message.party_id),
+                "message": serialized.model_dump(mode="json"),
+                "party": summary.model_dump(mode="json"),
+            },
         )
-    await publish_user_events(events)
+        for member_id, serialized, summary in message_fanout(db, message)
+    ]
 
 
-async def publish_party_updated(db: Session, party_id: UUID) -> None:
-    await publish_user_events(
+def build_party_updated_events(db: Session, party_id: UUID) -> list[tuple[UUID, dict[str, Any]]]:
+    return [
         (
             user_id,
             {
                 "type": "party.updated",
                 "party_id": str(party_id),
-                "party": get_party_summary(db, party_id, user_id).model_dump(mode="json"),
+                "party": summary.model_dump(mode="json"),
             },
         )
-        for user_id in active_member_ids(db, party_id)
-    )
+        for user_id, summary in party_member_summaries(db, party_id)
+    ]
+
+
+# DB 조회는 동기 SQLAlchemy라서 스레드풀에서 돌리고, 이벤트 루프에서는 발행만 한다.
+# 이벤트 루프가 막히면 워커 하나를 쓰는 서버에서 모든 채팅 연결이 함께 멈춘다.
+async def publish_message(db: Session, message: TaxiMessage) -> None:
+    events = await run_in_threadpool(build_message_events, db, message)
+    await publish_user_events(events)
+
+
+async def publish_party_updated(db: Session, party_id: UUID) -> None:
+    events = await run_in_threadpool(build_party_updated_events, db, party_id)
+    await publish_user_events(events)
     await publish_parties_changed(party_id)

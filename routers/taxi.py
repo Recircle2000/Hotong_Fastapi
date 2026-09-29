@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, WebSocke
 from pydantic import ValidationError
 from redis.exceptions import RedisError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from auth_config import get_supabase_auth_config
 from database import SessionLocal, get_db
@@ -33,12 +34,10 @@ from schemas.taxi import (
 )
 from services.taxi import (
     TaxiServiceError,
-    active_member_ids,
     cancel_party,
     create_chat_message,
     create_party,
     get_party_detail,
-    get_party_summary,
     join_party,
     leave_party,
     list_active_locations,
@@ -47,7 +46,6 @@ from services.taxi import (
     list_parties,
     mark_messages_read,
     serialize_location,
-    serialize_message,
     serialize_party_detail,
     set_recruitment,
     update_party,
@@ -55,6 +53,7 @@ from services.taxi import (
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
 from utils.taxi_realtime import (
     TAXI_PARTIES_CHANNEL,
+    build_message_events,
     get_async_redis,
     publish_message,
     publish_party_updated,
@@ -137,9 +136,9 @@ async def create_taxi_party(
 ):
     _no_store(response)
     try:
-        party = create_party(db, current_user.user_id, payload)
+        party = await run_in_threadpool(create_party, db, current_user.user_id, payload)
         await publish_party_updated(db, party.id)
-        return serialize_party_detail(db, party, current_user.user_id)
+        return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 
@@ -168,11 +167,13 @@ async def patch_taxi_party(
 ):
     _no_store(response)
     try:
-        party, message = update_party(db, party_id, current_user.user_id, payload)
+        party, message = await run_in_threadpool(
+            update_party, db, party_id, current_user.user_id, payload
+        )
         if message is not None:
             await publish_message(db, message)
         await publish_party_updated(db, party.id)
-        return serialize_party_detail(db, party, current_user.user_id)
+        return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 
@@ -186,11 +187,11 @@ async def join_taxi_party(
 ):
     _no_store(response)
     try:
-        party, message = join_party(db, party_id, current_user.user_id)
+        party, message = await run_in_threadpool(join_party, db, party_id, current_user.user_id)
         if message is not None:
             await publish_message(db, message)
         await publish_party_updated(db, party.id)
-        return serialize_party_detail(db, party, current_user.user_id)
+        return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 
@@ -204,7 +205,7 @@ async def leave_taxi_party(
 ):
     _no_store(response)
     try:
-        message = leave_party(db, party_id, current_user.user_id)
+        message = await run_in_threadpool(leave_party, db, party_id, current_user.user_id)
         await publish_message(db, message)
         await publish_party_updated(db, party_id)
         return TaxiActionResponse()
@@ -222,7 +223,9 @@ async def cancel_taxi_party(
 ):
     _no_store(response)
     try:
-        message = cancel_party(db, party_id, current_user.user_id, payload.reason)
+        message = await run_in_threadpool(
+            cancel_party, db, party_id, current_user.user_id, payload.reason
+        )
         if message is not None:
             await publish_message(db, message)
         await publish_party_updated(db, party_id)
@@ -241,7 +244,9 @@ async def update_taxi_recruitment(
 ):
     _no_store(response)
     try:
-        message = set_recruitment(db, party_id, current_user.user_id, payload.is_open)
+        message = await run_in_threadpool(
+            set_recruitment, db, party_id, current_user.user_id, payload.is_open
+        )
         if message is not None:
             await publish_message(db, message)
         await publish_party_updated(db, party_id)
@@ -309,21 +314,7 @@ def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
             event.client_message_id,
             event.content,
         )
-        fanout = [
-            (
-                member_id,
-                {
-                    "type": "message.created",
-                    "party_id": str(message.party_id),
-                    "message": serialize_message(db, message, member_id).model_dump(mode="json"),
-                    "party": get_party_summary(db, message.party_id, member_id).model_dump(
-                        mode="json"
-                    ),
-                },
-            )
-            for member_id in active_member_ids(db, message.party_id)
-        ]
-        return fanout
+        return build_message_events(db, message)
 
 
 @websocket_router.websocket("/ws/taxi")

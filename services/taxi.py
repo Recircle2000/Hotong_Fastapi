@@ -172,21 +172,141 @@ def _active_membership(db: Session, party_id: UUID, user_id: UUID) -> TaxiPartyM
     return membership if membership is not None and membership.left_at is None else None
 
 
-def _unread_count(db: Session, membership: TaxiPartyMember | None, party: TaxiParty, *, now: datetime) -> int:
-    if membership is None or membership.left_at is not None:
-        return 0
-    if chat_status(party, now=now) == "expired":
-        return 0
-    query = db.query(TaxiMessage).filter(TaxiMessage.party_id == membership.party_id)
-    if membership.last_read_message_id is not None:
-        query = query.filter(TaxiMessage.id > membership.last_read_message_id)
-    return query.count()
-
-
 def _member_label(party: TaxiParty, member: TaxiPartyMember) -> str:
     if member.user_id == party.owner_id:
         return "방장"
     return f"참여자 {member.anonymous_number}"
+
+
+def _member_counts(db: Session, party_ids: list[UUID]) -> dict[UUID, int]:
+    if not party_ids:
+        return {}
+    rows = (
+        db.query(TaxiPartyMember.party_id, func.count(TaxiPartyMember.id))
+        .filter(
+            TaxiPartyMember.party_id.in_(party_ids),
+            TaxiPartyMember.left_at.is_(None),
+        )
+        .group_by(TaxiPartyMember.party_id)
+        .all()
+    )
+    return {party_id: count for party_id, count in rows}
+
+
+def _active_memberships(
+    db: Session,
+    party_ids: list[UUID],
+    user_ids: list[UUID],
+) -> dict[tuple[UUID, UUID], TaxiPartyMember]:
+    if not party_ids or not user_ids:
+        return {}
+    rows = (
+        db.query(TaxiPartyMember)
+        .filter(
+            TaxiPartyMember.party_id.in_(party_ids),
+            TaxiPartyMember.user_id.in_(user_ids),
+            TaxiPartyMember.left_at.is_(None),
+        )
+        .all()
+    )
+    return {(member.party_id, member.user_id): member for member in rows}
+
+
+def _unread_counts(db: Session, memberships: list[TaxiPartyMember]) -> dict[int, int]:
+    """Count unread messages for many memberships in one grouped query.
+
+    Keyed by membership id so several viewers of the same party stay separate.
+    """
+    if not memberships:
+        return {}
+    rows = (
+        db.query(TaxiPartyMember.id, func.count(TaxiMessage.id))
+        .join(TaxiMessage, TaxiMessage.party_id == TaxiPartyMember.party_id)
+        .filter(
+            TaxiPartyMember.id.in_([member.id for member in memberships]),
+            or_(
+                TaxiPartyMember.last_read_message_id.is_(None),
+                TaxiMessage.id > TaxiPartyMember.last_read_message_id,
+            ),
+        )
+        .group_by(TaxiPartyMember.id)
+        .all()
+    )
+    return {member_id: count for member_id, count in rows}
+
+
+def _build_party_summary(
+    party: TaxiParty,
+    user_id: UUID,
+    *,
+    count: int,
+    membership: TaxiPartyMember | None,
+    unread_count: int,
+    now: datetime,
+) -> TaxiPartySummaryResponse:
+    writable_until, visible_until = chat_deadlines(party)
+    return TaxiPartySummaryResponse(
+        id=party.id,
+        meeting_code=visible_meeting_code(party, now=now),
+        departure_location=serialize_location(party.departure_location),
+        destination_location=serialize_location(party.destination_location),
+        departure_summary=party.departure_summary,
+        destination_summary=party.destination_summary,
+        departure_at=as_utc(party.departure_at),
+        max_members=party.max_members,
+        current_members=count,
+        remaining_seats=max(0, party.max_members - count),
+        status=party_display_status(party, count, now=now),
+        recruitment_status=recruitment_status(party, count, now=now),
+        chat_status=chat_status(party, now=now),
+        chat_writable_until=writable_until,
+        chat_visible_until=visible_until,
+        is_owner=party.owner_id == user_id,
+        is_member=membership is not None,
+        unread_count=unread_count,
+    )
+
+
+def serialize_party_summaries(
+    db: Session,
+    parties: list[TaxiParty],
+    user_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> list[TaxiPartySummaryResponse]:
+    """Serialize a party list with a fixed number of queries.
+
+    Supabase round trips dominate latency, so member counts, the viewer's
+    memberships and unread counts are each fetched once for the whole list
+    instead of once per party.
+    """
+    if not parties:
+        return []
+    current = as_utc(now or utc_now())
+    party_ids = [party.id for party in parties]
+    counts = _member_counts(db, party_ids)
+    memberships = _active_memberships(db, party_ids, [user_id])
+    unread_targets = [
+        membership
+        for party in parties
+        if (membership := memberships.get((party.id, user_id))) is not None
+        and chat_status(party, now=current) != "expired"
+    ]
+    unread = _unread_counts(db, unread_targets)
+    summaries = []
+    for party in parties:
+        membership = memberships.get((party.id, user_id))
+        summaries.append(
+            _build_party_summary(
+                party,
+                user_id,
+                count=counts.get(party.id, 0),
+                membership=membership,
+                unread_count=unread.get(membership.id, 0) if membership is not None else 0,
+                now=current,
+            )
+        )
+    return summaries
 
 
 def serialize_party_summary(
@@ -196,30 +316,40 @@ def serialize_party_summary(
     *,
     now: datetime | None = None,
 ) -> TaxiPartySummaryResponse:
+    return serialize_party_summaries(db, [party], user_id, now=now)[0]
+
+
+def serialize_party_summaries_for_members(
+    db: Session,
+    party: TaxiParty,
+    *,
+    now: datetime | None = None,
+) -> list[tuple[UUID, TaxiPartySummaryResponse]]:
+    """Summaries of one party as seen by each active member (realtime fan-out)."""
     current = as_utc(now or utc_now())
-    count = _active_member_count(db, party.id)
-    membership = _active_membership(db, party.id, user_id)
-    writable_until, visible_until = chat_deadlines(party)
-    return TaxiPartySummaryResponse(
-        id=party.id,
-        meeting_code=visible_meeting_code(party, now=current),
-        departure_location=serialize_location(party.departure_location),
-        destination_location=serialize_location(party.destination_location),
-        departure_summary=party.departure_summary,
-        destination_summary=party.destination_summary,
-        departure_at=as_utc(party.departure_at),
-        max_members=party.max_members,
-        current_members=count,
-        remaining_seats=max(0, party.max_members - count),
-        status=party_display_status(party, count, now=current),
-        recruitment_status=recruitment_status(party, count, now=current),
-        chat_status=chat_status(party, now=current),
-        chat_writable_until=writable_until,
-        chat_visible_until=visible_until,
-        is_owner=party.owner_id == user_id,
-        is_member=membership is not None,
-        unread_count=_unread_count(db, membership, party, now=current),
+    members = _active_member_query(db, party.id).all()
+    if not members:
+        return []
+    count = len(members)
+    unread = (
+        _unread_counts(db, members)
+        if chat_status(party, now=current) != "expired"
+        else {}
     )
+    return [
+        (
+            member.user_id,
+            _build_party_summary(
+                party,
+                member.user_id,
+                count=count,
+                membership=member,
+                unread_count=unread.get(member.id, 0),
+                now=current,
+            ),
+        )
+        for member in members
+    ]
 
 
 def get_party_summary(
@@ -550,8 +680,8 @@ def list_parties(
         )
         if not parties:
             return items, None
-        for index, party in enumerate(parties):
-            summary = serialize_party_summary(db, party, user_id, now=current)
+        summaries = serialize_party_summaries(db, parties, user_id, now=current)
+        for index, (party, summary) in enumerate(zip(parties, summaries)):
             if include_unavailable or summary.status == "recruiting" or summary.is_member:
                 items.append(summary)
             if len(items) == limit:
@@ -607,7 +737,7 @@ def list_my_parties(
             TaxiParty.status == "active",
             TaxiParty.departure_at > current,
         ).order_by(TaxiParty.departure_at.asc())
-    items = [serialize_party_summary(db, party, user_id, now=current) for party in query.all()]
+    items = serialize_party_summaries(db, query.all(), user_id, now=current)
     if scope == "recent_chats":
         items.sort(
             key=lambda item: (
@@ -813,21 +943,78 @@ def active_member_ids(db: Session, party_id: UUID) -> list[UUID]:
     return [member.user_id for member in _active_member_query(db, party_id).all()]
 
 
+def serialize_messages(
+    db: Session,
+    party: TaxiParty,
+    messages: list[TaxiMessage],
+    viewer_id: UUID | None,
+) -> list[TaxiMessageResponse]:
+    """Serialize messages of one party, loading sender memberships once."""
+    sender_ids = {message.sender_id for message in messages if message.sender_id is not None}
+    senders = (
+        {
+            member.user_id: member
+            for member in db.query(TaxiPartyMember)
+            .filter(
+                TaxiPartyMember.party_id == party.id,
+                TaxiPartyMember.user_id.in_(sender_ids),
+            )
+            .all()
+        }
+        if sender_ids
+        else {}
+    )
+    responses = []
+    for message in messages:
+        sender_label = None
+        if message.sender_id is not None:
+            sender = senders.get(message.sender_id)
+            sender_label = _member_label(party, sender) if sender is not None else "참여자"
+        responses.append(
+            TaxiMessageResponse(
+                id=message.id,
+                party_id=message.party_id,
+                message_type=message.message_type,
+                sender_label=sender_label,
+                is_mine=message.sender_id == viewer_id,
+                content=message.content,
+                created_at=as_utc(message.created_at),
+            )
+        )
+    return responses
+
+
 def serialize_message(db: Session, message: TaxiMessage, viewer_id: UUID) -> TaxiMessageResponse:
     party = _load_party(db, message.party_id)
-    sender_label = None
-    if message.sender_id is not None:
-        sender = _membership(db, party.id, message.sender_id)
-        sender_label = _member_label(party, sender) if sender is not None else "참여자"
-    return TaxiMessageResponse(
-        id=message.id,
-        party_id=message.party_id,
-        message_type=message.message_type,
-        sender_label=sender_label,
-        is_mine=message.sender_id == viewer_id,
-        content=message.content,
-        created_at=as_utc(message.created_at),
-    )
+    return serialize_messages(db, party, [message], viewer_id)[0]
+
+
+def party_member_summaries(
+    db: Session,
+    party_id: UUID,
+) -> list[tuple[UUID, TaxiPartySummaryResponse]]:
+    """Per-member summaries for a party.updated realtime fan-out."""
+    return serialize_party_summaries_for_members(db, _load_party(db, party_id))
+
+
+def message_fanout(
+    db: Session,
+    message: TaxiMessage,
+) -> list[tuple[UUID, TaxiMessageResponse, TaxiPartySummaryResponse]]:
+    """Message and party summary for each active member, with shared lookups.
+
+    Only ``is_mine`` differs per viewer, so the message is serialized once.
+    """
+    party = _load_party(db, message.party_id)
+    base = serialize_messages(db, party, [message], None)[0]
+    return [
+        (
+            member_id,
+            base.model_copy(update={"is_mine": message.sender_id == member_id}),
+            summary,
+        )
+        for member_id, summary in serialize_party_summaries_for_members(db, party)
+    ]
 
 
 def list_messages(
@@ -852,7 +1039,7 @@ def list_messages(
     rows = rows[:limit]
     rows.reverse()
     next_before = rows[0].id if has_more and rows else None
-    return [serialize_message(db, row, user_id) for row in rows], next_before
+    return serialize_messages(db, party, rows, user_id), next_before
 
 
 def create_chat_message(
