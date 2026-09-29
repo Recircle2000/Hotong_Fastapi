@@ -24,7 +24,9 @@ from schemas.taxi import (
 
 
 KST = ZoneInfo("Asia/Seoul")
-BOOKING_MIN_LEAD = timedelta(minutes=10)
+# 셔틀을 놓친 직후처럼 바로 모여 출발하는 경우를 위해 5분 뒤부터, 5분 단위로 받는다.
+BOOKING_MIN_LEAD = timedelta(minutes=5)
+DEPARTURE_MINUTE_INTERVAL = 5
 OVERLAP_WINDOW = timedelta(hours=2)
 CHAT_WRITE_WINDOW = timedelta(hours=3)
 CHAT_RETENTION_WINDOW = timedelta(hours=48)
@@ -300,7 +302,7 @@ def _validate_departure_time(value: datetime, *, now: datetime | None = None) ->
     current = as_utc(now or utc_now())
     departure_at = as_utc(value)
     if departure_at < current + BOOKING_MIN_LEAD:
-        raise TaxiServiceError(400, "DEPARTURE_TOO_SOON", "출발 시각은 현재보다 10분 이후여야 합니다.")
+        raise TaxiServiceError(400, "DEPARTURE_TOO_SOON", "출발 시각은 현재보다 5분 이후여야 합니다.")
     current_kst = current.astimezone(KST)
     day_after_tomorrow = current_kst.date() + timedelta(days=2)
     booking_deadline = datetime.combine(day_after_tomorrow, time.min, tzinfo=KST).astimezone(
@@ -312,11 +314,11 @@ def _validate_departure_time(value: datetime, *, now: datetime | None = None) ->
             "DEPARTURE_TOO_FAR",
             "출발 시각은 오늘 또는 내일만 선택할 수 있습니다.",
         )
-    if departure_at.minute % 10 != 0 or departure_at.second != 0 or departure_at.microsecond != 0:
+    if departure_at.minute % DEPARTURE_MINUTE_INTERVAL != 0 or departure_at.second != 0 or departure_at.microsecond != 0:
         raise TaxiServiceError(
             400,
             "DEPARTURE_INTERVAL_INVALID",
-            "출발 시각은 10분 단위로 선택해야 합니다.",
+            "출발 시각은 5분 단위로 선택해야 합니다.",
         )
     return departure_at
 

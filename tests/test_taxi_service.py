@@ -75,7 +75,7 @@ class TaxiServiceTests(unittest.TestCase):
 
         self.assertIn("FOR UPDATE OF taxi_parties", sql)
 
-    def test_departure_time_is_limited_to_today_and_tomorrow_in_ten_minute_steps(self):
+    def test_departure_time_is_limited_to_today_and_tomorrow_in_five_minute_steps(self):
         tomorrow_last_slot = datetime(2026, 9, 14, 14, 50, tzinfo=timezone.utc)
         party = self._create(departure_at=tomorrow_last_slot)
         self.assertEqual(as_utc(party.departure_at), tomorrow_last_slot)
@@ -90,12 +90,23 @@ class TaxiServiceTests(unittest.TestCase):
         with self.assertRaises(TaxiServiceError) as invalid_interval:
             self._create(
                 owner_id=uuid4(),
-                departure_at=self.now + timedelta(hours=3, minutes=5),
+                departure_at=self.now + timedelta(hours=3, minutes=7),
             )
         self.assertEqual(
             invalid_interval.exception.code,
             "DEPARTURE_INTERVAL_INVALID",
         )
+
+    def test_departure_can_start_five_minutes_from_now(self):
+        party = self._create(departure_at=self.now + timedelta(minutes=5))
+        self.assertEqual(as_utc(party.departure_at), self.now + timedelta(minutes=5))
+
+        with self.assertRaises(TaxiServiceError) as too_soon:
+            self._create(
+                owner_id=uuid4(),
+                departure_at=self.now + timedelta(minutes=4, seconds=59),
+            )
+        self.assertEqual(too_soon.exception.code, "DEPARTURE_TOO_SOON")
 
     def test_private_note_is_only_returned_to_members(self):
         party = self._create()
