@@ -54,6 +54,7 @@ from services.taxi import (
 )
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
 from utils.taxi_realtime import (
+    TAXI_PARTIES_CHANNEL,
     get_async_redis,
     publish_message,
     publish_party_updated,
@@ -348,7 +349,10 @@ async def taxi_websocket(websocket: WebSocket):
             await websocket.send_json(payload)
 
     async def redis_sender():
-        await pubsub.subscribe(taxi_user_channel(current_user.user_id))
+        await pubsub.subscribe(
+            taxi_user_channel(current_user.user_id),
+            TAXI_PARTIES_CHANNEL,
+        )
         async for item in pubsub.listen():
             if item.get("type") != "message":
                 continue

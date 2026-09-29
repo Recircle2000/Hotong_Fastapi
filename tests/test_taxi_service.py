@@ -390,7 +390,10 @@ class TaxiServiceTests(unittest.TestCase):
         with patch(
             "utils.taxi_realtime.publish_user_events",
             new=AsyncMock(return_value=True),
-        ) as publish:
+        ) as publish, patch(
+            "utils.taxi_realtime.publish_parties_changed",
+            new=AsyncMock(return_value=True),
+        ) as publish_list_change:
             asyncio.run(publish_message(self.db, message))
             message_events = list(publish.await_args.args[0])
             asyncio.run(publish_party_updated(self.db, party.id))
@@ -399,6 +402,8 @@ class TaxiServiceTests(unittest.TestCase):
         self.assertEqual(message_events[0][1]["party"]["id"], str(party.id))
         self.assertIn("unread_count", message_events[0][1]["party"])
         self.assertEqual(party_events[0][1]["party"]["id"], str(party.id))
+        # 검색 목록을 보는 비참여자도 갱신할 수 있게 공용 채널에도 알린다.
+        publish_list_change.assert_awaited_once_with(party.id)
 
     def test_core_fields_lock_after_another_member_joins(self):
         party = self._create()
