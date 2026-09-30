@@ -1,6 +1,8 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,9 +14,12 @@ os.environ["SUPABASE_URL"] = "sqlite:///:memory:"
 os.environ.pop("SUPABASE_PASSWORD", None)
 
 from database import get_db
-from models import Base, User
+from models import Base, TaxiLocation, User
 from routers import admin_v2, app_config
+from schemas.taxi import TaxiPartyCreateRequest, TaxiReportCreateRequest
 from services.app_settings import clear_app_settings_cache
+from services.taxi import create_chat_message, create_party, join_party
+from services.taxi_report import create_report
 from utils.security import hash_password
 
 
@@ -323,6 +328,107 @@ class AdminV2ApiTests(unittest.TestCase):
 
         self.client.put("/api/admin-v2/app-settings", json={"taxi_enabled": True})
         self.assertTrue(self.client.get("/api/app-config").json()["taxi_enabled"])
+
+    def _seed_taxi_reports(self):
+        now = datetime(2026, 9, 13, 3, 0, tzinfo=timezone.utc)
+        owner_id, member_id, other_id = uuid4(), uuid4(), uuid4()
+        with self.SessionLocal() as db:
+            departure = TaxiLocation(name="아산캠퍼스", category="campus", sort_order=1)
+            destination = TaxiLocation(name="천안아산역", category="station", sort_order=2)
+            db.add_all([departure, destination])
+            db.commit()
+            party = create_party(
+                db,
+                owner_id,
+                TaxiPartyCreateRequest(
+                    client_request_id=uuid4(),
+                    departure_location_id=departure.id,
+                    destination_location_id=destination.id,
+                    departure_summary="정문",
+                    departure_at=now + timedelta(hours=3),
+                    max_members=4,
+                ),
+                now=now,
+            )
+            join_party(db, party.id, member_id, now=now)
+            join_party(db, party.id, other_id, now=now)
+            message = create_chat_message(db, party.id, member_id, uuid4(), "안 갈게요", now=now)
+            first = create_report(
+                db,
+                party.id,
+                owner_id,
+                TaxiReportCreateRequest(target_label="참여자 1", reason="no_show", message_id=message.id),
+                now=now,
+            )
+            second = create_report(
+                db,
+                party.id,
+                other_id,
+                TaxiReportCreateRequest(target_label="참여자 1", reason="abuse", detail="욕설"),
+                now=now,
+            )
+            create_report(
+                db,
+                party.id,
+                member_id,
+                TaxiReportCreateRequest(target_label="방장", reason="payment"),
+                now=now,
+            )
+            return first.id, second.id, member_id
+
+    def test_taxi_reports_list_detail_and_review(self):
+        first_id, second_id, member_id = self._seed_taxi_reports()
+        self.assertEqual(self.client.get("/api/admin-v2/taxi-reports").status_code, 401)
+        self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+
+        listing = self.client.get("/api/admin-v2/taxi-reports", params={"status": "pending"})
+        self.assertEqual(listing.status_code, 200, listing.text)
+        items = listing.json()["items"]
+        self.assertEqual(len(items), 3)
+        # 사용자 ID는 응답 어디에도 나오지 않고 익명 ID로만 구분한다.
+        self.assertNotIn(str(member_id), listing.text)
+        by_id = {item["id"]: item for item in items}
+        target_key = by_id[first_id]["target_key"]
+        self.assertRegex(target_key, r"^[0-9a-f]{6}$")
+        self.assertEqual(by_id[first_id]["target_stats"], {"total_reports": 2, "distinct_reporters": 2})
+        self.assertEqual(by_id[first_id]["departure_location_name"], "아산캠퍼스")
+
+        same_target = self.client.get("/api/admin-v2/taxi-reports", params={"target": target_key})
+        self.assertEqual({item["id"] for item in same_target.json()["items"]}, {first_id, second_id})
+
+        page = self.client.get("/api/admin-v2/taxi-reports", params={"limit": 2})
+        self.assertEqual(len(page.json()["items"]), 2)
+        rest = self.client.get(
+            "/api/admin-v2/taxi-reports",
+            params={"limit": 2, "cursor": page.json()["next_cursor"]},
+        )
+        self.assertEqual(len(rest.json()["items"]), 1)
+        self.assertIsNone(rest.json()["next_cursor"])
+
+        detail = self.client.get(f"/api/admin-v2/taxi-reports/{first_id}").json()
+        self.assertEqual(detail["reported_message_id"], detail["messages"][-1]["id"])
+        self.assertEqual(detail["messages"][-1]["content"], "안 갈게요")
+        self.assertTrue(detail["messages"][-1]["is_target"])
+        self.assertEqual([item["id"] for item in detail["other_reports"]], [second_id])
+        self.assertFalse(detail["evidence_purged"])
+
+        reviewed = self.client.patch(
+            f"/api/admin-v2/taxi-reports/{first_id}",
+            json={"status": "resolved", "admin_note": " 경고 예정 "},
+        )
+        self.assertEqual(reviewed.status_code, 200, reviewed.text)
+        self.assertEqual(reviewed.json()["status"], "resolved")
+        self.assertEqual(reviewed.json()["admin_note"], "경고 예정")
+        self.assertIsNotNone(reviewed.json()["reviewed_at"])
+        pending = self.client.get("/api/admin-v2/taxi-reports", params={"status": "pending"})
+        self.assertEqual(len(pending.json()["items"]), 2)
+
+        reopened = self.client.patch(f"/api/admin-v2/taxi-reports/{first_id}", json={"status": "pending"})
+        self.assertIsNone(reopened.json()["reviewed_at"])
+        self.assertEqual(self.client.get("/api/admin-v2/taxi-reports/999999").status_code, 404)
 
     def test_taxi_location_crud_and_duplicate_name(self):
         login_response = self.client.post(

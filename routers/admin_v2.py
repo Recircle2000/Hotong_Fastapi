@@ -23,6 +23,9 @@ from schemas.admin_v2 import (
     AdminTaxiLocationResponse,
     AdminTaxiPartyCancelRequest,
     AdminTaxiPartyListResponse,
+    AdminTaxiReportDetailResponse,
+    AdminTaxiReportListResponse,
+    AdminTaxiReportUpdateRequest,
 )
 from services.admin_taxi import (
     create_admin_taxi_location,
@@ -30,6 +33,11 @@ from services.admin_taxi import (
     list_admin_taxi_locations,
     list_admin_taxi_parties,
     update_admin_taxi_location,
+)
+from services.admin_taxi_report import (
+    get_admin_taxi_report,
+    list_admin_taxi_reports,
+    update_admin_taxi_report,
 )
 from services.admin_auth import (
     AUTH_REQUIRED_MESSAGE,
@@ -465,5 +473,54 @@ async def cancel_admin_taxi_party(
             await publish_message(db, message)
         await publish_party_updated(db, party_id)
         return {"success": True}
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-reports", response_model=AdminTaxiReportListResponse)
+def get_admin_taxi_reports(
+    status_filter: str | None = Query(default=None, alias="status", pattern="^(pending|resolved|dismissed)$"),
+    target: str | None = Query(default=None, pattern="^[0-9a-f]{6}$"),
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        items, next_cursor = list_admin_taxi_reports(
+            db,
+            status_filter=status_filter,
+            target_key=target,
+            cursor=cursor,
+            limit=limit,
+        )
+        return AdminTaxiReportListResponse(items=items, next_cursor=next_cursor)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-reports/{report_id}", response_model=AdminTaxiReportDetailResponse)
+def get_admin_taxi_report_detail(
+    report_id: int,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        return get_admin_taxi_report(db, report_id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.patch("/taxi-reports/{report_id}", response_model=AdminTaxiReportDetailResponse)
+def update_admin_taxi_report_status(
+    report_id: int,
+    payload: AdminTaxiReportUpdateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return update_admin_taxi_report(db, report_id, payload, admin_id=current_admin.id)
     except TaxiServiceError as exc:
         raise_taxi_admin_error(exc)

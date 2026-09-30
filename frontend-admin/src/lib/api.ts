@@ -5,6 +5,9 @@ import type {
   AdminTaxiLocation,
   AdminTaxiLocationPayload,
   AdminTaxiPartyList,
+  AdminTaxiReportDetail,
+  AdminTaxiReportList,
+  TaxiReportStatus,
   EmergencyNotice,
   EmergencyNoticePayload,
   Notice,
@@ -222,5 +225,32 @@ export function cancelAdminTaxiParty(id: string, reason: string) {
   return apiRequest<{ success: boolean }>(`/taxi-parties/${id}/cancel`, {
     method: "POST",
     body: { reason },
+  });
+}
+
+export function getAdminTaxiReports(params: {
+  status?: TaxiReportStatus;
+  target?: string;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiReportList>(`/taxi-reports${query ? `?${query}` : ""}`);
+}
+
+export function getAdminTaxiReport(id: number) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${id}`);
+}
+
+export function updateAdminTaxiReport(
+  id: number,
+  payload: { status: TaxiReportStatus; admin_note: string | null },
+) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${id}`, {
+    method: "PATCH",
+    body: payload,
   });
 }

@@ -113,3 +113,46 @@ export interface AdminTaxiPartyList {
   items: AdminTaxiParty[];
   next_cursor: string | null;
 }
+
+export type TaxiReportReason = "no_show" | "abuse" | "payment" | "other";
+export type TaxiReportStatus = "pending" | "resolved" | "dismissed";
+
+export interface AdminTaxiReport {
+  id: number;
+  reason: TaxiReportReason;
+  status: TaxiReportStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  party_id: string | null;
+  departure_location_name: string | null;
+  destination_location_name: string | null;
+  departure_at: string | null;
+  target_key: string;
+  target_label: string;
+  target_stats: { total_reports: number; distinct_reporters: number };
+}
+
+export interface AdminTaxiReportList {
+  items: AdminTaxiReport[];
+  next_cursor: string | null;
+}
+
+export interface AdminTaxiReportMessage {
+  id: number;
+  type: "chat" | "system";
+  label: string | null;
+  content: string;
+  created_at: string;
+  is_target: boolean;
+}
+
+export interface AdminTaxiReportDetail extends AdminTaxiReport {
+  detail: string | null;
+  admin_note: string | null;
+  reporter_key: string;
+  reported_message_id: number | null;
+  departure_summary: string | null;
+  messages: AdminTaxiReportMessage[];
+  evidence_purged: boolean;
+  other_reports: AdminTaxiReport[];
+}

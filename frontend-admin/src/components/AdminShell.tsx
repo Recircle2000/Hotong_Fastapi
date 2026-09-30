@@ -10,6 +10,7 @@ const links = [
   ["/shuttle-stations", "정류장 관리"],
   ["/taxi-locations", "택시 거점 관리"],
   ["/taxi-parties", "택시팟 현황"],
+  ["/taxi-reports", "택시팟 신고"],
 ] as const;
 
 export function AdminShell({

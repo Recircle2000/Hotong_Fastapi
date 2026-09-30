@@ -136,3 +136,64 @@ class AdminTaxiPartyCancelRequest(BaseModel):
         if not normalized:
             raise ValueError("cancellation reason is empty")
         return normalized
+
+
+AdminTaxiReportStatus = Literal["pending", "resolved", "dismissed"]
+
+
+class AdminTaxiReportTargetStats(BaseModel):
+    total_reports: int
+    distinct_reporters: int
+
+
+class AdminTaxiReportSummaryResponse(BaseModel):
+    id: int
+    reason: str
+    status: AdminTaxiReportStatus
+    created_at: datetime
+    reviewed_at: datetime | None
+    party_id: UUID | None
+    departure_location_name: str | None
+    destination_location_name: str | None
+    departure_at: datetime | None
+    # user_id 대신 해시 앞자리로 만든 익명 ID만 내려준다.
+    target_key: str
+    target_label: str
+    target_stats: AdminTaxiReportTargetStats
+
+
+class AdminTaxiReportListResponse(BaseModel):
+    items: list[AdminTaxiReportSummaryResponse]
+    next_cursor: str | None = None
+
+
+class AdminTaxiReportEvidenceMessage(BaseModel):
+    id: int
+    type: str
+    label: str | None
+    content: str
+    created_at: datetime
+    is_target: bool
+
+
+class AdminTaxiReportDetailResponse(AdminTaxiReportSummaryResponse):
+    detail: str | None
+    admin_note: str | None
+    reporter_key: str
+    reported_message_id: int | None
+    departure_summary: str | None
+    messages: list[AdminTaxiReportEvidenceMessage]
+    evidence_purged: bool
+    other_reports: list[AdminTaxiReportSummaryResponse]
+
+
+class AdminTaxiReportUpdateRequest(BaseModel):
+    status: AdminTaxiReportStatus
+    admin_note: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("admin_note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None

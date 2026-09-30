@@ -8,6 +8,7 @@ import { ShuttlePage } from "./pages/ShuttlePage";
 import { ShuttleStationsPage } from "./pages/ShuttleStationsPage";
 import { TaxiLocationsPage } from "./pages/TaxiLocationsPage";
 import { TaxiPartiesPage } from "./pages/TaxiPartiesPage";
+import { TaxiReportsPage } from "./pages/TaxiReportsPage";
 
 export function App() {
   return (
@@ -22,6 +23,7 @@ export function App() {
           <Route path="/shuttle-stations" element={<ShuttleStationsPage />} />
           <Route path="/taxi-locations" element={<TaxiLocationsPage />} />
           <Route path="/taxi-parties" element={<TaxiPartiesPage />} />
+          <Route path="/taxi-reports" element={<TaxiReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
