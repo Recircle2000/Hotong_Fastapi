@@ -33,9 +33,12 @@ from schemas.taxi import (
     TaxiRecruitmentRequest,
     TaxiReportCreateRequest,
     TaxiReportResponse,
+    TaxiRestrictionResponse,
+    TaxiSanctionResponse,
 )
 from services.taxi import (
     TaxiServiceError,
+    as_utc,
     cancel_party,
     create_chat_message,
     create_party,
@@ -53,6 +56,12 @@ from services.taxi import (
     update_party,
 )
 from services.taxi_report import create_report
+from services.taxi_sanction import (
+    acknowledge_sanction,
+    active_suspension,
+    anonymous_user_key,
+    pending_notice,
+)
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
 from utils.taxi_realtime import (
     TAXI_PARTIES_CHANNEL,
@@ -293,6 +302,45 @@ def read_taxi_messages(
     try:
         mark_messages_read(db, party_id, current_user.user_id, payload.last_message_id)
         return TaxiReadResponse()
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
+
+
+def _sanction_response(sanction) -> TaxiSanctionResponse | None:
+    if sanction is None:
+        return None
+    return TaxiSanctionResponse(
+        id=sanction.id,
+        level=sanction.level,
+        reason=sanction.reason,
+        starts_at=as_utc(sanction.starts_at),
+        ends_at=as_utc(sanction.ends_at) if sanction.ends_at else None,
+    )
+
+
+@router.get("/me/restriction", response_model=TaxiRestrictionResponse)
+def get_my_taxi_restriction(
+    response: Response,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    _no_store(response)
+    return TaxiRestrictionResponse(
+        user_key=anonymous_user_key(current_user.user_id),
+        suspension=_sanction_response(active_suspension(db, current_user.user_id)),
+        notice=_sanction_response(pending_notice(db, current_user.user_id)),
+    )
+
+
+@router.post("/me/sanctions/{sanction_id}/ack", status_code=status.HTTP_204_NO_CONTENT)
+def acknowledge_my_taxi_sanction(
+    sanction_id: int,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        acknowledge_sanction(db, current_user.user_id, sanction_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 

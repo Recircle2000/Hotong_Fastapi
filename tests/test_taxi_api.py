@@ -17,6 +17,7 @@ from database import get_db
 from models import Base, TaxiLocation, TaxiParty
 from routers import taxi
 from schemas.app_auth import CurrentAppUser
+from services.taxi_sanction import anonymous_user_key, issue_sanction
 from utils.supabase_security import get_current_app_user
 
 
@@ -140,6 +141,60 @@ class TaxiApiTests(unittest.TestCase):
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["detail"]["code"], "ALREADY_REPORTED")
         self.assertEqual(invalid.status_code, 422)
+
+    def test_restriction_notice_and_suspended_join(self):
+        created, _ = self._create_party()
+        owner_id = type(self).current_user_id
+        member_id = uuid4()
+        type(self).current_user_id = member_id
+        empty = self.client.get("/api/taxi/me/restriction")
+        self.assertEqual(empty.json()["suspension"], None)
+        self.assertEqual(empty.json()["notice"], None)
+        self.assertEqual(empty.json()["user_key"], anonymous_user_key(member_id))
+        self.client.post(f"/api/taxi/parties/{created['id']}/join")
+        type(self).current_user_id = owner_id
+        report = self.client.post(
+            f"/api/taxi/parties/{created['id']}/reports",
+            json={"target_label": "참여자 1", "reason": "no_show"},
+        ).json()
+        with self.SessionLocal() as db:
+            issue_sanction(
+                db,
+                report["id"],
+                level="suspend_3d",
+                reason="약속 장소에 나오지 않았어요.",
+                admin_note=None,
+                resolve_pending_reports=True,
+                admin_id=None,
+            )
+
+        type(self).current_user_id = member_id
+        restriction = self.client.get("/api/taxi/me/restriction")
+        self.assertEqual(restriction.headers["cache-control"], "no-store")
+        body = restriction.json()
+        self.assertEqual(body["suspension"]["level"], "suspend_3d")
+        self.assertEqual(body["suspension"]["reason"], "약속 장소에 나오지 않았어요.")
+        self.assertEqual(body["notice"]["id"], body["suspension"]["id"])
+
+        # 이미 참여한 팟은 다시 참여를 눌러도 막지 않는다.
+        self.assertEqual(self.client.post(f"/api/taxi/parties/{created['id']}/join").status_code, 200)
+
+        type(self).current_user_id = owner_id
+        self.assertEqual(
+            self.client.post(f"/api/taxi/me/sanctions/{body['notice']['id']}/ack").status_code,
+            404,
+        )
+        type(self).current_user_id = member_id
+        acked = self.client.post(f"/api/taxi/me/sanctions/{body['notice']['id']}/ack")
+        self.assertEqual(acked.status_code, 204)
+        self.assertIsNone(self.client.get("/api/taxi/me/restriction").json()["notice"])
+
+        type(self).current_user_id = uuid4()
+        other, _ = self._create_party()
+        type(self).current_user_id = member_id
+        blocked = self.client.post(f"/api/taxi/parties/{other['id']}/join")
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(blocked.json()["detail"]["code"], "TAXI_SUSPENDED")
 
     def test_join_is_idempotent_and_owner_cannot_leave(self):
         created, _ = self._create_party()

@@ -460,6 +460,13 @@ def _ensure_taxi_enabled(db: Session) -> None:
         raise TaxiServiceError(503, "TAXI_DISABLED", "현재 택시팟 서비스를 운영하지 않아요.")
 
 
+def _ensure_not_suspended(db: Session, user_id: UUID, now: datetime | None) -> None:
+    # 제재 서비스가 이 모듈의 헬퍼를 쓰므로 순환 import를 피해 여기서 불러온다.
+    from services.taxi_sanction import ensure_not_suspended
+
+    ensure_not_suspended(db, user_id, now)
+
+
 def _lock_user(db: Session, user_id: UUID) -> None:
     if db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(
@@ -549,6 +556,7 @@ def create_party(
         return _load_party(db, existing.id)
 
     _ensure_taxi_enabled(db)
+    _ensure_not_suspended(db, user_id, now)
     departure_at = _validate_departure_time(payload.departure_at, now=now)
     _validate_locations(db, payload.departure_location_id, payload.destination_location_id)
     _lock_user(db, user_id)
@@ -844,6 +852,7 @@ def join_party(
     # 운영 스위치는 행 잠금 전에 확인한다. 이미 참여 중이면 다시 눌러도 그대로 둔다.
     if _active_membership(db, party_id, user_id) is None:
         _ensure_taxi_enabled(db)
+        _ensure_not_suspended(db, user_id, current)
     party = _load_party(db, party_id, lock=True)
     membership = _membership(db, party.id, user_id)
     if membership is not None and membership.left_at is None:

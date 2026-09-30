@@ -193,3 +193,23 @@ class TaxiReportCreateRequest(BaseModel):
 class TaxiReportResponse(BaseModel):
     id: int
     created_at: datetime
+
+
+TaxiSanctionLevel = Literal["warning", "suspend_3d", "suspend_7d", "permanent"]
+
+
+class TaxiSanctionResponse(BaseModel):
+    id: int
+    level: TaxiSanctionLevel
+    reason: str
+    starts_at: datetime
+    ends_at: datetime | None
+
+
+class TaxiRestrictionResponse(BaseModel):
+    # 이의제기 때 알려줄 내 고유번호(관리자 화면의 익명 ID와 같다)
+    user_key: str
+    # 지금 적용 중인 정지
+    suspension: TaxiSanctionResponse | None = None
+    # 아직 확인하지 않은 제재 안내(경고 포함)
+    notice: TaxiSanctionResponse | None = None

@@ -53,6 +53,8 @@ class TaxiReport(Base):
     reviewed_by_admin_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     evidence_purged_at = Column(DateTime(timezone=True), nullable=True)
+    # 이 신고를 근거로 부과한 제재
+    sanction_id = Column(Integer, ForeignKey("taxi_sanctions.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     __table_args__ = (
