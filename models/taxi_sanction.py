@@ -41,3 +41,19 @@ class TaxiSanction(Base):
             name="ck_taxi_sanctions_level",
         ),
     )
+
+
+class TaxiSanctionHold(Base):
+    """정지 중 탈퇴한 사용자의 남은 정지. 같은 이메일로 재가입하면 새 계정으로 이어진다.
+
+    이메일 원문 대신 서버 비밀키로 만든 HMAC만 보관하고, 정지가 끝나면 지운다.
+    """
+
+    __tablename__ = "taxi_sanction_holds"
+
+    email_hash = Column(String(64), primary_key=True)
+    level = Column(String(20), nullable=False)
+    reason = Column(String(300), nullable=False)
+    # 영구 정지는 끝나는 시각이 없다.
+    ends_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)

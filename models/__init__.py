@@ -12,5 +12,5 @@ from .schedule_types import ScheduleType, ScheduleException
 from .subway_schedule import SubwaySchedule
 from .taxi import TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
 from .app_setting import AppSetting
-from .taxi_sanction import TaxiSanction
+from .taxi_sanction import TaxiSanction, TaxiSanctionHold
 from .taxi_report import TaxiReport
