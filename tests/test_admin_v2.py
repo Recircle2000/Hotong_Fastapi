@@ -430,6 +430,67 @@ class AdminV2ApiTests(unittest.TestCase):
         self.assertIsNone(reopened.json()["reviewed_at"])
         self.assertEqual(self.client.get("/api/admin-v2/taxi-reports/999999").status_code, 404)
 
+    def test_taxi_sanction_from_report_list_and_revoke(self):
+        first_id, second_id, member_id = self._seed_taxi_reports()
+        url = f"/api/admin-v2/taxi-reports/{first_id}/sanction"
+        payload = {"level": "suspend_3d", "reason": " 노쇼 반복 ", "resolve_pending_reports": True}
+        self.assertEqual(self.client.post(url, json=payload).status_code, 401)
+        self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+
+        before = self.client.get(f"/api/admin-v2/taxi-reports/{first_id}").json()
+        self.assertEqual(before["suggested_level"], "warning")
+        self.assertEqual(before["target_sanctions"], [])
+
+        issued = self.client.post(url, json=payload)
+        self.assertEqual(issued.status_code, 200, issued.text)
+        detail = issued.json()
+        self.assertEqual(detail["status"], "resolved")
+        self.assertIsNotNone(detail["sanction_id"])
+        self.assertEqual(detail["suggested_level"], "suspend_3d")
+        sanction = detail["target_sanctions"][0]
+        self.assertEqual(sanction["level"], "suspend_3d")
+        self.assertEqual(sanction["reason"], "노쇼 반복")
+        self.assertEqual(sanction["report_count"], 2)
+        self.assertEqual(sanction["target_key"], detail["target_key"])
+        self.assertNotIn(str(member_id), issued.text)
+        # 같은 대상의 대기 신고도 함께 처리됐다.
+        second = self.client.get(f"/api/admin-v2/taxi-reports/{second_id}").json()
+        self.assertEqual(second["status"], "resolved")
+        self.assertEqual(second["sanction_id"], detail["sanction_id"])
+
+        active = self.client.get("/api/admin-v2/taxi-sanctions", params={"active": "true"}).json()
+        self.assertEqual([item["id"] for item in active["items"]], [sanction["id"]])
+        self.assertTrue(active["items"][0]["is_active"])
+        by_target = self.client.get(
+            "/api/admin-v2/taxi-sanctions",
+            params={"target": detail["target_key"]},
+        ).json()
+        self.assertEqual(len(by_target["items"]), 1)
+
+        revoked = self.client.post(
+            f"/api/admin-v2/taxi-sanctions/{sanction['id']}/revoke",
+            json={"reason": "이의제기 인정"},
+        )
+        self.assertEqual(revoked.status_code, 200, revoked.text)
+        self.assertFalse(revoked.json()["is_active"])
+        self.assertEqual(revoked.json()["revoke_reason"], "이의제기 인정")
+        self.assertEqual(
+            self.client.get("/api/admin-v2/taxi-sanctions", params={"active": "true"}).json()["items"],
+            [],
+        )
+        again = self.client.post(
+            f"/api/admin-v2/taxi-sanctions/{sanction['id']}/revoke",
+            json={"reason": "다시"},
+        )
+        self.assertEqual(again.status_code, 409)
+        self.assertEqual(
+            self.client.post(url, json={"level": "ban", "reason": "x"}).status_code,
+            422,
+        )
+
     def test_taxi_location_crud_and_duplicate_name(self):
         login_response = self.client.post(
             "/api/admin-v2/auth/login",

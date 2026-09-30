@@ -176,6 +176,64 @@ class AdminTaxiReportEvidenceMessage(BaseModel):
     is_target: bool
 
 
+AdminTaxiSanctionLevel = Literal["warning", "suspend_3d", "suspend_7d", "permanent"]
+
+
+class AdminTaxiSanctionResponse(BaseModel):
+    id: int
+    level: AdminTaxiSanctionLevel
+    reason: str
+    admin_note: str | None
+    starts_at: datetime
+    ends_at: datetime | None
+    created_at: datetime
+    acknowledged_at: datetime | None
+    revoked_at: datetime | None
+    revoke_reason: str | None
+    is_active: bool
+    target_key: str
+    report_count: int
+
+
+class AdminTaxiSanctionListResponse(BaseModel):
+    items: list[AdminTaxiSanctionResponse]
+    next_cursor: str | None = None
+
+
+class AdminTaxiSanctionCreateRequest(BaseModel):
+    level: AdminTaxiSanctionLevel
+    reason: str = Field(..., min_length=1, max_length=300)
+    admin_note: str | None = Field(default=None, max_length=1000)
+    resolve_pending_reports: bool = True
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("sanction reason is empty")
+        return normalized
+
+    @field_validator("admin_note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class AdminTaxiSanctionRevokeRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("revoke reason is empty")
+        return normalized
+
+
 class AdminTaxiReportDetailResponse(AdminTaxiReportSummaryResponse):
     detail: str | None
     admin_note: str | None
@@ -185,6 +243,9 @@ class AdminTaxiReportDetailResponse(AdminTaxiReportSummaryResponse):
     messages: list[AdminTaxiReportEvidenceMessage]
     evidence_purged: bool
     other_reports: list[AdminTaxiReportSummaryResponse]
+    sanction_id: int | None
+    target_sanctions: list[AdminTaxiSanctionResponse]
+    suggested_level: AdminTaxiSanctionLevel
 
 
 class AdminTaxiReportUpdateRequest(BaseModel):

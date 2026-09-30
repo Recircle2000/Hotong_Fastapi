@@ -7,6 +7,9 @@ import type {
   AdminTaxiPartyList,
   AdminTaxiReportDetail,
   AdminTaxiReportList,
+  AdminTaxiSanction,
+  AdminTaxiSanctionList,
+  TaxiSanctionLevel,
   TaxiReportStatus,
   EmergencyNotice,
   EmergencyNoticePayload,
@@ -252,5 +255,40 @@ export function updateAdminTaxiReport(
   return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${id}`, {
     method: "PATCH",
     body: payload,
+  });
+}
+
+export function createAdminTaxiSanction(
+  reportId: number,
+  payload: {
+    level: TaxiSanctionLevel;
+    reason: string;
+    admin_note: string | null;
+    resolve_pending_reports: boolean;
+  },
+) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${reportId}/sanction`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function getAdminTaxiSanctions(params: {
+  active?: boolean;
+  target?: string;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiSanctionList>(`/taxi-sanctions${query ? `?${query}` : ""}`);
+}
+
+export function revokeAdminTaxiSanction(id: number, reason: string) {
+  return apiRequest<AdminTaxiSanction>(`/taxi-sanctions/${id}/revoke`, {
+    method: "POST",
+    body: { reason },
   });
 }

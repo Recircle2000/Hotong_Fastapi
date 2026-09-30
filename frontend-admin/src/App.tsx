@@ -9,6 +9,7 @@ import { ShuttleStationsPage } from "./pages/ShuttleStationsPage";
 import { TaxiLocationsPage } from "./pages/TaxiLocationsPage";
 import { TaxiPartiesPage } from "./pages/TaxiPartiesPage";
 import { TaxiReportsPage } from "./pages/TaxiReportsPage";
+import { TaxiSanctionsPage } from "./pages/TaxiSanctionsPage";
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
           <Route path="/taxi-locations" element={<TaxiLocationsPage />} />
           <Route path="/taxi-parties" element={<TaxiPartiesPage />} />
           <Route path="/taxi-reports" element={<TaxiReportsPage />} />
+          <Route path="/taxi-sanctions" element={<TaxiSanctionsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -26,6 +26,10 @@ from schemas.admin_v2 import (
     AdminTaxiReportDetailResponse,
     AdminTaxiReportListResponse,
     AdminTaxiReportUpdateRequest,
+    AdminTaxiSanctionCreateRequest,
+    AdminTaxiSanctionListResponse,
+    AdminTaxiSanctionResponse,
+    AdminTaxiSanctionRevokeRequest,
 )
 from services.admin_taxi import (
     create_admin_taxi_location,
@@ -37,8 +41,11 @@ from services.admin_taxi import (
 from services.admin_taxi_report import (
     get_admin_taxi_report,
     list_admin_taxi_reports,
+    list_admin_taxi_sanctions,
+    serialize_admin_sanctions,
     update_admin_taxi_report,
 )
+from services.taxi_sanction import issue_sanction, revoke_sanction
 from services.admin_auth import (
     AUTH_REQUIRED_MESSAGE,
     AdminAuthError,
@@ -522,5 +529,65 @@ def update_admin_taxi_report_status(
 ):
     try:
         return update_admin_taxi_report(db, report_id, payload, admin_id=current_admin.id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.post("/taxi-reports/{report_id}/sanction", response_model=AdminTaxiReportDetailResponse)
+def create_admin_taxi_sanction(
+    report_id: int,
+    payload: AdminTaxiSanctionCreateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    # 관리자는 user_id를 모르므로 신고를 통해 대상을 지정한다.
+    try:
+        issue_sanction(
+            db,
+            report_id,
+            level=payload.level,
+            reason=payload.reason,
+            admin_note=payload.admin_note,
+            resolve_pending_reports=payload.resolve_pending_reports,
+            admin_id=current_admin.id,
+        )
+        return get_admin_taxi_report(db, report_id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-sanctions", response_model=AdminTaxiSanctionListResponse)
+def get_admin_taxi_sanctions(
+    active: bool = False,
+    target: str | None = Query(default=None, pattern="^[0-9a-f]{6}$"),
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        items, next_cursor = list_admin_taxi_sanctions(
+            db,
+            active_only=active,
+            target_key=target,
+            cursor=cursor,
+            limit=limit,
+        )
+        return AdminTaxiSanctionListResponse(items=items, next_cursor=next_cursor)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.post("/taxi-sanctions/{sanction_id}/revoke", response_model=AdminTaxiSanctionResponse)
+def revoke_admin_taxi_sanction(
+    sanction_id: int,
+    payload: AdminTaxiSanctionRevokeRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        sanction = revoke_sanction(db, sanction_id, reason=payload.reason, admin_id=current_admin.id)
+        return serialize_admin_sanctions(db, [sanction])[0]
     except TaxiServiceError as exc:
         raise_taxi_admin_error(exc)

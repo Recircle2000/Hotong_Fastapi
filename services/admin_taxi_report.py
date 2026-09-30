@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-import hashlib
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import distinct, func
+from sqlalchemy import distinct, func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from models import TaxiParty, TaxiReport
+from models import TaxiParty, TaxiReport, TaxiSanction
 from schemas.admin_v2 import (
     AdminTaxiReportDetailResponse,
     AdminTaxiReportEvidenceMessage,
     AdminTaxiReportSummaryResponse,
     AdminTaxiReportTargetStats,
     AdminTaxiReportUpdateRequest,
+    AdminTaxiSanctionResponse,
 )
 from services.taxi import TaxiServiceError, as_utc, utc_now
+from services.taxi_sanction import SUSPENSION_LEVELS, anonymous_user_key, suggested_level
 
 
 OTHER_REPORTS_LIMIT = 20
-
-
-def anonymous_user_key(user_id: UUID) -> str:
-    """관리자 화면에서 같은 사용자를 알아볼 수 있는 짧은 익명 ID. 원래 user_id는 알 수 없다."""
-    return hashlib.sha256(str(user_id).encode()).hexdigest()[:6]
+TARGET_SANCTIONS_LIMIT = 20
 
 
 def _target_stats(db: Session, target_ids: set[UUID]) -> dict[UUID, AdminTaxiReportTargetStats]:
@@ -163,6 +160,16 @@ def get_admin_taxi_report(db: Session, report_id: int) -> AdminTaxiReportDetailR
         messages=[AdminTaxiReportEvidenceMessage(**message) for message in evidence.get("messages", [])],
         evidence_purged=report.evidence_purged_at is not None,
         other_reports=_serialize_summaries(db, others),
+        sanction_id=report.sanction_id,
+        target_sanctions=serialize_admin_sanctions(
+            db,
+            db.query(TaxiSanction)
+            .filter(TaxiSanction.user_id == report.target_id)
+            .order_by(TaxiSanction.id.desc())
+            .limit(TARGET_SANCTIONS_LIMIT)
+            .all(),
+        ),
+        suggested_level=suggested_level(db, report.target_id),
     )
 
 
@@ -186,3 +193,88 @@ def update_admin_taxi_report(
         report.reviewed_by_admin_id = admin_id
     db.commit()
     return get_admin_taxi_report(db, report_id)
+
+
+def _is_active_sanction(sanction: TaxiSanction, now: datetime) -> bool:
+    return (
+        sanction.level in SUSPENSION_LEVELS
+        and sanction.revoked_at is None
+        and as_utc(sanction.starts_at) <= now
+        and (sanction.ends_at is None or as_utc(sanction.ends_at) > now)
+    )
+
+
+def serialize_admin_sanctions(
+    db: Session,
+    sanctions: list[TaxiSanction],
+    now: datetime | None = None,
+) -> list[AdminTaxiSanctionResponse]:
+    current = as_utc(now or utc_now())
+    ids = [sanction.id for sanction in sanctions]
+    report_counts = (
+        dict(
+            db.query(TaxiReport.sanction_id, func.count(TaxiReport.id))
+            .filter(TaxiReport.sanction_id.in_(ids))
+            .group_by(TaxiReport.sanction_id)
+            .all()
+        )
+        if ids
+        else {}
+    )
+    return [
+        AdminTaxiSanctionResponse(
+            id=sanction.id,
+            level=sanction.level,
+            reason=sanction.reason,
+            admin_note=sanction.admin_note,
+            starts_at=as_utc(sanction.starts_at),
+            ends_at=as_utc(sanction.ends_at) if sanction.ends_at else None,
+            created_at=as_utc(sanction.created_at),
+            acknowledged_at=as_utc(sanction.acknowledged_at) if sanction.acknowledged_at else None,
+            revoked_at=as_utc(sanction.revoked_at) if sanction.revoked_at else None,
+            revoke_reason=sanction.revoke_reason,
+            is_active=_is_active_sanction(sanction, current),
+            target_key=anonymous_user_key(sanction.user_id),
+            report_count=report_counts.get(sanction.id, 0),
+        )
+        for sanction in sanctions
+    ]
+
+
+def list_admin_taxi_sanctions(
+    db: Session,
+    *,
+    active_only: bool,
+    target_key: str | None,
+    cursor: str | None,
+    limit: int,
+    now: datetime | None = None,
+) -> tuple[list[AdminTaxiSanctionResponse], str | None]:
+    current = as_utc(now or utc_now())
+    query = db.query(TaxiSanction)
+    if active_only:
+        query = query.filter(
+            TaxiSanction.level.in_(SUSPENSION_LEVELS),
+            TaxiSanction.revoked_at.is_(None),
+            TaxiSanction.starts_at <= current,
+            or_(TaxiSanction.ends_at.is_(None), TaxiSanction.ends_at > current),
+        )
+    if target_key:
+        user_ids = [
+            row[0]
+            for row in db.query(distinct(TaxiSanction.user_id)).all()
+            if anonymous_user_key(row[0]) == target_key
+        ]
+        if not user_ids:
+            return [], None
+        query = query.filter(TaxiSanction.user_id.in_(user_ids))
+    if cursor:
+        try:
+            before_id = int(cursor)
+        except ValueError as exc:
+            raise TaxiServiceError(400, "INVALID_CURSOR", "목록 커서가 올바르지 않습니다.") from exc
+        query = query.filter(TaxiSanction.id < before_id)
+    rows = query.order_by(TaxiSanction.id.desc()).limit(limit + 1).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    return serialize_admin_sanctions(db, rows, current), str(rows[-1].id) if has_more else None

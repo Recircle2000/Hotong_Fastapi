@@ -146,6 +146,29 @@ export interface AdminTaxiReportMessage {
   is_target: boolean;
 }
 
+export type TaxiSanctionLevel = "warning" | "suspend_3d" | "suspend_7d" | "permanent";
+
+export interface AdminTaxiSanction {
+  id: number;
+  level: TaxiSanctionLevel;
+  reason: string;
+  admin_note: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  created_at: string;
+  acknowledged_at: string | null;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  is_active: boolean;
+  target_key: string;
+  report_count: number;
+}
+
+export interface AdminTaxiSanctionList {
+  items: AdminTaxiSanction[];
+  next_cursor: string | null;
+}
+
 export interface AdminTaxiReportDetail extends AdminTaxiReport {
   detail: string | null;
   admin_note: string | null;
@@ -155,4 +178,7 @@ export interface AdminTaxiReportDetail extends AdminTaxiReport {
   messages: AdminTaxiReportMessage[];
   evidence_purged: boolean;
   other_reports: AdminTaxiReport[];
+  sanction_id: number | null;
+  target_sanctions: AdminTaxiSanction[];
+  suggested_level: TaxiSanctionLevel;
 }

@@ -5,6 +5,7 @@ import { AdminShell } from "../components/AdminShell";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import {
   ApiError,
+  createAdminTaxiSanction,
   getAdminTaxiReport,
   getAdminTaxiReports,
   updateAdminTaxiReport,
@@ -14,8 +15,10 @@ import type {
   AdminTaxiReportDetail,
   TaxiReportReason,
   TaxiReportStatus,
+  TaxiSanctionLevel,
 } from "../lib/types";
 import { useToast } from "../toast/ToastProvider";
+import { SanctionSection, sanctionLevelLabels } from "./taxiSanctionParts";
 
 const reasonLabels: Record<TaxiReportReason, string> = {
   no_show: "노쇼",
@@ -146,6 +149,31 @@ export function TaxiReportsPage() {
     }
   }
 
+  async function sanction(payload: {
+    level: TaxiSanctionLevel;
+    reason: string;
+    admin_note: string | null;
+    resolve_pending_reports: boolean;
+  }) {
+    if (!detail) return;
+    const label = sanctionLevelLabels[payload.level];
+    const message = payload.level === "permanent"
+      ? `사용자 ${detail.target_key}에게 영구 정지를 부과할까요?\n택시팟을 다시 만들거나 참여할 수 없게 됩니다.`
+      : `사용자 ${detail.target_key}에게 ${label}를 부과할까요?`;
+    if (!window.confirm(message)) return;
+    setSaving(true);
+    try {
+      const updated = await createAdminTaxiSanction(detail.id, payload);
+      setDetail(updated);
+      showToast(`${label}를 부과했습니다.`, "success");
+      await load();
+    } catch (cause) {
+      showToast(cause instanceof ApiError ? cause.message : "제재를 부과하지 못했습니다.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function showTarget(key: string) {
     setDetail(null);
     setTarget(key);
@@ -251,6 +279,7 @@ export function TaxiReportsPage() {
                   ))}
                 </ul>
               </div>
+              <SanctionSection key={detail.id} detail={detail} saving={saving} onSubmit={(payload) => void sanction(payload)} />
               <div>
                 <label htmlFor="report-note" className="mb-2 block text-sm font-semibold text-slate-900">관리자 메모</label>
                 <textarea id="report-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} rows={3} placeholder="검토 내용이나 조치 계획을 남겨두세요." className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
