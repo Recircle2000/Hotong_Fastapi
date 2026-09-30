@@ -166,3 +166,30 @@ class TaxiReadResponse(BaseModel):
 
 class TaxiActionResponse(BaseModel):
     success: bool = True
+
+
+TaxiReportReason = Literal["no_show", "abuse", "payment", "other"]
+
+
+class TaxiReportCreateRequest(BaseModel):
+    target_label: str = Field(..., min_length=1, max_length=20)
+    reason: TaxiReportReason
+    detail: str | None = Field(default=None, max_length=500)
+    message_id: int | None = None
+
+    @field_validator("target_label")
+    @classmethod
+    def normalize_label(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("detail")
+    @classmethod
+    def normalize_detail(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class TaxiReportResponse(BaseModel):
+    id: int
+    created_at: datetime

@@ -123,6 +123,24 @@ class TaxiApiTests(unittest.TestCase):
         self.assertEqual(outsider.status_code, 200)
         self.assertIsNone(outsider.json()["member_note"])
 
+    def test_member_reports_owner_once(self):
+        created, _ = self._create_party()
+        type(self).current_user_id = uuid4()
+        self.client.post(f"/api/taxi/parties/{created['id']}/join")
+        url = f"/api/taxi/parties/{created['id']}/reports"
+        payload = {"target_label": "방장", "reason": "no_show"}
+
+        first = self.client.post(url, json=payload)
+        second = self.client.post(url, json=payload)
+        invalid = self.client.post(url, json={"target_label": "방장", "reason": "spam"})
+
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(set(first.json()), {"id", "created_at"})
+        self.assertEqual(first.headers["cache-control"], "no-store")
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(second.json()["detail"]["code"], "ALREADY_REPORTED")
+        self.assertEqual(invalid.status_code, 422)
+
     def test_join_is_idempotent_and_owner_cannot_leave(self):
         created, _ = self._create_party()
         owner_id = type(self).current_user_id

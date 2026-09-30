@@ -31,6 +31,8 @@ from schemas.taxi import (
     TaxiReadRequest,
     TaxiReadResponse,
     TaxiRecruitmentRequest,
+    TaxiReportCreateRequest,
+    TaxiReportResponse,
 )
 from services.taxi import (
     TaxiServiceError,
@@ -50,6 +52,7 @@ from services.taxi import (
     set_recruitment,
     update_party,
 )
+from services.taxi_report import create_report
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
 from utils.taxi_realtime import (
     TAXI_PARTIES_CHANNEL,
@@ -290,6 +293,27 @@ def read_taxi_messages(
     try:
         mark_messages_read(db, party_id, current_user.user_id, payload.last_message_id)
         return TaxiReadResponse()
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
+
+
+@router.post(
+    "/parties/{party_id}/reports",
+    response_model=TaxiReportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def report_taxi_member(
+    party_id: UUID,
+    payload: TaxiReportCreateRequest,
+    response: Response,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    # 보복을 막기 위해 신고당한 사람에게는 알리지 않는다.
+    _no_store(response)
+    try:
+        report = create_report(db, party_id, current_user.user_id, payload)
+        return TaxiReportResponse(id=report.id, created_at=report.created_at)
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 
