@@ -11,3 +11,4 @@ from .emergency_notice import EmergencyNotice
 from .schedule_types import ScheduleType, ScheduleException
 from .subway_schedule import SubwaySchedule
 from .taxi import TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
+from .app_setting import AppSetting

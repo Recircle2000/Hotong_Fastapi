@@ -117,6 +117,15 @@ class AdminTaxiPartyListResponse(BaseModel):
     next_cursor: str | None = None
 
 
+class AdminAppSettingsResponse(BaseModel):
+    taxi_enabled: bool
+    taxi_updated_at: datetime | None = None
+
+
+class AdminAppSettingsUpdateRequest(BaseModel):
+    taxi_enabled: bool
+
+
 class AdminTaxiPartyCancelRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=200)
 

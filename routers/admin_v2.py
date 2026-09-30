@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas.admin_v2 import (
+    AdminAppSettingsResponse,
+    AdminAppSettingsUpdateRequest,
     AdminEmergencyNoticePayload,
     AdminEmergencyNoticeResponse,
     AdminLoginRequest,
@@ -60,6 +62,7 @@ from services.admin_shuttle_station import (
     update_admin_shuttle_station,
 )
 from utils.redis_client import delete_pattern
+from services.app_settings import get_taxi_setting_updated_at, is_taxi_enabled, set_taxi_enabled
 from services.taxi import TaxiServiceError, cancel_party
 from utils.taxi_realtime import publish_message, publish_party_updated
 
@@ -324,6 +327,32 @@ async def delete_admin_v2_shuttle_station(
         )
     invalidate_shuttle_station_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def serialize_app_settings(db: Session) -> AdminAppSettingsResponse:
+    return AdminAppSettingsResponse(
+        taxi_enabled=is_taxi_enabled(db),
+        taxi_updated_at=get_taxi_setting_updated_at(db),
+    )
+
+
+@router.get("/app-settings", response_model=AdminAppSettingsResponse)
+def get_admin_app_settings(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return serialize_app_settings(db)
+
+
+@router.put("/app-settings", response_model=AdminAppSettingsResponse)
+def update_admin_app_settings(
+    payload: AdminAppSettingsUpdateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    set_taxi_enabled(db, payload.taxi_enabled, admin_id=current_admin.id)
+    return serialize_app_settings(db)
 
 
 def raise_taxi_admin_error(exc: TaxiServiceError) -> None:

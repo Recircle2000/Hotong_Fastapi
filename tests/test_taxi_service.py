@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from models import Base, TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
+from models import AppSetting, Base, TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
 from schemas.taxi import TaxiPartyCreateRequest, TaxiPartyUpdateRequest
 from services.taxi import (
     TaxiServiceError,
@@ -32,11 +32,13 @@ from services.taxi import (
     serialize_party_summary,
     update_party,
 )
+from services.app_settings import clear_app_settings_cache, set_taxi_enabled
 from utils.taxi_realtime import publish_message, publish_party_updated
 
 
 class TaxiServiceTests(unittest.TestCase):
     def setUp(self):
+        clear_app_settings_cache()
         engine = create_engine(
             "sqlite://",
             connect_args={"check_same_thread": False},
@@ -404,6 +406,39 @@ class TaxiServiceTests(unittest.TestCase):
         self.assertEqual(party_events[0][1]["party"]["id"], str(party.id))
         # 검색 목록을 보는 비참여자도 갱신할 수 있게 공용 채널에도 알린다.
         publish_list_change.assert_awaited_once_with(party.id)
+
+    def test_taxi_disabled_blocks_new_parties_but_keeps_ongoing_ones(self):
+        party = self._create()
+        join_party(self.db, party.id, self.user_id, now=self.now)
+        set_taxi_enabled(self.db, False, admin_id=1)
+
+        with self.assertRaises(TaxiServiceError) as create_blocked:
+            self._create(owner_id=uuid4())
+        self.assertEqual(create_blocked.exception.code, "TAXI_DISABLED")
+        with self.assertRaises(TaxiServiceError) as join_blocked:
+            join_party(self.db, party.id, self.other_user_id, now=self.now)
+        self.assertEqual(join_blocked.exception.code, "TAXI_DISABLED")
+
+        # 이미 참여 중인 사람은 조회·채팅·나가기를 계속할 수 있다.
+        joined_again, _ = join_party(self.db, party.id, self.user_id, now=self.now)
+        self.assertEqual(joined_again.id, party.id)
+        self.assertTrue(get_party_detail(self.db, party.id, self.user_id).is_member)
+        create_chat_message(self.db, party.id, self.user_id, uuid4(), "곧 도착", now=self.now)
+        messages, _ = list_messages(
+            self.db, party.id, self.owner_id, before_id=None, limit=50, now=self.now
+        )
+        self.assertEqual(messages[-1].content, "곧 도착")
+        leave_party(self.db, party.id, self.user_id, now=self.now)
+
+        set_taxi_enabled(self.db, True, admin_id=1)
+        self.assertEqual(join_party(self.db, party.id, self.other_user_id, now=self.now)[0].id, party.id)
+
+    def test_missing_settings_table_keeps_taxi_running(self):
+        # 마이그레이션 전에 서버가 먼저 배포돼도 택시팟 생성이 막히지 않아야 한다.
+        AppSetting.__table__.drop(self.db.get_bind())
+        clear_app_settings_cache()
+        party = self._create()
+        self.assertEqual(join_party(self.db, party.id, self.user_id, now=self.now)[0].id, party.id)
 
     def test_core_fields_lock_after_another_member_joins(self):
         party = self._create()

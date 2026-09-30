@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from models import TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
+from services.app_settings import is_taxi_enabled
 from schemas.taxi import (
     TaxiLocationResponse,
     TaxiMemberResponse,
@@ -453,6 +454,12 @@ def _validate_departure_time(value: datetime, *, now: datetime | None = None) ->
     return departure_at
 
 
+def _ensure_taxi_enabled(db: Session) -> None:
+    # 서비스를 꺼도 진행 중인 팟의 조회·채팅·나가기는 그대로 두고 새 생성·참여만 막는다.
+    if not is_taxi_enabled(db):
+        raise TaxiServiceError(503, "TAXI_DISABLED", "현재 택시팟 서비스를 운영하지 않아요.")
+
+
 def _lock_user(db: Session, user_id: UUID) -> None:
     if db.bind is not None and db.bind.dialect.name == "postgresql":
         db.execute(
@@ -541,6 +548,7 @@ def create_party(
     if existing is not None:
         return _load_party(db, existing.id)
 
+    _ensure_taxi_enabled(db)
     departure_at = _validate_departure_time(payload.departure_at, now=now)
     _validate_locations(db, payload.departure_location_id, payload.destination_location_id)
     _lock_user(db, user_id)
@@ -833,6 +841,9 @@ def join_party(
     now: datetime | None = None,
 ) -> tuple[TaxiParty, TaxiMessage | None]:
     current = as_utc(now or utc_now())
+    # 운영 스위치는 행 잠금 전에 확인한다. 이미 참여 중이면 다시 눌러도 그대로 둔다.
+    if _active_membership(db, party_id, user_id) is None:
+        _ensure_taxi_enabled(db)
     party = _load_party(db, party_id, lock=True)
     membership = _membership(db, party.id, user_id)
     if membership is not None and membership.left_at is None:

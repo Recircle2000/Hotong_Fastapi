@@ -13,7 +13,8 @@ os.environ.pop("SUPABASE_PASSWORD", None)
 
 from database import get_db
 from models import Base, User
-from routers import admin_v2
+from routers import admin_v2, app_config
+from services.app_settings import clear_app_settings_cache
 from utils.security import hash_password
 
 
@@ -31,6 +32,7 @@ class AdminV2ApiTests(unittest.TestCase):
         cls.app = FastAPI()
         cls.app.add_middleware(SessionMiddleware, secret_key="test-session-secret")
         cls.app.include_router(admin_v2.router)
+        cls.app.include_router(app_config.router)
 
         def override_get_db():
             db = cls.SessionLocal()
@@ -299,6 +301,28 @@ class AdminV2ApiTests(unittest.TestCase):
         final_stations = final_listing.json()
         self.assertEqual(len(final_stations), 1)
         self.assertEqual(final_stations[0]["name"], "후문 변경")
+
+    def test_taxi_service_switch_updates_public_app_config(self):
+        clear_app_settings_cache()
+        self.assertTrue(self.client.get("/api/app-config").json()["taxi_enabled"])
+        self.assertEqual(
+            self.client.put("/api/admin-v2/app-settings", json={"taxi_enabled": False}).status_code,
+            401,
+        )
+
+        self.client.post(
+            "/api/admin-v2/auth/login",
+            json={"email": "admin@example.com", "password": "secret123"},
+        )
+        updated = self.client.put("/api/admin-v2/app-settings", json={"taxi_enabled": False})
+        self.assertEqual(updated.status_code, 200)
+        self.assertFalse(updated.json()["taxi_enabled"])
+        self.assertIsNotNone(updated.json()["taxi_updated_at"])
+        self.assertFalse(self.client.get("/api/app-config").json()["taxi_enabled"])
+        self.assertFalse(self.client.get("/api/admin-v2/app-settings").json()["taxi_enabled"])
+
+        self.client.put("/api/admin-v2/app-settings", json={"taxi_enabled": True})
+        self.assertTrue(self.client.get("/api/app-config").json()["taxi_enabled"])
 
     def test_taxi_location_crud_and_duplicate_name(self):
         login_response = self.client.post(
