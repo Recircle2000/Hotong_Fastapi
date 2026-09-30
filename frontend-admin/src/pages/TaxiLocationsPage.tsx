@@ -7,10 +7,17 @@ import {
   ApiError,
   createAdminTaxiLocation,
   deleteAdminTaxiLocation,
+  getAdminAppSettings,
   getAdminTaxiLocations,
+  updateAdminTaxiEnabled,
   updateAdminTaxiLocation,
 } from "../lib/api";
-import type { AdminTaxiLocation, AdminTaxiLocationPayload, TaxiLocationCategory } from "../lib/types";
+import type {
+  AdminAppSettings,
+  AdminTaxiLocation,
+  AdminTaxiLocationPayload,
+  TaxiLocationCategory,
+} from "../lib/types";
 import { useToast } from "../toast/ToastProvider";
 
 const emptyForm: AdminTaxiLocationPayload = {
@@ -26,6 +33,71 @@ const categoryLabels: Record<TaxiLocationCategory, string> = {
   terminal: "터미널",
   other: "기타",
 };
+
+function TaxiServiceSwitch() {
+  const { showToast } = useToast();
+  const [settings, setSettings] = useState<AdminAppSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminAppSettings()
+      .then(setSettings)
+      .catch((reason) => setError(reason instanceof ApiError ? reason.message : "운영 상태를 불러오지 못했습니다."));
+  }, []);
+
+  async function toggle() {
+    if (!settings) return;
+    const next = !settings.taxi_enabled;
+    const message = next
+      ? "택시 서비스를 켤까요? 앱 홈 화면에 택시 메뉴가 다시 나타나고 새 팟을 만들 수 있게 됩니다."
+      : "택시 서비스를 끌까요? 새 팟 생성과 참여가 막히고 홈 화면에서 택시 메뉴가 사라집니다.\n진행 중인 팟의 참여자는 채팅과 나가기를 계속 이용할 수 있습니다.";
+    if (!window.confirm(message)) return;
+    setSaving(true);
+    try {
+      setSettings(await updateAdminTaxiEnabled(next));
+      showToast(next ? "택시 서비스를 켰습니다." : "택시 서비스를 껐습니다.", "success");
+    } catch (reason) {
+      showToast(reason instanceof ApiError ? reason.message : "운영 상태를 바꾸지 못했습니다.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const enabled = settings?.taxi_enabled ?? false;
+  const updatedAt = settings?.taxi_updated_at ? new Date(settings.taxi_updated_at).toLocaleString("ko-KR") : null;
+
+  return (
+    <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">택시 서비스 운영</h2>
+          {settings ? (
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+              {enabled ? "운영 중" : "중지됨"}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          끄면 앱 홈의 택시 메뉴가 사라지고 새 팟 생성·참여가 막힙니다. 진행 중인 팟 참여자는 계속 이용할 수 있습니다.
+        </p>
+        {error ? <p className="mt-1 text-sm text-rose-600">{error}</p> : null}
+        {updatedAt ? <p className="mt-1 text-xs text-slate-400">마지막 변경: {updatedAt}</p> : null}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="택시 서비스 운영"
+        disabled={!settings || saving}
+        onClick={() => void toggle()}
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${enabled ? "bg-emerald-500" : "bg-slate-300"}`}
+      >
+        <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+    </section>
+  );
+}
 
 export function TaxiLocationsPage() {
   useDocumentTitle("택시 거점 관리");
@@ -97,6 +169,7 @@ export function TaxiLocationsPage() {
       description="사용자가 택시팟 출발지와 도착지로 선택할 거점을 관리합니다."
       actions={<button type="button" onClick={showCreate} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">새 거점</button>}
     >
+      <TaxiServiceSwitch />
       {error ? <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div> : null}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {loading ? <div className="p-8 text-sm text-slate-500">불러오는 중입니다.</div> : items.length === 0 ? (

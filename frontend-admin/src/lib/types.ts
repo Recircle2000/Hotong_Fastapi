@@ -73,6 +73,11 @@ export interface AdminShuttleStationPayload {
   is_active: boolean;
 }
 
+export interface AdminAppSettings {
+  taxi_enabled: boolean;
+  taxi_updated_at: string | null;
+}
+
 export type TaxiLocationCategory = "campus" | "station" | "terminal" | "other";
 
 export interface AdminTaxiLocation {

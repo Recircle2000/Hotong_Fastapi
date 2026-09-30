@@ -1,4 +1,5 @@
 import type {
+  AdminAppSettings,
   AdminShuttleStation,
   AdminShuttleStationPayload,
   AdminTaxiLocation,
@@ -167,6 +168,17 @@ export function updateAdminShuttleStation(
 export function deleteAdminShuttleStation(id: number) {
   return apiRequest<void>(`/shuttle-stations/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function getAdminAppSettings() {
+  return apiRequest<AdminAppSettings>("/app-settings");
+}
+
+export function updateAdminTaxiEnabled(taxiEnabled: boolean) {
+  return apiRequest<AdminAppSettings>("/app-settings", {
+    method: "PUT",
+    body: { taxi_enabled: taxiEnabled },
   });
 }
 
