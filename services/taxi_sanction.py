@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
+import os
 from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from models import TaxiReport, TaxiSanction
+from models import TaxiReport, TaxiSanction, TaxiSanctionHold
+from services import auth_users
 from services.taxi import KST, TaxiServiceError, as_utc, utc_now
 
 
@@ -26,6 +29,45 @@ def anonymous_user_key(user_id: UUID) -> str:
     """사용자를 알아보는 6자리 고유번호. 앱 내정보와 관리자 화면이 같은 값을 보여줘
     이의제기 때 대상을 찾을 수 있고, 원래 user_id는 알 수 없다."""
     return hashlib.sha256(str(user_id).encode()).hexdigest()[:6]
+
+
+def email_hold_key(email: str) -> str:
+    """탈퇴자 정지 보류에 쓰는 이메일 키. 서버 비밀키 HMAC이라 학번 대입으로 되돌릴 수 없다."""
+    secret = os.getenv("SECRET_KEY")
+    if not secret:
+        raise RuntimeError("SECRET_KEY environment variable must be set")
+    normalized = email.strip().lower().encode()
+    return hmac.new(secret.encode(), normalized, hashlib.sha256).hexdigest()
+
+
+def claim_sanction_hold(db: Session, user_id: UUID, now: datetime | None = None) -> TaxiSanction | None:
+    """정지 중 탈퇴했던 이메일로 다시 가입했다면 남은 정지를 새 계정에 이어 붙인다."""
+    # 보류가 하나도 없으면 이메일 조회 없이 끝낸다.
+    if db.query(TaxiSanctionHold.email_hash).first() is None:
+        return None
+    email = auth_users.fetch_user_email(db, user_id)
+    if not email:
+        return None
+    hold = db.get(TaxiSanctionHold, email_hold_key(email))
+    if hold is None:
+        return None
+    current = as_utc(now or utc_now())
+    db.delete(hold)
+    if hold.ends_at is not None and as_utc(hold.ends_at) <= current:
+        db.commit()
+        return None
+    sanction = TaxiSanction(
+        user_id=user_id,
+        level=hold.level,
+        reason=hold.reason,
+        admin_note="탈퇴 전 제재 이어받음",
+        starts_at=current,
+        ends_at=hold.ends_at,
+        created_at=current,
+    )
+    db.add(sanction)
+    db.commit()
+    return sanction
 
 
 def _active_suspension_filter(query, now: datetime):
@@ -75,6 +117,7 @@ def suspension_message(sanction: TaxiSanction) -> str:
 
 def ensure_not_suspended(db: Session, user_id: UUID, now: datetime | None = None) -> None:
     # 이미 참여한 팟의 조회·채팅·나가기와 신고는 막지 않고 새 생성·참여만 막는다.
+    claim_sanction_hold(db, user_id, now)
     suspension = active_suspension(db, user_id, now)
     if suspension is not None:
         raise TaxiServiceError(403, "TAXI_SUSPENDED", suspension_message(suspension))

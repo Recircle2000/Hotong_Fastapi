@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from database import get_db
 from models import Base, TaxiLocation, TaxiParty
-from routers import taxi
+from routers import app_auth, taxi
 from schemas.app_auth import CurrentAppUser
 from services.taxi_sanction import anonymous_user_key, issue_sanction
 from utils.supabase_security import get_current_app_user
@@ -35,6 +35,7 @@ class TaxiApiTests(unittest.TestCase):
 
         app = FastAPI()
         app.include_router(taxi.router)
+        app.include_router(app_auth.router)
 
         def override_get_db():
             with cls.SessionLocal() as db:
@@ -195,6 +196,18 @@ class TaxiApiTests(unittest.TestCase):
         blocked = self.client.post(f"/api/taxi/parties/{other['id']}/join")
         self.assertEqual(blocked.status_code, 403)
         self.assertEqual(blocked.json()["detail"]["code"], "TAXI_SUSPENDED")
+
+    def test_account_deletion_requires_no_active_party(self):
+        self._create_party()
+
+        blocked = self.client.delete("/api/app-auth/me")
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(blocked.json()["detail"]["code"], "ACTIVE_PARTY_EXISTS")
+
+        type(self).current_user_id = uuid4()
+        deleted = self.client.delete("/api/app-auth/me")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(deleted.headers["cache-control"], "no-store")
 
     def test_join_is_idempotent_and_owner_cannot_leave(self):
         created, _ = self._create_party()

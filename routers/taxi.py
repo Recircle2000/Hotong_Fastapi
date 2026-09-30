@@ -60,6 +60,7 @@ from services.taxi_sanction import (
     acknowledge_sanction,
     active_suspension,
     anonymous_user_key,
+    claim_sanction_hold,
     pending_notice,
 )
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
@@ -325,6 +326,7 @@ def get_my_taxi_restriction(
     db: Session = Depends(get_db),
 ):
     _no_store(response)
+    claim_sanction_hold(db, current_user.user_id)
     return TaxiRestrictionResponse(
         user_key=anonymous_user_key(current_user.user_id),
         suspension=_sanction_response(active_suspension(db, current_user.user_id)),
