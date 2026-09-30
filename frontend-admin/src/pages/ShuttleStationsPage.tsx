@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { AdminShell } from "../components/AdminShell";
 import { AdminModal } from "../components/AdminModal";
 import { AdminPanel } from "../components/AdminPanel";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -82,7 +83,7 @@ function toPayload(formState: StationFormState): AdminShuttleStationPayload | nu
 
 export function ShuttleStationsPage() {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { showToast } = useToast();
   useDocumentTitle("셔틀 정류장 관리");
 
@@ -172,10 +173,6 @@ export function ShuttleStationsPage() {
     }
   }
 
-  async function handleLogout() {
-    await logout();
-    navigate("/login", { replace: true });
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -221,265 +218,69 @@ export function ShuttleStationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 lg:pl-60">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200 bg-slate-900 text-white lg:flex">
-        <div className="border-b border-white/10 px-6 py-5">
-          <div className="text-lg font-semibold">호통 대시보드</div>
-        </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24">
-          <NavLink
-            to="/notices"
-            className={({ isActive }) =>
-              `block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            공지 관리
-          </NavLink>
-          <NavLink
-            to="/emergency-notices"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            긴급공지 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            셔틀 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle-stations"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            정류장 관리
-          </NavLink>
-          <NavLink to="/taxi-locations" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시 거점 관리</NavLink>
-          <NavLink to="/taxi-parties" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시팟 현황</NavLink>
-        </nav>
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
+    <AdminShell
+      title="셔틀 정류장 관리"
+      description="셔틀 정류장 정보와 활성 상태를 관리합니다."
+      actions={
+        <>
           <button
             type="button"
-            onClick={handleLogout}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/15"
+            onClick={openCreateModal}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
-            로그아웃
+            정류장 추가
           </button>
-        </div>
-      </aside>
-
-      <div className="min-h-screen min-w-0">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="motion-enter flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-900">셔틀 정류장 관리</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  셔틀 정류장 정보와 활성 상태를 관리합니다.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  {user?.email}
-                </div>
-                <NavLink
-                  to="/notices"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                >
-                  공지
-                </NavLink>
-                <NavLink
-                  to="/emergency-notices"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                >
-                  긴급공지
-                </NavLink>
-                <NavLink
-                  to="/shuttle"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                >
-                  셔틀
-                </NavLink>
-                <NavLink
-                  to="/shuttle-stations"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                >
-                  정류장
-                </NavLink>
-                <NavLink to="/taxi-locations" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시 거점</NavLink>
-                <NavLink to="/taxi-parties" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시팟</NavLink>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 lg:hidden"
-                >
-                  로그아웃
-                </button>
-                <button
-                  type="button"
-                  onClick={openCreateModal}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  정류장 추가
-                </button>
-              </div>
-            </div>
-
-            <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
-              <SummaryCard label="전체 정류장" value={String(stations.length)} />
-              <SummaryCard label="활성 정류장" value={String(activeCount)} />
-              <SummaryCard label="비활성 정류장" value={String(inactiveCount)} />
-            </div>
+        </>
+      }
+      summary={
+        <>
+          <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
+            <SummaryCard label="전체 정류장" value={String(stations.length)} />
+            <SummaryCard label="활성 정류장" value={String(activeCount)} />
+            <SummaryCard label="비활성 정류장" value={String(inactiveCount)} />
           </div>
-        </header>
+        </>
+      }
+    >
+      {error ? (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      ) : null}
 
-        <main className="motion-enter motion-enter-delay-2 px-4 py-6 sm:px-6 lg:px-8">
-          {error ? (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {error}
-            </div>
-          ) : null}
-
-          <AdminPanel title="셔틀 정류장 목록">
-            {isLoading ? (
-              <div className="py-10 text-sm text-slate-500">정류장 목록을 불러오는 중입니다.</div>
-            ) : stations.length === 0 ? (
-              <div className="py-10 text-sm text-slate-500">등록된 정류장이 없습니다.</div>
-            ) : (
-              <>
-                <div className="hidden overflow-x-auto lg:block">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
-                      <tr>
-                        <th className="px-5 py-3 font-medium">정류장</th>
-                        <th className="px-5 py-3 font-medium">상태</th>
-                        <th className="px-5 py-3 font-medium">좌표</th>
-                        <th className="px-5 py-3 font-medium">설명</th>
-                        <th className="px-5 py-3 font-medium">이미지</th>
-                        <th className="px-5 py-3 font-medium">관리</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stations.map((station) => (
-                        <tr key={station.id} className="border-t border-slate-200">
-                          <td className="px-5 py-4">
-                            <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
-                            <button
-                              type="button"
-                              className="mt-1 font-medium text-slate-900 hover:text-blue-700"
-                              onClick={() => setDetailStation(station)}
-                            >
-                              {station.name}
-                            </button>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                station.is_active
-                                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                                  : "border border-slate-200 bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              {station.is_active ? "활성" : "비활성"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-slate-500">
-                            {formatCoordinate(station.latitude)}, {formatCoordinate(station.longitude)}
-                          </td>
-                          <td className="px-5 py-4 text-slate-500">
-                            <div className="max-w-[320px] truncate">
-                              {station.description ?? "-"}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 text-slate-500">
-                            {station.image_url ? "등록됨" : "-"}
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(station)}
-                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                              >
-                                수정
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(station)}
-                                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
-                              >
-                                삭제
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="grid gap-3 lg:hidden">
+      <AdminPanel title="셔틀 정류장 목록">
+        {isLoading ? (
+          <div className="py-10 text-sm text-slate-500">정류장 목록을 불러오는 중입니다.</div>
+        ) : stations.length === 0 ? (
+          <div className="py-10 text-sm text-slate-500">등록된 정류장이 없습니다.</div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="px-5 py-3 font-medium">정류장</th>
+                    <th className="px-5 py-3 font-medium">상태</th>
+                    <th className="px-5 py-3 font-medium">좌표</th>
+                    <th className="px-5 py-3 font-medium">설명</th>
+                    <th className="px-5 py-3 font-medium">이미지</th>
+                    <th className="px-5 py-3 font-medium">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {stations.map((station) => (
-                    <article
-                      key={station.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
-                          <button
-                            type="button"
-                            className="mt-1 text-left text-base font-semibold text-slate-900"
-                            onClick={() => setDetailStation(station)}
-                          >
-                            {station.name}
-                          </button>
-                        </div>
+                    <tr key={station.id} className="border-t border-slate-200">
+                      <td className="px-5 py-4">
+                        <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
+                        <button
+                          type="button"
+                          className="mt-1 font-medium text-slate-900 hover:text-blue-700"
+                          onClick={() => setDetailStation(station)}
+                        >
+                          {station.name}
+                        </button>
+                      </td>
+                      <td className="px-5 py-4">
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                             station.is_active
@@ -489,43 +290,104 @@ export function ShuttleStationsPage() {
                         >
                           {station.is_active ? "활성" : "비활성"}
                         </span>
-                      </div>
-
-                      <div className="mt-3 text-sm text-slate-500">
-                        좌표: {formatCoordinate(station.latitude)}, {formatCoordinate(station.longitude)}
-                      </div>
-                      <div className="mt-2 text-sm text-slate-500">
-                        {station.description ?? "설명 없음"}
-                      </div>
-
-                      <div className="mt-2 text-sm text-slate-500">
-                        이미지: {station.image_url ? "등록됨" : "없음"}
-                      </div>
-
-                      <div className="mt-4 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(station)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-                        >
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(station)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </article>
+                      </td>
+                      <td className="px-5 py-4 text-slate-500">
+                        {formatCoordinate(station.latitude)}, {formatCoordinate(station.longitude)}
+                      </td>
+                      <td className="px-5 py-4 text-slate-500">
+                        <div className="max-w-[320px] truncate">
+                          {station.description ?? "-"}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-slate-500">
+                        {station.image_url ? "등록됨" : "-"}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(station)}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(station)}
+                            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </>
-            )}
-          </AdminPanel>
-        </main>
-      </div>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid gap-3 lg:hidden">
+              {stations.map((station) => (
+                <article
+                  key={station.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-mono text-slate-400">ID {station.id}</div>
+                      <button
+                        type="button"
+                        className="mt-1 text-left text-base font-semibold text-slate-900"
+                        onClick={() => setDetailStation(station)}
+                      >
+                        {station.name}
+                      </button>
+                    </div>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        station.is_active
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border border-slate-200 bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {station.is_active ? "활성" : "비활성"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 text-sm text-slate-500">
+                    좌표: {formatCoordinate(station.latitude)}, {formatCoordinate(station.longitude)}
+                  </div>
+                  <div className="mt-2 text-sm text-slate-500">
+                    {station.description ?? "설명 없음"}
+                  </div>
+
+                  <div className="mt-2 text-sm text-slate-500">
+                    이미지: {station.image_url ? "등록됨" : "없음"}
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(station)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(station)}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </AdminPanel>
+
 
       {isFormOpen ? (
         <AdminModal
@@ -712,6 +574,6 @@ export function ShuttleStationsPage() {
           </div>
         </AdminModal>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

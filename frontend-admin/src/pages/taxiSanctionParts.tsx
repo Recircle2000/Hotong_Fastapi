@@ -24,7 +24,7 @@ function formatDateTime(value: string) {
 
 export function SanctionLevelBadge({ level }: { level: TaxiSanctionLevel }) {
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${levelStyles[level]}`}>
+    <span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${levelStyles[level]}`}>
       {sanctionLevelLabels[level]}
     </span>
   );

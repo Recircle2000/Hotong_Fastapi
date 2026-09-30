@@ -1,7 +1,8 @@
 import { type ChangeEvent, type DragEvent, FormEvent, useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { AdminShell } from "../components/AdminShell";
 import { AdminPanel } from "../components/AdminPanel";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { ApiError } from "../lib/api";
@@ -110,7 +111,7 @@ function toInputTime(value: string) {
 
 export function ShuttlePage() {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { showToast } = useToast();
   useDocumentTitle("셔틀 관리");
 
@@ -143,10 +144,6 @@ export function ShuttlePage() {
     navigate("/login", { replace: true, state: { from: "/shuttle" } });
   }
 
-  async function handleLogout() {
-    await logout();
-    navigate("/login", { replace: true });
-  }
 
   function showSuccessToast(message: string) {
     showToast(message, "success");
@@ -641,453 +638,314 @@ export function ShuttlePage() {
     schedules.every((schedule) => selectedScheduleIds.includes(schedule.id));
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 lg:pl-60">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-slate-200 bg-slate-900 text-white lg:flex lg:flex-col">
-        <div className="border-b border-white/10 px-6 py-5 text-lg font-semibold">
-          호통 대시보드
-        </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24">
-          <NavLink
-            to="/notices"
-            className={({ isActive }) =>
-              `block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            공지 관리
-          </NavLink>
-          <NavLink
-            to="/emergency-notices"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            긴급공지 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            셔틀 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle-stations"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            정류장 관리
-          </NavLink>
-          <NavLink to="/taxi-locations" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시 거점 관리</NavLink>
-          <NavLink to="/taxi-parties" className={({ isActive }) => `mt-2 block rounded-lg px-4 py-3 text-sm transition ${isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>택시팟 현황</NavLink>
-        </nav>
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/15"
-          >
-            로그아웃
-          </button>
-        </div>
-      </aside>
-
-      <div className="min-h-screen">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="motion-enter flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-900">셔틀 시간표 관리</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  시간표, 일정 유형, 일정 예외를 관리합니다.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  {user?.email}
+    <AdminShell
+      title="셔틀 시간표 관리"
+      description="시간표, 일정 유형, 일정 예외를 관리합니다."
+      summary={
+        <>
+          <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
+            <SummaryCard label="노선 수" value={String(routes.length)} />
+            <SummaryCard label="일정 유형" value={String(scheduleTypes.length)} />
+            <SummaryCard label="예외 일정" value={String(exceptions.length)} />
+          </div>
+        </>
+      }
+    >
+      {isBootstrapping ? (
+        <AdminPanel title="셔틀 데이터 로딩">
+          <div className="text-sm text-slate-500">관리 데이터를 불러오는 중입니다.</div>
+        </AdminPanel>
+      ) : (
+        <>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_360px]">
+            <AdminPanel title="CSV 일괄 등록" description="기존 CSV 형식을 그대로 사용합니다.">
+              <div className="mb-3 space-y-3">
+                <label
+                  className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-6 text-center transition ${
+                    isCsvDragOver
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50"
+                  } ${isUploadingCsv ? "pointer-events-none opacity-70" : ""}`}
+                  onDragOver={handleCsvDragOver}
+                  onDragLeave={handleCsvDragLeave}
+                  onDrop={(event) => void handleCsvDrop(event)}
+                >
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={(event) => void handleCsvFileChange(event)}
+                    disabled={isUploadingCsv}
+                  />
+                  <div className="text-base font-semibold text-slate-800">
+                    {isUploadingCsv ? "CSV 처리 중..." : "CSV 파일을 여기로 끌어놓기"}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    클릭해서 파일을 선택해도 바로 등록됩니다.
+                  </div>
+                  <div className="mt-3 text-xs text-slate-400">.csv 파일만 업로드 가능</div>
+                </label>
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                  {csvFile ? (
+                    <span className="block truncate">선택한 파일: {csvFile.name}</span>
+                  ) : (
+                    <span>선택한 파일 없음</span>
+                  )}
                 </div>
-                <NavLink
-                  to="/notices"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
+              </div>
+              <form className="hidden" onSubmit={handleCsvUpload}>
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700"
+                  onChange={(event) => setCsvFile(event.target.files?.[0] ?? null)}
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
+                  disabled={isUploadingCsv}
                 >
-                  공지
-                </NavLink>
-                <NavLink
-                  to="/emergency-notices"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
+                  {isUploadingCsv ? "처리 중..." : "업로드 및 처리"}
+                </button>
+              </form>
+            </AdminPanel>
+            <AdminPanel title="캐시 관리">
+              <button
+                type="button"
+                onClick={handleClearCache}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                disabled={isClearingCache}
+              >
+                {isClearingCache ? "비우는 중..." : "셔틀 캐시 비우기"}
+              </button>
+            </AdminPanel>
+          </div>
+
+          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.9fr)]">
+            <AdminPanel title="시간표 조회">
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <select
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  value={selectedRouteId}
+                  onChange={(event) => setSelectedRouteId(event.target.value)}
                 >
-                  긴급공지
-                </NavLink>
-                <NavLink
-                  to="/shuttle"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
+                  <option value="">노선 선택</option>
+                  {routes.map((route) => (
+                    <option key={route.id} value={route.id}>
+                      {route.route_name} ({route.direction})
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  value={selectedScheduleType}
+                  onChange={(event) => setSelectedScheduleType(event.target.value)}
                 >
-                  셔틀
-                </NavLink>
-                <NavLink
-                  to="/shuttle-stations"
-                  className={({ isActive }) =>
-                    `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                      isActive
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`
-                  }
-                >
-                  정류장
-                </NavLink>
-                <NavLink to="/taxi-locations" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시 거점</NavLink>
-                <NavLink to="/taxi-parties" className={({ isActive }) => `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${isActive ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>택시팟</NavLink>
+                  <option value="">일정 유형 선택</option>
+                  {scheduleTypes.map((scheduleType) => (
+                    <option
+                      key={scheduleType.schedule_type}
+                      value={scheduleType.schedule_type}
+                    >
+                      {getScheduleTypeLabel(scheduleType.schedule_type)}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 lg:hidden"
+                  onClick={() => void searchSchedules()}
+                  className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
+                  disabled={isSearching}
                 >
-                  로그아웃
+                  {isSearching ? "조회 중..." : "조회"}
                 </button>
               </div>
-            </div>
-            <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
-              <SummaryCard label="노선 수" value={String(routes.length)} />
-              <SummaryCard label="일정 유형" value={String(scheduleTypes.length)} />
-              <SummaryCard label="예외 일정" value={String(exceptions.length)} />
-            </div>
-          </div>
-        </header>
-
-        <main className="motion-enter motion-enter-delay-2 px-4 py-6 sm:px-6 lg:px-8">
-          {isBootstrapping ? (
-            <AdminPanel title="셔틀 데이터 로딩">
-              <div className="text-sm text-slate-500">관리 데이터를 불러오는 중입니다.</div>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="text-sm text-slate-500">조회 결과 {schedules.length}건</div>
+                <button
+                  type="button"
+                  onClick={removeSelectedSchedules}
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+                >
+                  선택 삭제
+                </button>
+              </div>
+              <ScheduleTable
+                schedules={schedules}
+                allSelected={allSelected}
+                selectedIds={selectedScheduleIds}
+                onToggleAll={(checked) =>
+                  setSelectedScheduleIds(checked ? schedules.map((schedule) => schedule.id) : [])
+                }
+                onToggleOne={(scheduleId, checked) =>
+                  setSelectedScheduleIds((current) =>
+                    checked ? [...current, scheduleId] : current.filter((value) => value !== scheduleId),
+                  )
+                }
+                getRouteLabel={getRouteLabel}
+                getScheduleTypeLabel={getScheduleTypeLabel}
+                onEdit={(schedule) => void editSchedule(schedule)}
+                onDelete={(scheduleId) => void removeSchedule(scheduleId)}
+              />
             </AdminPanel>
-          ) : (
-            <>
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_360px]">
-                <AdminPanel title="CSV 일괄 등록" description="기존 CSV 형식을 그대로 사용합니다.">
-                  <div className="mb-3 space-y-3">
-                    <label
-                      className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-6 text-center transition ${
-                        isCsvDragOver
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50"
-                      } ${isUploadingCsv ? "pointer-events-none opacity-70" : ""}`}
-                      onDragOver={handleCsvDragOver}
-                      onDragLeave={handleCsvDragLeave}
-                      onDrop={(event) => void handleCsvDrop(event)}
-                    >
-                      <input
-                        type="file"
-                        accept=".csv"
-                        className="hidden"
-                        onChange={(event) => void handleCsvFileChange(event)}
-                        disabled={isUploadingCsv}
-                      />
-                      <div className="text-base font-semibold text-slate-800">
-                        {isUploadingCsv ? "CSV 처리 중..." : "CSV 파일을 여기로 끌어놓기"}
-                      </div>
-                      <div className="mt-1 text-sm text-slate-500">
-                        클릭해서 파일을 선택해도 바로 등록됩니다.
-                      </div>
-                      <div className="mt-3 text-xs text-slate-400">.csv 파일만 업로드 가능</div>
-                    </label>
-                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                      {csvFile ? (
-                        <span className="block truncate">선택한 파일: {csvFile.name}</span>
-                      ) : (
-                        <span>선택한 파일 없음</span>
-                      )}
-                    </div>
-                  </div>
-                  <form className="hidden" onSubmit={handleCsvUpload}>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700"
-                      onChange={(event) => setCsvFile(event.target.files?.[0] ?? null)}
-                    />
+
+            <AdminPanel title={editingScheduleId ? "시간표 수정" : "시간표 추가"}>
+              <form className="space-y-4" onSubmit={handleScheduleSubmit}>
+                <select
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  value={scheduleForm.route_id}
+                  onChange={(event) =>
+                    setScheduleForm((current) => ({ ...current, route_id: event.target.value }))
+                  }
+                >
+                  <option value="">노선 선택</option>
+                  {routes.map((route) => (
+                    <option key={route.id} value={route.id}>
+                      {route.route_name} ({route.direction})
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  value={scheduleForm.schedule_type}
+                  onChange={(event) =>
+                    setScheduleForm((current) => ({ ...current, schedule_type: event.target.value }))
+                  }
+                >
+                  <option value="">일정 유형 선택</option>
+                  {scheduleTypes.map((scheduleType) => (
+                    <option key={scheduleType.schedule_type} value={scheduleType.schedule_type}>
+                      {getScheduleTypeLabel(scheduleType.schedule_type)}
+                    </option>
+                  ))}
+                </select>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input
+                    type="time"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    value={scheduleForm.start_time}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({ ...current, start_time: event.target.value }))
+                    }
+                  />
+                  <input
+                    type="time"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    value={scheduleForm.end_time}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({ ...current, end_time: event.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-medium text-slate-700">정류장</div>
                     <button
-                      type="submit"
-                      className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
-                      disabled={isUploadingCsv}
+                      type="button"
+                      onClick={addStop}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                     >
-                      {isUploadingCsv ? "처리 중..." : "업로드 및 처리"}
+                      정류장 추가
                     </button>
-                  </form>
-                </AdminPanel>
-                <AdminPanel title="캐시 관리">
+                  </div>
+                  <div className="space-y-3">
+                    {scheduleForm.stops.map((stop, index) => (
+                      <StopRow
+                        key={`${editingScheduleId ?? "new"}-${index}`}
+                        stop={stop}
+                        stations={stations}
+                        onChange={(key, value) => updateStop(index, key, value)}
+                        onRemove={() => removeStop(index)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
-                    onClick={handleClearCache}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-                    disabled={isClearingCache}
+                    onClick={resetScheduleForm}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   >
-                    {isClearingCache ? "비우는 중..." : "셔틀 캐시 비우기"}
+                    양식 초기화
                   </button>
-                </AdminPanel>
-              </div>
-
-              <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.9fr)]">
-                <AdminPanel title="시간표 조회">
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                    <select
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      value={selectedRouteId}
-                      onChange={(event) => setSelectedRouteId(event.target.value)}
-                    >
-                      <option value="">노선 선택</option>
-                      {routes.map((route) => (
-                        <option key={route.id} value={route.id}>
-                          {route.route_name} ({route.direction})
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      value={selectedScheduleType}
-                      onChange={(event) => setSelectedScheduleType(event.target.value)}
-                    >
-                      <option value="">일정 유형 선택</option>
-                      {scheduleTypes.map((scheduleType) => (
-                        <option
-                          key={scheduleType.schedule_type}
-                          value={scheduleType.schedule_type}
-                        >
-                          {getScheduleTypeLabel(scheduleType.schedule_type)}
-                        </option>
-                      ))}
-                    </select>
+                  {editingScheduleId ? (
                     <button
                       type="button"
-                      onClick={() => void searchSchedules()}
-                      className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
-                      disabled={isSearching}
+                      onClick={() => void removeSchedule(editingScheduleId)}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
                     >
-                      {isSearching ? "조회 중..." : "조회"}
+                      삭제
                     </button>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <div className="text-sm text-slate-500">조회 결과 {schedules.length}건</div>
-                    <button
-                      type="button"
-                      onClick={removeSelectedSchedules}
-                      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
-                    >
-                      선택 삭제
-                    </button>
-                  </div>
-                  <ScheduleTable
-                    schedules={schedules}
-                    allSelected={allSelected}
-                    selectedIds={selectedScheduleIds}
-                    onToggleAll={(checked) =>
-                      setSelectedScheduleIds(checked ? schedules.map((schedule) => schedule.id) : [])
-                    }
-                    onToggleOne={(scheduleId, checked) =>
-                      setSelectedScheduleIds((current) =>
-                        checked ? [...current, scheduleId] : current.filter((value) => value !== scheduleId),
-                      )
-                    }
-                    getRouteLabel={getRouteLabel}
-                    getScheduleTypeLabel={getScheduleTypeLabel}
-                    onEdit={(schedule) => void editSchedule(schedule)}
-                    onDelete={(scheduleId) => void removeSchedule(scheduleId)}
-                  />
-                </AdminPanel>
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
+                    disabled={isSavingSchedule}
+                  >
+                    {isSavingSchedule ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+              </form>
+            </AdminPanel>
+          </div>
 
-                <AdminPanel title={editingScheduleId ? "시간표 수정" : "시간표 추가"}>
-                  <form className="space-y-4" onSubmit={handleScheduleSubmit}>
-                    <select
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      value={scheduleForm.route_id}
-                      onChange={(event) =>
-                        setScheduleForm((current) => ({ ...current, route_id: event.target.value }))
-                      }
-                    >
-                      <option value="">노선 선택</option>
-                      {routes.map((route) => (
-                        <option key={route.id} value={route.id}>
-                          {route.route_name} ({route.direction})
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      value={scheduleForm.schedule_type}
-                      onChange={(event) =>
-                        setScheduleForm((current) => ({ ...current, schedule_type: event.target.value }))
-                      }
-                    >
-                      <option value="">일정 유형 선택</option>
-                      {scheduleTypes.map((scheduleType) => (
-                        <option key={scheduleType.schedule_type} value={scheduleType.schedule_type}>
-                          {getScheduleTypeLabel(scheduleType.schedule_type)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="time"
-                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                        value={scheduleForm.start_time}
-                        onChange={(event) =>
-                          setScheduleForm((current) => ({ ...current, start_time: event.target.value }))
-                        }
-                      />
-                      <input
-                        type="time"
-                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                        value={scheduleForm.end_time}
-                        onChange={(event) =>
-                          setScheduleForm((current) => ({ ...current, end_time: event.target.value }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="text-sm font-medium text-slate-700">정류장</div>
-                        <button
-                          type="button"
-                          onClick={addStop}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                        >
-                          정류장 추가
-                        </button>
-                      </div>
-                      <div className="space-y-3">
-                        {scheduleForm.stops.map((stop, index) => (
-                          <StopRow
-                            key={`${editingScheduleId ?? "new"}-${index}`}
-                            stop={stop}
-                            stations={stations}
-                            onChange={(key, value) => updateStop(index, key, value)}
-                            onRemove={() => removeStop(index)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={resetScheduleForm}
-                        className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                      >
-                        양식 초기화
-                      </button>
-                      {editingScheduleId ? (
-                        <button
-                          type="button"
-                          onClick={() => void removeSchedule(editingScheduleId)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
-                        >
-                          삭제
-                        </button>
-                      ) : null}
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
-                        disabled={isSavingSchedule}
-                      >
-                        {isSavingSchedule ? "저장 중..." : "저장"}
-                      </button>
-                    </div>
-                  </form>
-                </AdminPanel>
-              </div>
+          <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            <AdminPanel title="일정 유형">
+              <ScheduleTypeForm
+                form={typeForm}
+                editingTypeCode={editingTypeCode}
+                onChange={setTypeForm}
+                onReset={resetTypeForm}
+                onSubmit={handleTypeSubmit}
+                isSaving={isSavingType}
+              />
+              <ScheduleTypeTable
+                scheduleTypes={scheduleTypes}
+                onEdit={(scheduleType) => {
+                  setEditingTypeCode(scheduleType.schedule_type);
+                  setTypeForm({
+                    code: scheduleType.schedule_type,
+                    name: scheduleType.schedule_type_name,
+                    is_activate: scheduleType.is_activate,
+                  });
+                }}
+                onDelete={(scheduleType) => void removeScheduleType(scheduleType)}
+              />
+            </AdminPanel>
 
-              <div className="mt-6 grid gap-6 xl:grid-cols-2">
-                <AdminPanel title="일정 유형">
-                  <ScheduleTypeForm
-                    form={typeForm}
-                    editingTypeCode={editingTypeCode}
-                    onChange={setTypeForm}
-                    onReset={resetTypeForm}
-                    onSubmit={handleTypeSubmit}
-                    isSaving={isSavingType}
-                  />
-                  <ScheduleTypeTable
-                    scheduleTypes={scheduleTypes}
-                    onEdit={(scheduleType) => {
-                      setEditingTypeCode(scheduleType.schedule_type);
-                      setTypeForm({
-                        code: scheduleType.schedule_type,
-                        name: scheduleType.schedule_type_name,
-                        is_activate: scheduleType.is_activate,
-                      });
-                    }}
-                    onDelete={(scheduleType) => void removeScheduleType(scheduleType)}
-                  />
-                </AdminPanel>
-
-                <AdminPanel title="일정 예외">
-                  <ExceptionForm
-                    form={exceptionForm}
-                    scheduleTypes={scheduleTypes}
-                    getScheduleTypeLabel={getScheduleTypeLabel}
-                    onChange={setExceptionForm}
-                    onReset={resetExceptionForm}
-                    onSubmit={handleExceptionSubmit}
-                    isSaving={isSavingException}
-                  />
-                  <ExceptionTable
-                    exceptions={exceptions}
-                    onEdit={(exception) =>
-                      setExceptionForm({
-                        id: exception.id,
-                        start_date: exception.start_date,
-                        end_date: exception.end_date,
-                        schedule_type: exception.schedule_type,
-                        reason: exception.reason ?? "",
-                        is_activate: exception.is_activate,
-                        include_weekday: exception.include_weekday,
-                        include_weekday_friday: exception.include_weekday_friday,
-                        include_saturday: exception.include_saturday,
-                        include_sunday: exception.include_sunday,
-                        include_holiday: exception.include_holiday,
-                      })
-                    }
-                    onDelete={(exceptionId) => void removeException(exceptionId)}
-                  />
-                </AdminPanel>
-              </div>
-            </>
-          )}
-        </main>
-      </div>
-    </div>
+            <AdminPanel title="일정 예외">
+              <ExceptionForm
+                form={exceptionForm}
+                scheduleTypes={scheduleTypes}
+                getScheduleTypeLabel={getScheduleTypeLabel}
+                onChange={setExceptionForm}
+                onReset={resetExceptionForm}
+                onSubmit={handleExceptionSubmit}
+                isSaving={isSavingException}
+              />
+              <ExceptionTable
+                exceptions={exceptions}
+                onEdit={(exception) =>
+                  setExceptionForm({
+                    id: exception.id,
+                    start_date: exception.start_date,
+                    end_date: exception.end_date,
+                    schedule_type: exception.schedule_type,
+                    reason: exception.reason ?? "",
+                    is_activate: exception.is_activate,
+                    include_weekday: exception.include_weekday,
+                    include_weekday_friday: exception.include_weekday_friday,
+                    include_saturday: exception.include_saturday,
+                    include_sunday: exception.include_sunday,
+                    include_holiday: exception.include_holiday,
+                  })
+                }
+                onDelete={(exceptionId) => void removeException(exceptionId)}
+              />
+            </AdminPanel>
+          </div>
+        </>
+      )}
+    </AdminShell>
   );
 }

@@ -65,7 +65,7 @@ function route(report: AdminTaxiReport) {
 
 function ReasonBadge({ reason }: { reason: TaxiReportReason }) {
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${reasonStyles[reason]}`}>
+    <span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${reasonStyles[reason]}`}>
       {reasonLabels[reason] ?? reason}
     </span>
   );
