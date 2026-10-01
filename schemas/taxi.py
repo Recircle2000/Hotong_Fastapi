@@ -168,6 +168,15 @@ class TaxiActionResponse(BaseModel):
     success: bool = True
 
 
+class TaxiPushTokenRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=512)
+    platform: Literal["android", "ios"]
+
+
+class TaxiPushTokenDeleteRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=512)
+
+
 TaxiReportReason = Literal["no_show", "abuse", "payment", "other"]
 
 

@@ -7,6 +7,8 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 os.environ.setdefault("SUPABASE_URL", "sqlite://")
+# 로컬 .env에 실제 서비스 계정 키가 있어도 테스트에서는 FCM에 보내지 않는다.
+os.environ["FIREBASE_CREDENTIALS_B64"] = ""
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -14,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from database import get_db
-from models import Base, TaxiLocation, TaxiParty
+from models import Base, TaxiLocation, TaxiParty, TaxiPushToken
 from routers import app_auth, taxi
 from schemas.app_auth import CurrentAppUser
 from services.taxi_sanction import anonymous_user_key, issue_sanction
@@ -208,6 +210,29 @@ class TaxiApiTests(unittest.TestCase):
         deleted = self.client.delete("/api/app-auth/me")
         self.assertEqual(deleted.status_code, 204)
         self.assertEqual(deleted.headers["cache-control"], "no-store")
+
+    def test_push_token_is_registered_and_removed(self):
+        registered = self.client.put(
+            "/api/taxi/me/push-token",
+            json={"token": "device-token", "platform": "android"},
+        )
+        self.assertEqual(registered.status_code, 204)
+        self.assertEqual(registered.headers["cache-control"], "no-store")
+        with self.SessionLocal() as db:
+            self.assertEqual(db.get(TaxiPushToken, "device-token").user_id, self.current_user_id)
+
+        invalid = self.client.put(
+            "/api/taxi/me/push-token",
+            json={"token": "device-token", "platform": "web"},
+        )
+        self.assertEqual(invalid.status_code, 422)
+
+        removed = self.client.request(
+            "DELETE", "/api/taxi/me/push-token", json={"token": "device-token"}
+        )
+        self.assertEqual(removed.status_code, 204)
+        with self.SessionLocal() as db:
+            self.assertIsNone(db.get(TaxiPushToken, "device-token"))
 
     def test_join_is_idempotent_and_owner_cannot_leave(self):
         created, _ = self._create_party()

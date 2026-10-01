@@ -28,6 +28,8 @@ from schemas.taxi import (
     TaxiPartyListResponse,
     TaxiPartySummaryResponse,
     TaxiPartyUpdateRequest,
+    TaxiPushTokenDeleteRequest,
+    TaxiPushTokenRequest,
     TaxiReadRequest,
     TaxiReadResponse,
     TaxiRecruitmentRequest,
@@ -55,6 +57,7 @@ from services.taxi import (
     set_recruitment,
     update_party,
 )
+from services.taxi_push import register_token, remove_token
 from services.taxi_report import create_report
 from services.taxi_sanction import (
     acknowledge_sanction,
@@ -71,6 +74,7 @@ from utils.taxi_realtime import (
     publish_message,
     publish_party_updated,
     publish_user_events,
+    schedule_message_push,
     taxi_user_channel,
 )
 
@@ -184,7 +188,7 @@ async def patch_taxi_party(
             update_party, db, party_id, current_user.user_id, payload
         )
         if message is not None:
-            await publish_message(db, message)
+            await publish_message(db, message, push_exclude=current_user.user_id)
         await publish_party_updated(db, party.id)
         return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
@@ -202,7 +206,7 @@ async def join_taxi_party(
     try:
         party, message = await run_in_threadpool(join_party, db, party_id, current_user.user_id)
         if message is not None:
-            await publish_message(db, message)
+            await publish_message(db, message, push_exclude=current_user.user_id)
         await publish_party_updated(db, party.id)
         return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
@@ -240,7 +244,7 @@ async def cancel_taxi_party(
             cancel_party, db, party_id, current_user.user_id, payload.reason
         )
         if message is not None:
-            await publish_message(db, message)
+            await publish_message(db, message, push_exclude=current_user.user_id)
         await publish_party_updated(db, party_id)
         return TaxiActionResponse()
     except TaxiServiceError as exc:
@@ -261,7 +265,8 @@ async def update_taxi_recruitment(
             set_recruitment, db, party_id, current_user.user_id, payload.is_open
         )
         if message is not None:
-            await publish_message(db, message)
+            # 모집 마감·재개는 채팅방 안내로 충분해 푸시는 보내지 않는다.
+            await publish_message(db, message, push=False)
         await publish_party_updated(db, party_id)
         return TaxiActionResponse()
     except TaxiServiceError as exc:
@@ -347,6 +352,26 @@ def acknowledge_my_taxi_sanction(
         _raise_service_error(exc)
 
 
+@router.put("/me/push-token", status_code=status.HTTP_204_NO_CONTENT)
+def register_my_taxi_push_token(
+    payload: TaxiPushTokenRequest,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    register_token(db, current_user.user_id, payload.token, payload.platform)
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/me/push-token", status_code=status.HTTP_204_NO_CONTENT)
+def remove_my_taxi_push_token(
+    payload: TaxiPushTokenDeleteRequest,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    remove_token(db, current_user.user_id, payload.token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+
+
 @router.post(
     "/parties/{party_id}/reports",
     response_model=TaxiReportResponse,
@@ -388,7 +413,7 @@ def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
             event.client_message_id,
             event.content,
         )
-        return build_message_events(db, message)
+        return build_message_events(db, message), message.id
 
 
 @websocket_router.websocket("/ws/taxi")
@@ -432,8 +457,11 @@ async def taxi_websocket(websocket: WebSocket):
                 continue
             try:
                 event = TaxiMessageSendEvent.model_validate(raw)
-                fanout = await asyncio.to_thread(_save_socket_message, current_user.user_id, event)
+                fanout, message_id = await asyncio.to_thread(
+                    _save_socket_message, current_user.user_id, event
+                )
                 published = await publish_user_events(fanout)
+                schedule_message_push(message_id)
                 if not published:
                     own_event = next(
                         (payload for user_id, payload in fanout if user_id == current_user.user_id),

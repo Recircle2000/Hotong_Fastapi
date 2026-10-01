@@ -12,6 +12,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 os.environ["SUPABASE_URL"] = "sqlite:///:memory:"
 os.environ.pop("SUPABASE_PASSWORD", None)
+# 로컬 .env에 실제 서비스 계정 키가 있어도 테스트에서는 FCM에 보내지 않는다.
+os.environ["FIREBASE_CREDENTIALS_B64"] = ""
 
 from database import get_db
 from models import Base, TaxiLocation, User

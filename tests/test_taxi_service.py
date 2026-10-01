@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 os.environ.setdefault("SUPABASE_URL", "sqlite://")
+# 로컬 .env에 실제 서비스 계정 키가 있어도 테스트에서는 FCM에 보내지 않는다.
+os.environ["FIREBASE_CREDENTIALS_B64"] = ""
 
 from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql
