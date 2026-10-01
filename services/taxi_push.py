@@ -107,7 +107,8 @@ def build_push(
             body = f"{_member_label(party, sender)}: {body}"
     return TaxiPush(
         tokens=tokens,
-        title=f"{party.departure_location.name} → {party.destination_location.name}",
+        # 알림만 봐도 어떤 알림인지 알 수 있게 제목 앞에 서비스 이름을 붙인다.
+        title=f"택시팟 · {party.departure_location.name} → {party.destination_location.name}",
         body=body,
         data={"type": "taxi_message", "party_id": str(party.id)},
     )

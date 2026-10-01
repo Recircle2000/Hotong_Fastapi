@@ -94,7 +94,7 @@ class TaxiPushTests(unittest.TestCase):
         push = build_push(self.db, self._chat(self.user_id))
 
         self.assertEqual(push.tokens, ["owner-token"])
-        self.assertEqual(push.title, "아산캠퍼스 → 천안아산역")
+        self.assertEqual(push.title, "택시팟 · 아산캠퍼스 → 천안아산역")
         self.assertEqual(push.body, "참여자 1: 정문 앞에 있어요")
         self.assertEqual(push.data, {"type": "taxi_message", "party_id": str(self.party.id)})
 
