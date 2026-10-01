@@ -40,6 +40,8 @@ export function AdminLayout() {
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
+                    // "/shuttle"이 "/shuttle/timetable"에서도 켜지지 않게 정확히 일치할 때만 표시한다.
+                    end
                     className={({ isActive }) =>
                       `relative block rounded-lg px-3 py-2.5 text-sm transition ${
                         isActive

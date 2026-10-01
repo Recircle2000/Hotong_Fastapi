@@ -96,3 +96,34 @@ export interface ShuttleCacheResponse {
   message: string;
   success?: boolean;
 }
+
+export interface ShuttleTimetableStation {
+  station_id: number;
+  station_name: string;
+  stop_order: number;
+}
+
+export interface ShuttleTimetableRow {
+  number: number;
+  schedule_id: number;
+  times: string[];
+}
+
+export interface ShuttleTimetableRoute {
+  route_id: number;
+  route_name: string;
+  direction: string;
+  stations: ShuttleTimetableStation[];
+  rows: ShuttleTimetableRow[];
+  schedule_count: number;
+}
+
+export interface ShuttleTimetableSection {
+  anchor_id: string;
+  schedule_type: string;
+  schedule_type_name: string;
+  is_active: boolean;
+  routes: ShuttleTimetableRoute[];
+  route_count: number;
+  schedule_count: number;
+}

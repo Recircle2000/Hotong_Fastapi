@@ -17,6 +17,7 @@ import type {
   NoticePayload,
   SessionResponse,
 } from "./types";
+import type { ShuttleTimetableSection } from "./shuttleTypes";
 
 const API_BASE = "/api/admin-v2";
 
@@ -291,4 +292,8 @@ export function revokeAdminTaxiSanction(id: number, reason: string) {
     method: "POST",
     body: { reason },
   });
+}
+
+export function getAdminShuttleTimetable() {
+  return apiRequest<ShuttleTimetableSection[]>("/shuttle-timetable");
 }

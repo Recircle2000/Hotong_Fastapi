@@ -28,6 +28,8 @@ def taxi_user_channel(user_id: UUID) -> str:
     return f"taxi:user:{user_id}"
 
 
+# REDIS_ENABLED=false는 캐시만 끈다. 택시 실시간 전달(pub/sub)은 대체 수단이 없어
+# 이 설정과 상관없이 항상 Redis에 연결한다. Redis 컨테이너는 계속 떠 있어야 한다.
 @lru_cache(maxsize=1)
 def get_async_redis() -> Redis:
     return Redis(

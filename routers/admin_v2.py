@@ -30,6 +30,7 @@ from schemas.admin_v2 import (
     AdminTaxiSanctionListResponse,
     AdminTaxiSanctionResponse,
     AdminTaxiSanctionRevokeRequest,
+    AdminShuttleTimetableSection,
 )
 from services.admin_taxi import (
     create_admin_taxi_location,
@@ -76,6 +77,7 @@ from services.admin_shuttle_station import (
     serialize_shuttle_station,
     update_admin_shuttle_station,
 )
+from services.shuttle_timetable import build_admin_shuttle_timetable
 from utils.redis_client import delete_pattern
 from services.app_settings import get_taxi_setting_updated_at, is_taxi_enabled, set_taxi_enabled
 from services.taxi import TaxiServiceError, cancel_party
@@ -275,6 +277,18 @@ async def get_admin_v2_shuttle_stations(
         serialize_shuttle_station(station)
         for station in list_admin_shuttle_stations(db)
     ]
+
+
+@router.get(
+    "/shuttle-timetable",
+    response_model=list[AdminShuttleTimetableSection],
+)
+async def get_admin_v2_shuttle_timetable(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return build_admin_shuttle_timetable(db)
 
 
 @router.post(

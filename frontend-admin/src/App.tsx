@@ -11,6 +11,7 @@ import { TaxiLocationsPage } from "./pages/TaxiLocationsPage";
 import { TaxiPartiesPage } from "./pages/TaxiPartiesPage";
 import { TaxiReportsPage } from "./pages/TaxiReportsPage";
 import { TaxiSanctionsPage } from "./pages/TaxiSanctionsPage";
+import { ShuttleTimetablePage } from "./pages/ShuttleTimetablePage";
 
 export function App() {
   return (
@@ -23,6 +24,7 @@ export function App() {
             <Route path="/emergency-notices" element={<EmergencyNoticePage />} />
             <Route path="/notices" element={<NoticesPage />} />
             <Route path="/shuttle" element={<ShuttlePage />} />
+            <Route path="/shuttle/timetable" element={<ShuttleTimetablePage />} />
             <Route path="/shuttle-stations" element={<ShuttleStationsPage />} />
             <Route path="/taxi-locations" element={<TaxiLocationsPage />} />
             <Route path="/taxi-parties" element={<TaxiPartiesPage />} />

@@ -10,7 +10,8 @@ export const navGroups = [
   {
     label: "셔틀",
     items: [
-      { path: "/shuttle", label: "시간표" },
+      { path: "/shuttle", label: "시간표 관리" },
+      { path: "/shuttle/timetable", label: "전체 시간표" },
       { path: "/shuttle-stations", label: "정류장" },
     ],
   },

@@ -7,7 +7,7 @@ import os
 import json
 from dotenv import load_dotenv
 import redis
-from utils.redis_client import redis_client, set_cache, get_cache, delete_cache, delete_pattern
+from utils.redis_client import REDIS_ENABLED, set_cache, get_cache, delete_cache, delete_pattern
 from utils.security import get_current_admin
 from datetime import datetime, timedelta, time
 import logging
@@ -112,6 +112,11 @@ last_timetable_update = 0
 # 재사용 HTTP 클라이언트
 bus_http_client: Optional[httpx.AsyncClient] = None
 route_fetch_tasks: Dict[str, asyncio.Task] = {}
+latest_bus_data: Dict[str, List[dict]] = {}
+
+
+def get_latest_bus_data(route_name: str) -> Optional[List[dict]]:
+    return get_cache(route_name) if REDIS_ENABLED else latest_bus_data.get(route_name)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -207,7 +212,7 @@ def build_bus_message(route_names: Optional[Tuple[str, ...]] = None) -> str:
     target_routes = route_names or WS_ROUTE_GROUPS["all"]
 
     for route_name in target_routes:
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
         if cached_data:
             filtered_data = []
             for bus in cached_data:
@@ -242,11 +247,13 @@ async def fetch_bus_data_deduplicated(
 
     if not route_should_check:
         delete_cache(route_name)
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         if log_context:
             log_context.skipped.add(route_name)
         return None
 
-    if use_cache:
+    if use_cache and REDIS_ENABLED:
         cached_data = get_cache(route_name)
         if cached_data is not None:
             if log_context:
@@ -420,6 +427,8 @@ async def fetch_bus_data(
     if not route_should_check:
         # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
         delete_cache(route_name)
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
         return None
 
@@ -436,6 +445,8 @@ async def fetch_bus_data(
         # 데이터가 없는 경우 처리
         if not data["response"]["body"]["items"]:
             delete_cache(route_name)
+            if not REDIS_ENABLED:
+                latest_bus_data.pop(route_name, None)
             if log_context:
                 log_context.external_empty.add(route_name)
             return None
@@ -446,12 +457,16 @@ async def fetch_bus_data(
 
         # Redis에 저장 (TTL BUS_CACHE_TTL 초)
         set_cache(route_name, items, BUS_CACHE_TTL)
+        if not REDIS_ENABLED:
+            latest_bus_data[route_name] = items
         if log_context:
             log_context.external_success.add(route_name)
         # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
         return items
     except Exception as e:
         logger.error(f"[BUS_WS][api_error] route={route_name} error={e}")
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         return None
 
 
@@ -485,7 +500,7 @@ async def broadcast_bus_data(websocket: WebSocket = None):
     available_routes = []
 
     for route_name in ROUTES.keys():
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
             filtered_data = []
@@ -658,7 +673,7 @@ async def get_all_buses():
         if route_name not in ROUTES:
             continue
 
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
 
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
@@ -683,7 +698,7 @@ async def get_bus_by_route(route_name: str):
         raise HTTPException(status_code=404, detail="Route not found")
 
     await ensure_route_data((route_name,))
-    cached_data = get_cache(route_name)
+    cached_data = get_latest_bus_data(route_name)
 
     if not cached_data:
         # 그래도 없으면 데이터 없음 처리
