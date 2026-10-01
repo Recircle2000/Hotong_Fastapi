@@ -80,6 +80,7 @@ from utils.redis_client import delete_pattern
 from services.app_settings import get_taxi_setting_updated_at, is_taxi_enabled, set_taxi_enabled
 from services.taxi import TaxiServiceError, cancel_party
 from utils.taxi_realtime import publish_message, publish_party_updated
+from utils.taxi_push import schedule_taxi_message_push
 
 
 router = APIRouter(prefix="/api/admin-v2", tags=["Admin V2"])
@@ -478,6 +479,7 @@ async def cancel_admin_taxi_party(
         )
         if message is not None:
             await publish_message(db, message)
+            schedule_taxi_message_push(message.id)
         await publish_party_updated(db, party_id)
         return {"success": True}
     except TaxiServiceError as exc:

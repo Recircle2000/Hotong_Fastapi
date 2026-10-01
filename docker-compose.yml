@@ -28,6 +28,9 @@ services:
       - redis
     env_file:
       - .env
+    volumes:
+      # FCM 서비스 계정 키(secrets/fcm-service-account.json)는 저장소에 올리지 않고 서버에만 둔다.
+      - ./secrets:/run/secrets/hotong:ro
     restart: always
     environment:
       TZ: Asia/Seoul

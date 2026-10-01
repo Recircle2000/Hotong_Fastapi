@@ -23,6 +23,14 @@ DATABASE_SCHEMA=bus_service
 `SUPABASE_URL`에는 Supabase 대시보드의 session pooler DSN 템플릿을 넣고, 비밀번호 자리는 `[YOUR-PASSWORD]` placeholder로 유지합니다. 실제 비밀번호는 `SUPABASE_PASSWORD`에 별도로 넣습니다.
 기본 스키마는 `DATABASE_SCHEMA=bus_service`를 사용합니다.
 
+### 3. 택시 채팅 푸시 알림(FCM, 선택)
+Firebase 콘솔 > 프로젝트 설정 > 서비스 계정에서 새 비공개 키를 받아 서버의 `secrets/fcm-service-account.json`에 두고 `.env`에 다음을 추가합니다.
+```
+FCM_SERVICE_ACCOUNT_FILE=/run/secrets/hotong/fcm-service-account.json
+```
+파일 대신 키 JSON을 한 줄로 `FCM_SERVICE_ACCOUNT_JSON`에 넣어도 됩니다. 둘 다 없으면 서버는 푸시만 보내지 않고 나머지는 그대로 동작합니다.
+`secrets/` 디렉터리는 `.gitignore`에 들어 있으니 커밋하지 마세요.
+
 ## 배포 과정
 
 ### 1. 프로젝트 클론 및 이동

@@ -21,3 +21,6 @@ frontend-admin/node_modules/
 frontend-admin/dist/
 frontend-admin/*.tsbuildinfo
 nginx/static/admin-v2/
+
+# FCM 서비스 계정 키 등 서버 전용 비밀 파일
+secrets/

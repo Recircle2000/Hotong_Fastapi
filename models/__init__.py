@@ -14,3 +14,4 @@ from .taxi import TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
 from .app_setting import AppSetting
 from .taxi_sanction import TaxiSanction, TaxiSanctionHold
 from .taxi_report import TaxiReport
+from .push_device import PushDevice

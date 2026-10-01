@@ -73,6 +73,7 @@ from utils.taxi_realtime import (
     publish_user_events,
     taxi_user_channel,
 )
+from utils.taxi_push import schedule_taxi_message_push
 
 
 router = APIRouter(prefix="/api/taxi", tags=["Taxi"])
@@ -203,6 +204,7 @@ async def join_taxi_party(
         party, message = await run_in_threadpool(join_party, db, party_id, current_user.user_id)
         if message is not None:
             await publish_message(db, message)
+            schedule_taxi_message_push(message.id, current_user.user_id)
         await publish_party_updated(db, party.id)
         return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
     except TaxiServiceError as exc:
@@ -220,6 +222,7 @@ async def leave_taxi_party(
     try:
         message = await run_in_threadpool(leave_party, db, party_id, current_user.user_id)
         await publish_message(db, message)
+        schedule_taxi_message_push(message.id, current_user.user_id)
         await publish_party_updated(db, party_id)
         return TaxiActionResponse()
     except TaxiServiceError as exc:
@@ -241,6 +244,7 @@ async def cancel_taxi_party(
         )
         if message is not None:
             await publish_message(db, message)
+            schedule_taxi_message_push(message.id, current_user.user_id)
         await publish_party_updated(db, party_id)
         return TaxiActionResponse()
     except TaxiServiceError as exc:
@@ -388,7 +392,7 @@ def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
             event.client_message_id,
             event.content,
         )
-        return build_message_events(db, message)
+        return message.id, build_message_events(db, message)
 
 
 @websocket_router.websocket("/ws/taxi")
@@ -432,8 +436,11 @@ async def taxi_websocket(websocket: WebSocket):
                 continue
             try:
                 event = TaxiMessageSendEvent.model_validate(raw)
-                fanout = await asyncio.to_thread(_save_socket_message, current_user.user_id, event)
+                message_id, fanout = await asyncio.to_thread(
+                    _save_socket_message, current_user.user_id, event
+                )
                 published = await publish_user_events(fanout)
+                schedule_taxi_message_push(message_id)
                 if not published:
                     own_event = next(
                         (payload for user_id, payload in fanout if user_id == current_user.user_id),
