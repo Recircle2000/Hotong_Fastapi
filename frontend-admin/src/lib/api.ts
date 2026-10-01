@@ -1,6 +1,16 @@
 import type {
+  AdminAppSettings,
   AdminShuttleStation,
   AdminShuttleStationPayload,
+  AdminTaxiLocation,
+  AdminTaxiLocationPayload,
+  AdminTaxiPartyList,
+  AdminTaxiReportDetail,
+  AdminTaxiReportList,
+  AdminTaxiSanction,
+  AdminTaxiSanctionList,
+  TaxiSanctionLevel,
+  TaxiReportStatus,
   EmergencyNotice,
   EmergencyNoticePayload,
   Notice,
@@ -60,10 +70,16 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     : await response.text();
 
   if (!response.ok) {
-    const detail =
+    const rawDetail =
       typeof payload === "object" && payload !== null && "detail" in payload
-        ? String(payload.detail)
-        : "요청을 처리하지 못했습니다.";
+        ? payload.detail
+        : null;
+    const detail =
+      typeof rawDetail === "string"
+        ? rawDetail
+        : typeof rawDetail === "object" && rawDetail !== null && "message" in rawDetail
+          ? String(rawDetail.message)
+          : "요청을 처리하지 못했습니다.";
     throw new ApiError(response.status, detail);
   }
 
@@ -159,6 +175,122 @@ export function updateAdminShuttleStation(
 export function deleteAdminShuttleStation(id: number) {
   return apiRequest<void>(`/shuttle-stations/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function getAdminAppSettings() {
+  return apiRequest<AdminAppSettings>("/app-settings");
+}
+
+export function updateAdminTaxiEnabled(taxiEnabled: boolean) {
+  return apiRequest<AdminAppSettings>("/app-settings", {
+    method: "PUT",
+    body: { taxi_enabled: taxiEnabled },
+  });
+}
+
+export function getAdminTaxiLocations() {
+  return apiRequest<AdminTaxiLocation[]>("/taxi-locations");
+}
+
+export function createAdminTaxiLocation(payload: AdminTaxiLocationPayload) {
+  return apiRequest<AdminTaxiLocation>("/taxi-locations", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateAdminTaxiLocation(id: number, payload: AdminTaxiLocationPayload) {
+  return apiRequest<AdminTaxiLocation>(`/taxi-locations/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteAdminTaxiLocation(id: number) {
+  return apiRequest<void>(`/taxi-locations/${id}`, { method: "DELETE" });
+}
+
+export function getAdminTaxiParties(params: {
+  status_filter?: string;
+  departure_location_id?: number;
+  destination_location_id?: number;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiPartyList>(`/taxi-parties${query ? `?${query}` : ""}`);
+}
+
+export function cancelAdminTaxiParty(id: string, reason: string) {
+  return apiRequest<{ success: boolean }>(`/taxi-parties/${id}/cancel`, {
+    method: "POST",
+    body: { reason },
+  });
+}
+
+export function getAdminTaxiReports(params: {
+  status?: TaxiReportStatus;
+  target?: string;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiReportList>(`/taxi-reports${query ? `?${query}` : ""}`);
+}
+
+export function getAdminTaxiReport(id: number) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${id}`);
+}
+
+export function updateAdminTaxiReport(
+  id: number,
+  payload: { status: TaxiReportStatus; admin_note: string | null },
+) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function createAdminTaxiSanction(
+  reportId: number,
+  payload: {
+    level: TaxiSanctionLevel;
+    reason: string;
+    admin_note: string | null;
+    resolve_pending_reports: boolean;
+  },
+) {
+  return apiRequest<AdminTaxiReportDetail>(`/taxi-reports/${reportId}/sanction`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function getAdminTaxiSanctions(params: {
+  active?: boolean;
+  target?: string;
+  cursor?: string;
+}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  });
+  const query = search.toString();
+  return apiRequest<AdminTaxiSanctionList>(`/taxi-sanctions${query ? `?${query}` : ""}`);
+}
+
+export function revokeAdminTaxiSanction(id: number, reason: string) {
+  return apiRequest<AdminTaxiSanction>(`/taxi-sanctions/${id}/revoke`, {
+    method: "POST",
+    body: { reason },
   });
 }
 

@@ -73,6 +73,7 @@ docker-compose ps
 
 Redis 캐시 사용 여부는 `REDIS_ENABLED`로 전환합니다. 생략하면 기존과 같이 `true`입니다.
 셸 환경변수가 `.env`의 값보다 우선하도록 Compose의 `api` 서비스에 전달됩니다.
+이 설정은 캐시에만 적용됩니다. 택시팟 실시간 채팅은 `false`여도 Redis를 계속 사용하므로 Redis 컨테이너는 내리지 않습니다.
 
 ```bash
 REDIS_ENABLED=true docker compose up -d --build

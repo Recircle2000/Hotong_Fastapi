@@ -27,20 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshSession() {
     try {
       const session = await getSession();
+      // 사용자와 로딩 상태를 같은 전환에서 바꿔야 한다. 로딩만 먼저 끝나면
+      // 사용자가 없는 순간이 생겨 새로고침한 페이지가 로그인 화면으로 튕긴다.
       startTransition(() => {
         setUser(session.user);
+        setIsLoading(false);
       });
       return session.user;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         startTransition(() => {
           setUser(null);
+          setIsLoading(false);
         });
         return null;
       }
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw error;
     }
   }
 

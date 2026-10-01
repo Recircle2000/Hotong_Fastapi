@@ -20,7 +20,7 @@ export function LoginPage() {
   const nextPath = !state?.from || state.from === "/login" ? "/notices" : state.from;
 
   if (!isLoading && user) {
-    return <Navigate to="/notices" replace />;
+    return <Navigate to={nextPath} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

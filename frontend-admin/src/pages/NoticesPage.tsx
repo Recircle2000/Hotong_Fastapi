@@ -1,7 +1,9 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { AdminShell } from "../components/AdminShell";
 import { ToastEditor } from "../components/ToastEditor";
 import { ToastViewer } from "../components/ToastViewer";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -54,7 +56,7 @@ function formatDate(value: string | null) {
 
 export function NoticesPage() {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { showToast } = useToast();
   useDocumentTitle("공지 관리");
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -147,10 +149,6 @@ export function NoticesPage() {
     }
   }
 
-  async function handleLogout() {
-    await logout();
-    navigate("/login", { replace: true });
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -184,272 +182,90 @@ export function NoticesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 lg:pl-60">
-      <aside className="hidden fixed inset-y-0 left-0 z-30 w-60 border-r border-slate-200 bg-slate-900 text-white lg:flex lg:flex-col">
-        <div className="border-b border-white/10 px-6 py-5">
-          <div className="text-lg font-semibold">호통 대시보드</div>
-        </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24">
-          <NavLink
-            to="/notices"
-            className={({ isActive }) =>
-              `block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            공지 관리
-          </NavLink>
-          <NavLink
-            to="/emergency-notices"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            긴급공지 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            셔틀 관리
-          </NavLink>
-          <NavLink
-            to="/shuttle-stations"
-            className={({ isActive }) =>
-              `mt-2 block rounded-lg px-4 py-3 text-sm transition ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`
-            }
-          >
-            정류장 관리
-          </NavLink>
-        </nav>
-        <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-900/95 p-4 backdrop-blur">
+    <AdminShell
+      title="공지 관리"
+      description="공지 등록, 수정, 삭제"
+      actions={
+        <>
           <button
             type="button"
-            onClick={handleLogout}
-            className="w-full rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/15"
+            onClick={openCreateModal}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
-            로그아웃
+            새 공지
           </button>
+        </>
+      }
+      summary={
+        <>
+          <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-2 xl:max-w-xl">
+            <SummaryCard label="전체 공지" value={String(notices.length)} />
+            <SummaryCard label="상단 고정" value={String(pinnedCount)} />
+          </div>
+        </>
+      }
+    >
+      {error ? (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
         </div>
-      </aside>
+      ) : null}
 
-      <div className="min-h-screen min-w-0">
-        <div className="min-w-0">
-          <header className="border-b border-slate-200 bg-white">
-            <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="motion-enter flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h1 className="text-2xl font-semibold text-slate-900">공지 관리</h1>
-                  <p className="mt-1 text-sm text-slate-500">공지 등록, 수정, 삭제</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                    {user?.email}
-                  </div>
-                  <NavLink
-                    to="/notices"
-                    className={({ isActive }) =>
-                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                        isActive
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                      }`
-                    }
-                  >
-                    공지
-                  </NavLink>
-                  <NavLink
-                    to="/emergency-notices"
-                    className={({ isActive }) =>
-                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                        isActive
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                      }`
-                    }
-                  >
-                    긴급공지
-                  </NavLink>
-                  <NavLink
-                    to="/shuttle"
-                    className={({ isActive }) =>
-                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                        isActive
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                      }`
-                    }
-                  >
-                    셔틀
-                  </NavLink>
-                  <NavLink
-                    to="/shuttle-stations"
-                    className={({ isActive }) =>
-                      `rounded-lg border px-4 py-2 text-sm font-medium transition lg:hidden ${
-                        isActive
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                      }`
-                    }
-                  >
-                    정류장
-                  </NavLink>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 lg:hidden"
-                  >
-                    로그아웃
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                  >
-                    새 공지
-                  </button>
-                </div>
-              </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <div className="text-base font-semibold text-slate-900">공지 목록</div>
+        </div>
 
-              <div className="motion-enter motion-enter-delay-1 grid gap-3 sm:grid-cols-2 xl:max-w-xl">
-                <SummaryCard label="전체 공지" value={String(notices.length)} />
-                <SummaryCard label="상단 고정" value={String(pinnedCount)} />
-              </div>
-            </div>
-          </header>
-
-          <main className="motion-enter motion-enter-delay-2 px-4 py-6 sm:px-6 lg:px-8">
-            {error ? (
-              <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {error}
-              </div>
-            ) : null}
-
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <div className="text-base font-semibold text-slate-900">공지 목록</div>
-              </div>
-
-              {isLoading ? (
-                <div className="px-5 py-10 text-sm text-slate-500">공지 목록을 불러오는 중입니다.</div>
-              ) : notices.length === 0 ? (
-                <div className="px-5 py-10 text-sm text-slate-500">등록된 공지가 없습니다.</div>
-              ) : (
-                <>
-                  <div className="hidden overflow-x-auto lg:block">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-600">
-                        <tr>
-                          <th className="px-5 py-3 font-medium">제목</th>
-                          <th className="px-5 py-3 font-medium">유형</th>
-                          <th className="px-5 py-3 font-medium">상태</th>
-                          <th className="px-5 py-3 font-medium">작성일</th>
-                          <th className="px-5 py-3 font-medium">관리</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {notices.map((notice) => (
-                          <tr key={notice.id} className="border-t border-slate-200">
-                            <td className="px-5 py-4">
-                              <button
-                                type="button"
-                                className="max-w-[460px] truncate text-left font-medium text-slate-900 hover:text-blue-700"
-                                onClick={() => setDetailNotice(notice)}
-                              >
-                                {notice.title}
-                              </button>
-                            </td>
-                            <td className="px-5 py-4">
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${TYPE_BADGE_CLASS[notice.notice_type]}`}
-                              >
-                                {NOTICE_TYPE_OPTIONS.find((item) => item.value === notice.notice_type)?.label}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4">
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
-                                {notice.is_pinned ? "상단 고정" : "일반"}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 text-slate-500">
-                              {formatDate(notice.created_at)}
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(notice)}
-                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  수정
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(notice)}
-                                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
-                                >
-                                  삭제
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="grid gap-3 p-4 lg:hidden">
-                    {notices.map((notice) => (
-                      <article
-                        key={notice.id}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <button
-                            type="button"
-                            className="text-left text-base font-semibold text-slate-900"
-                            onClick={() => setDetailNotice(notice)}
-                          >
-                            {notice.title}
-                          </button>
-                          <span className="shrink-0 text-xs text-slate-500">
-                            {formatDate(notice.created_at)}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${TYPE_BADGE_CLASS[notice.notice_type]}`}
-                          >
-                            {NOTICE_TYPE_OPTIONS.find((item) => item.value === notice.notice_type)?.label}
-                          </span>
-                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                            {notice.is_pinned ? "상단 고정" : "일반"}
-                          </span>
-                        </div>
-
-                        <div className="mt-4 flex gap-2">
+        {isLoading ? (
+          <div className="px-5 py-10 text-sm text-slate-500">공지 목록을 불러오는 중입니다.</div>
+        ) : notices.length === 0 ? (
+          <div className="px-5 py-10 text-sm text-slate-500">등록된 공지가 없습니다.</div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="px-5 py-3 font-medium">제목</th>
+                    <th className="px-5 py-3 font-medium">유형</th>
+                    <th className="px-5 py-3 font-medium">상태</th>
+                    <th className="px-5 py-3 font-medium">작성일</th>
+                    <th className="px-5 py-3 font-medium">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {notices.map((notice) => (
+                    <tr key={notice.id} className="border-t border-slate-200">
+                      <td className="px-5 py-4">
+                        <button
+                          type="button"
+                          className="max-w-[460px] truncate text-left font-medium text-slate-900 hover:text-blue-700"
+                          onClick={() => setDetailNotice(notice)}
+                        >
+                          {notice.title}
+                        </button>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${TYPE_BADGE_CLASS[notice.notice_type]}`}
+                        >
+                          {NOTICE_TYPE_OPTIONS.find((item) => item.value === notice.notice_type)?.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                          {notice.is_pinned ? "상단 고정" : "일반"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-500">
+                        {formatDate(notice.created_at)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => openEditModal(notice)}
-                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                           >
                             수정
                           </button>
@@ -461,15 +277,66 @@ export function NoticesPage() {
                             삭제
                           </button>
                         </div>
-                      </article>
-                    ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid gap-3 p-4 lg:hidden">
+              {notices.map((notice) => (
+                <article
+                  key={notice.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      className="text-left text-base font-semibold text-slate-900"
+                      onClick={() => setDetailNotice(notice)}
+                    >
+                      {notice.title}
+                    </button>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {formatDate(notice.created_at)}
+                    </span>
                   </div>
-                </>
-              )}
-            </section>
-          </main>
-        </div>
-      </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${TYPE_BADGE_CLASS[notice.notice_type]}`}
+                    >
+                      {NOTICE_TYPE_OPTIONS.find((item) => item.value === notice.notice_type)?.label}
+                    </span>
+                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                      {notice.is_pinned ? "상단 고정" : "일반"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(notice)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(notice)}
+                      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
 
       {isFormOpen ? (
         <Modal
@@ -582,7 +449,7 @@ export function NoticesPage() {
           <ToastViewer value={detailNotice.content} />
         </Modal>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -606,7 +473,8 @@ function Modal({
   title: string;
   wide?: boolean;
 }) {
-  return (
+  // 페이지 본문(main)은 등장 애니메이션의 transform이 남아 fixed 기준이 되므로 body에 띄운다.
+  return createPortal(
     <div
       className="modal-backdrop-motion fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
       onClick={onClose}
@@ -629,6 +497,7 @@ function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
