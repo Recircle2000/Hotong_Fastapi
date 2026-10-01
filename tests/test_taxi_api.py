@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from database import get_db
-from models import Base, TaxiLocation, TaxiParty, TaxiPushToken
+from models import Base, TaxiLocation, TaxiParty, TaxiPushToken, TaxiSanction
 from routers import app_auth, taxi
 from schemas.app_auth import CurrentAppUser
 from services.taxi_sanction import anonymous_user_key, issue_sanction
@@ -210,6 +210,85 @@ class TaxiApiTests(unittest.TestCase):
         deleted = self.client.delete("/api/app-auth/me")
         self.assertEqual(deleted.status_code, 204)
         self.assertEqual(deleted.headers["cache-control"], "no-store")
+
+    def test_home_bundles_the_separate_reads(self):
+        created, departure_at = self._create_party()
+        target_date = departure_at.astimezone(ZoneInfo("Asia/Seoul")).date().isoformat()
+
+        home = self.client.get(
+            "/api/taxi/home",
+            params={"date": target_date, "include": "locations,history"},
+        )
+        self.assertEqual(home.status_code, 200, home.text)
+        self.assertEqual(home.headers["cache-control"], "no-store")
+        body = home.json()
+
+        # 묶음 응답은 개별 API를 따로 부른 결과와 같아야 한다.
+        self.assertEqual(body["locations"], self.client.get("/api/taxi/locations").json())
+        self.assertEqual(
+            body["parties"],
+            self.client.get("/api/taxi/parties", params={"date": target_date}).json(),
+        )
+        self.assertEqual(
+            body["my_parties"],
+            [self.client.get(f"/api/taxi/parties/{created['id']}").json()],
+        )
+        self.assertEqual(body["my_parties"][0]["members"][0]["label"], "방장")
+        self.assertEqual(
+            body["recent_chats"],
+            self.client.get("/api/taxi/my-parties", params={"scope": "recent_chats"}).json(),
+        )
+        self.assertEqual(
+            body["history"],
+            self.client.get("/api/taxi/my-parties", params={"scope": "history"}).json(),
+        )
+        self.assertEqual(body["restriction"], self.client.get("/api/taxi/me/restriction").json())
+        self.assertEqual(body["restriction"]["user_key"], anonymous_user_key(self.current_user_id))
+
+    def test_home_skips_optional_parts_and_filters_like_the_list(self):
+        created, departure_at = self._create_party()
+        target_date = departure_at.astimezone(ZoneInfo("Asia/Seoul")).date().isoformat()
+        locations = self.client.get("/api/taxi/locations").json()
+
+        plain = self.client.get("/api/taxi/home", params={"date": target_date}).json()
+        self.assertIsNone(plain["locations"])
+        self.assertIsNone(plain["history"])
+        self.assertEqual([item["id"] for item in plain["parties"]["items"]], [created["id"]])
+
+        # 출발지와 도착지를 뒤집으면 검색 목록에서는 빠지지만 내 팟은 그대로다.
+        reversed_route = self.client.get(
+            "/api/taxi/home",
+            params={
+                "date": target_date,
+                "departure_location_id": locations[1]["id"],
+                "destination_location_id": locations[0]["id"],
+            },
+        ).json()
+        self.assertEqual(reversed_route["parties"]["items"], [])
+        self.assertEqual([item["id"] for item in reversed_route["my_parties"]], [created["id"]])
+
+        self.assertEqual(self.client.get("/api/taxi/home").status_code, 422)
+
+    def test_home_shows_suspension(self):
+        now = datetime.now(timezone.utc)
+        with self.SessionLocal() as db:
+            db.add(
+                TaxiSanction(
+                    user_id=self.current_user_id,
+                    level="suspend_3d",
+                    reason="약속 장소에 나오지 않았어요.",
+                    starts_at=now,
+                    ends_at=now + timedelta(days=3),
+                    created_at=now,
+                )
+            )
+            db.commit()
+        today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+
+        body = self.client.get("/api/taxi/home", params={"date": today}).json()
+
+        self.assertEqual(body["restriction"]["suspension"]["level"], "suspend_3d")
+        self.assertEqual(body["my_parties"], [])
 
     def test_push_token_is_registered_and_removed(self):
         registered = self.client.put(

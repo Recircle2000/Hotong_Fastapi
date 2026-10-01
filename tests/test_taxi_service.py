@@ -409,6 +409,53 @@ class TaxiServiceTests(unittest.TestCase):
         # 검색 목록을 보는 비참여자도 갱신할 수 있게 공용 채널에도 알린다.
         publish_list_change.assert_awaited_once_with(party.id)
 
+    def test_party_updated_event_carries_detail_for_each_member(self):
+        party = self._create()
+        join_party(self.db, party.id, self.user_id, now=self.now)
+
+        with patch(
+            "utils.taxi_realtime.publish_user_events",
+            new=AsyncMock(return_value=True),
+        ) as publish, patch(
+            "utils.taxi_realtime.publish_parties_changed",
+            new=AsyncMock(return_value=True),
+        ):
+            asyncio.run(publish_party_updated(self.db, party.id))
+            events = dict(publish.await_args.args[0])
+
+        self.assertCountEqual(events, [self.owner_id, self.user_id])
+        for viewer_id, event in events.items():
+            payload = event["party"]
+            # 앱이 상세를 다시 조회하지 않도록 개별 조회 응답과 같은 내용을 싣는다.
+            expected = get_party_detail(self.db, party.id, viewer_id).model_dump(mode="json")
+            self.assertEqual(payload, expected)
+            self.assertEqual(
+                [member["is_me"] for member in payload["members"]],
+                [viewer_id == self.owner_id, viewer_id == self.user_id],
+            )
+
+    def test_sender_has_read_own_message(self):
+        party = self._create()
+        join_party(self.db, party.id, self.user_id, now=self.now)
+
+        def unread(user_id):
+            return serialize_party_summary(self.db, party, user_id, now=self.now).unread_count
+
+        before = unread(self.user_id)
+        create_chat_message(self.db, party.id, self.owner_id, uuid4(), "정문에서 봬요", now=self.now)
+        create_chat_message(self.db, party.id, self.owner_id, uuid4(), "곧 도착해요", now=self.now)
+
+        self.assertEqual(unread(self.owner_id), 0)
+        self.assertEqual(unread(self.user_id), before + 2)
+
+        # 답장을 보내면 그 앞의 메시지까지 읽은 것으로 본다. 같은 요청을 다시 보내도(재전송) 그대로다.
+        client_id = uuid4()
+        first = create_chat_message(self.db, party.id, self.user_id, client_id, "네", now=self.now)
+        again = create_chat_message(self.db, party.id, self.user_id, client_id, "네", now=self.now)
+        self.assertEqual(first.id, again.id)
+        self.assertEqual(unread(self.user_id), 0)
+        self.assertEqual(unread(self.owner_id), 1)
+
     def test_taxi_disabled_blocks_new_parties_but_keeps_ongoing_ones(self):
         party = self._create()
         join_party(self.db, party.id, self.user_id, now=self.now)

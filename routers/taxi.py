@@ -19,6 +19,7 @@ from database import SessionLocal, get_db
 from schemas.app_auth import CurrentAppUser
 from schemas.taxi import (
     TaxiActionResponse,
+    TaxiHomeResponse,
     TaxiLocationResponse,
     TaxiMessageListResponse,
     TaxiMessageSendEvent,
@@ -49,6 +50,7 @@ from services.taxi import (
     leave_party,
     list_active_locations,
     list_messages,
+    list_my_active_party_details,
     list_my_parties,
     list_parties,
     mark_messages_read,
@@ -102,6 +104,49 @@ def get_taxi_locations(
 ):
     _no_store(response)
     return [serialize_location(location) for location in list_active_locations(db)]
+
+
+@router.get("/home", response_model=TaxiHomeResponse)
+def get_taxi_home(
+    response: Response,
+    target_date: date = Query(alias="date"),
+    departure_location_id: int | None = None,
+    destination_location_id: int | None = None,
+    include_unavailable: bool = False,
+    include: str = Query(default="", pattern="^[a-z,]*$"),
+    limit: int = Query(default=20, ge=1, le=50),
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    """화면 진입·복귀용 묶음 조회. 개별 API 여러 개를 요청 하나로 대신한다."""
+    _no_store(response)
+    wanted = {part for part in include.split(",") if part}
+    user_id = current_user.user_id
+    try:
+        items, next_cursor = list_parties(
+            db,
+            user_id,
+            target_date=target_date,
+            departure_location_id=departure_location_id,
+            destination_location_id=destination_location_id,
+            include_unavailable=include_unavailable,
+            cursor=None,
+            limit=limit,
+        )
+        return TaxiHomeResponse(
+            locations=(
+                [serialize_location(location) for location in list_active_locations(db)]
+                if "locations" in wanted
+                else None
+            ),
+            parties=TaxiPartyListResponse(items=items, next_cursor=next_cursor),
+            my_parties=list_my_active_party_details(db, user_id),
+            recent_chats=list_my_parties(db, user_id, scope="recent_chats"),
+            history=list_my_parties(db, user_id, scope="history") if "history" in wanted else None,
+            restriction=_restriction(db, user_id),
+        )
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
 
 
 @router.get("/parties", response_model=TaxiPartyListResponse)
@@ -324,6 +369,15 @@ def _sanction_response(sanction) -> TaxiSanctionResponse | None:
     )
 
 
+def _restriction(db: Session, user_id: UUID) -> TaxiRestrictionResponse:
+    claim_sanction_hold(db, user_id)
+    return TaxiRestrictionResponse(
+        user_key=anonymous_user_key(user_id),
+        suspension=_sanction_response(active_suspension(db, user_id)),
+        notice=_sanction_response(pending_notice(db, user_id)),
+    )
+
+
 @router.get("/me/restriction", response_model=TaxiRestrictionResponse)
 def get_my_taxi_restriction(
     response: Response,
@@ -331,12 +385,7 @@ def get_my_taxi_restriction(
     db: Session = Depends(get_db),
 ):
     _no_store(response)
-    claim_sanction_hold(db, current_user.user_id)
-    return TaxiRestrictionResponse(
-        user_key=anonymous_user_key(current_user.user_id),
-        suspension=_sanction_response(active_suspension(db, current_user.user_id)),
-        notice=_sanction_response(pending_notice(db, current_user.user_id)),
-    )
+    return _restriction(db, current_user.user_id)
 
 
 @router.post("/me/sanctions/{sanction_id}/ack", status_code=status.HTTP_204_NO_CONTENT)

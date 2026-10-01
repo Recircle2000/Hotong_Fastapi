@@ -371,9 +371,20 @@ def serialize_party_detail(
     summary = serialize_party_summary(db, party, user_id, now=now)
     membership = _active_membership(db, party.id, user_id)
     members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
+    return _build_party_detail(party, summary, members, user_id, is_member=membership is not None)
+
+
+def _build_party_detail(
+    party: TaxiParty,
+    summary: TaxiPartySummaryResponse,
+    members: list[TaxiPartyMember],
+    user_id: UUID,
+    *,
+    is_member: bool,
+) -> TaxiPartyDetailResponse:
     return TaxiPartyDetailResponse(
         **summary.model_dump(),
-        member_note=party.member_note if membership is not None else None,
+        member_note=party.member_note if is_member else None,
         members=[
             TaxiMemberResponse(
                 label=_member_label(party, member),
@@ -1009,12 +1020,39 @@ def serialize_message(db: Session, message: TaxiMessage, viewer_id: UUID) -> Tax
     return serialize_messages(db, party, [message], viewer_id)[0]
 
 
-def party_member_summaries(
+def party_member_details(
     db: Session,
     party_id: UUID,
-) -> list[tuple[UUID, TaxiPartySummaryResponse]]:
-    """Per-member summaries for a party.updated realtime fan-out."""
-    return serialize_party_summaries_for_members(db, _load_party(db, party_id))
+) -> list[tuple[UUID, TaxiPartyDetailResponse]]:
+    """참여자별 팟 상세. 실시간 알림에 실어 앱이 상세를 다시 조회하지 않게 한다.
+
+    참여자 목록은 한 번만 읽고, 보는 사람에 따라 달라지는 값(is_me 등)만 바꾼다.
+    """
+    party = _load_party(db, party_id)
+    summaries = serialize_party_summaries_for_members(db, party)
+    if not summaries:
+        return []
+    members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
+    return [
+        (user_id, _build_party_detail(party, summary, members, user_id, is_member=True))
+        for user_id, summary in summaries
+    ]
+
+
+def list_my_active_party_details(
+    db: Session,
+    user_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> list[TaxiPartyDetailResponse]:
+    """출발 전인 내 팟을 상세 형태로. 한 번에 하나만 참여할 수 있어 대개 0~1건이다."""
+    current = as_utc(now or utc_now())
+    details = []
+    for summary in list_my_parties(db, user_id, scope="active", now=current):
+        party = _load_party(db, summary.id)
+        members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
+        details.append(_build_party_detail(party, summary, members, user_id, is_member=True))
+    return details
 
 
 def message_fanout(
@@ -1083,7 +1121,8 @@ def create_chat_message(
     if existing is not None:
         return existing
     party = _load_party(db, party_id)
-    if _active_membership(db, party.id, user_id) is None:
+    membership = _active_membership(db, party.id, user_id)
+    if membership is None:
         raise TaxiServiceError(403, "MEMBERSHIP_REQUIRED", "참여자만 채팅을 보낼 수 있습니다.")
     if chat_status(party, now=current) != "writable":
         raise TaxiServiceError(409, "CHAT_READ_ONLY", "종료된 택시팟의 채팅은 읽기 전용입니다.")
@@ -1111,6 +1150,9 @@ def create_chat_message(
     )
     db.add(message)
     try:
+        # 보낸 사람은 자기 메시지까지 읽은 것으로 둔다. 앱이 읽음 요청을 따로 보내지 않아도 된다.
+        db.flush()
+        membership.last_read_message_id = max(membership.last_read_message_id or 0, message.id)
         db.commit()
     except IntegrityError:
         db.rollback()

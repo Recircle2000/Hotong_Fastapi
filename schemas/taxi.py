@@ -222,3 +222,17 @@ class TaxiRestrictionResponse(BaseModel):
     suspension: TaxiSanctionResponse | None = None
     # 아직 확인하지 않은 제재 안내(경고 포함)
     notice: TaxiSanctionResponse | None = None
+
+
+class TaxiHomeResponse(BaseModel):
+    """택시 화면에 들어오거나 돌아올 때 필요한 데이터를 한 번에 내려준다."""
+
+    # 요청한 경우에만 채운다(앱이 잠시 재사용한다).
+    locations: list[TaxiLocationResponse] | None = None
+    parties: TaxiPartyListResponse
+    # 출발 전인 내 팟. 현재팟 화면이 바로 그릴 수 있게 참여자 목록까지 담는다.
+    my_parties: list[TaxiPartyDetailResponse]
+    recent_chats: list[TaxiPartySummaryResponse]
+    # 요청한 경우에만 채운다(내정보 탭).
+    history: list[TaxiPartySummaryResponse] | None = None
+    restriction: TaxiRestrictionResponse

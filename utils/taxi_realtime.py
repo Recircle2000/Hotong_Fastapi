@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from models import TaxiMessage
-from services.taxi import message_fanout, party_member_summaries
+from services.taxi import message_fanout, party_member_details
 from services.taxi_push import deliver_message_push, push_enabled
 
 
@@ -98,10 +98,11 @@ def build_party_updated_events(db: Session, party_id: UUID) -> list[tuple[UUID, 
             {
                 "type": "party.updated",
                 "party_id": str(party_id),
-                "party": summary.model_dump(mode="json"),
+                # 상세(참여자 목록 포함)를 실어 앱이 다시 조회하지 않게 한다.
+                "party": detail.model_dump(mode="json"),
             },
         )
-        for user_id, summary in party_member_summaries(db, party_id)
+        for user_id, detail in party_member_details(db, party_id)
     ]
 
 
