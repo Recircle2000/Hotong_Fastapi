@@ -42,9 +42,13 @@ class BusHoldTest(unittest.TestCase):
         bus.latest_bus_data.clear()
         bus.last_good_bus_data.clear()
         self.clock = 1000.0
-        patcher = patch.object(bus.time_module, "monotonic", lambda: self.clock)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        # 다른 테스트가 먼저 불러와 Redis가 켜진 상태여도 메모리 경로로 시험한다.
+        for patcher in (
+            patch.object(bus, "REDIS_ENABLED", False),
+            patch.object(bus.time_module, "monotonic", lambda: self.clock),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def _fetch(self, *responses, should_check=True):
         bus.bus_http_client = _Client(responses)
