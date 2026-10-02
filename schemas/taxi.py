@@ -134,6 +134,8 @@ class TaxiMessageResponse(BaseModel):
     is_mine: bool
     content: str
     created_at: datetime
+    # 보낸 사람 본인에게만 채워 준다. 앱이 전송 중인 메시지와 짝짓는 데 쓴다.
+    client_message_id: UUID | None = None
 
 
 class TaxiMessageListResponse(BaseModel):

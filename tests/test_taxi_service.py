@@ -17,6 +17,7 @@ from sqlalchemy.pool import StaticPool
 from models import AppSetting, Base, TaxiLocation, TaxiMessage, TaxiParty, TaxiPartyMember
 from schemas.taxi import TaxiPartyCreateRequest, TaxiPartyUpdateRequest
 from services.taxi import (
+    message_fanout,
     TaxiServiceError,
     _party_query,
     as_utc,
@@ -455,6 +456,19 @@ class TaxiServiceTests(unittest.TestCase):
         self.assertEqual(first.id, again.id)
         self.assertEqual(unread(self.user_id), 0)
         self.assertEqual(unread(self.owner_id), 1)
+
+        # 보낸 사람에게만 client_message_id를 돌려줘 앱이 전송 중인 메시지와 짝지을 수 있다.
+        mine, _ = list_messages(
+            self.db, party.id, self.user_id, before_id=None, limit=50, now=self.now
+        )
+        theirs, _ = list_messages(
+            self.db, party.id, self.owner_id, before_id=None, limit=50, now=self.now
+        )
+        self.assertEqual(mine[-1].client_message_id, client_id)
+        self.assertIsNone(theirs[-1].client_message_id)
+        fanout = {member_id: message for member_id, message, _ in message_fanout(self.db, first)}
+        self.assertEqual(fanout[self.user_id].client_message_id, client_id)
+        self.assertIsNone(fanout[self.owner_id].client_message_id)
 
     def test_taxi_disabled_blocks_new_parties_but_keeps_ongoing_ones(self):
         party = self._create()

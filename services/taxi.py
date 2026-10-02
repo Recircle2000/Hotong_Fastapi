@@ -1010,6 +1010,11 @@ def serialize_messages(
                 is_mine=message.sender_id == viewer_id,
                 content=message.content,
                 created_at=as_utc(message.created_at),
+                client_message_id=(
+                    message.client_message_id
+                    if viewer_id is not None and message.sender_id == viewer_id
+                    else None
+                ),
             )
         )
     return responses
@@ -1068,7 +1073,14 @@ def message_fanout(
     return [
         (
             member_id,
-            base.model_copy(update={"is_mine": message.sender_id == member_id}),
+            base.model_copy(
+                update={
+                    "is_mine": message.sender_id == member_id,
+                    "client_message_id": (
+                        message.client_message_id if message.sender_id == member_id else None
+                    ),
+                }
+            ),
             summary,
         )
         for member_id, summary in serialize_party_summaries_for_members(db, party)
@@ -1098,6 +1110,22 @@ def list_messages(
     rows.reverse()
     next_before = rows[0].id if has_more and rows else None
     return serialize_messages(db, party, rows, user_id), next_before
+
+
+def find_chat_message_by_client_id(
+    db: Session,
+    user_id: UUID,
+    client_message_id: UUID,
+) -> TaxiMessage | None:
+    """같은 사용자가 같은 client_message_id로 이미 보낸 메시지. 재전송 판별에 쓴다."""
+    return (
+        db.query(TaxiMessage)
+        .filter(
+            TaxiMessage.sender_id == user_id,
+            TaxiMessage.client_message_id == client_message_id,
+        )
+        .first()
+    )
 
 
 def create_chat_message(
