@@ -44,6 +44,7 @@ from services.taxi import (
     as_utc,
     cancel_party,
     create_chat_message,
+    find_chat_message_by_client_id,
     create_party,
     get_party_detail,
     join_party,
@@ -454,7 +455,18 @@ def _authenticate_websocket(token: str) -> tuple[CurrentAppUser, int]:
 
 
 def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
+    """메시지를 저장하고 (보낼 이벤트 목록, 메시지 id, 새로 만들었는지)를 돌려준다."""
     with SessionLocal() as db:
+        existing = find_chat_message_by_client_id(db, user_id, event.client_message_id)
+        if existing is not None:
+            # 앱이 응답을 못 받아 다시 보낸 경우. 다른 참여자에게는 이미 전달됐으므로
+            # 보낸 사람에게만 확인을 돌려주고 알림도 다시 보내지 않는다.
+            own_events = [
+                (member_id, payload)
+                for member_id, payload in build_message_events(db, existing)
+                if member_id == user_id
+            ]
+            return own_events, existing.id, False
         message = create_chat_message(
             db,
             event.party_id,
@@ -462,7 +474,7 @@ def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
             event.client_message_id,
             event.content,
         )
-        return build_message_events(db, message), message.id
+        return build_message_events(db, message), message.id, True
 
 
 @websocket_router.websocket("/ws/taxi")
@@ -504,13 +516,20 @@ async def taxi_websocket(websocket: WebSocket):
             if raw.get("type") == "ping":
                 await send_json({"type": "pong"})
                 continue
+            # 어떤 메시지가 실패했는지 앱이 알 수 있게 오류에도 요청의 식별자를 돌려준다.
+            error_context = {
+                key: raw[key]
+                for key in ("party_id", "client_message_id")
+                if isinstance(raw.get(key), str)
+            }
             try:
                 event = TaxiMessageSendEvent.model_validate(raw)
-                fanout, message_id = await asyncio.to_thread(
+                fanout, message_id, created = await asyncio.to_thread(
                     _save_socket_message, current_user.user_id, event
                 )
                 published = await publish_user_events(fanout)
-                schedule_message_push(message_id)
+                if created:
+                    schedule_message_push(message_id)
                 if not published:
                     own_event = next(
                         (payload for user_id, payload in fanout if user_id == current_user.user_id),
@@ -520,11 +539,16 @@ async def taxi_websocket(websocket: WebSocket):
                         await send_json(own_event)
             except ValidationError:
                 await send_json(
-                    {"type": "error", "code": "INVALID_EVENT", "message": "채팅 요청이 올바르지 않습니다."}
+                    {
+                        "type": "error",
+                        "code": "INVALID_EVENT",
+                        "message": "채팅 요청이 올바르지 않습니다.",
+                        **error_context,
+                    }
                 )
             except TaxiServiceError as exc:
                 await send_json(
-                    {"type": "error", "code": exc.code, "message": exc.message}
+                    {"type": "error", "code": exc.code, "message": exc.message, **error_context}
                 )
 
     async def expire_connection():

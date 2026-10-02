@@ -92,6 +92,11 @@ SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821
 # 버스 데이터 캐시 TTL (초)
 BUS_CACHE_TTL = 5
 
+# 외부 API가 잠깐 비거나 실패해도 마지막으로 확인된 위치를 유지하는 시간 (초).
+# 이 시간 동안 새 위치를 한 번도 못 받으면 운행 없음으로 본다.
+BUS_HOLD_SECONDS = 30
+BUS_LAST_GOOD_PREFIX = "bus:last_good:"
+
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
 MAIN_ROUTES_END_TIME = time(23, 50)  # 오후 10시 15분
@@ -113,10 +118,44 @@ last_timetable_update = 0
 bus_http_client: Optional[httpx.AsyncClient] = None
 route_fetch_tasks: Dict[str, asyncio.Task] = {}
 latest_bus_data: Dict[str, List[dict]] = {}
+# Redis를 쓰지 않을 때의 마지막 확인 위치: 노선 -> (받은 시각, 버스 목록)
+last_good_bus_data: Dict[str, Tuple[float, List[dict]]] = {}
+
+
+def remember_last_good_bus_data(route_name: str, items: List[dict]) -> None:
+    if REDIS_ENABLED:
+        set_cache(BUS_LAST_GOOD_PREFIX + route_name, items, BUS_HOLD_SECONDS)
+    else:
+        last_good_bus_data[route_name] = (time_module.monotonic(), items)
+
+
+def forget_last_good_bus_data(route_name: str) -> None:
+    if REDIS_ENABLED:
+        delete_cache(BUS_LAST_GOOD_PREFIX + route_name)
+    else:
+        last_good_bus_data.pop(route_name, None)
+
+
+def get_last_good_bus_data(route_name: str) -> Optional[List[dict]]:
+    if REDIS_ENABLED:
+        return get_cache(BUS_LAST_GOOD_PREFIX + route_name)
+    held = last_good_bus_data.get(route_name)
+    if held is None:
+        return None
+    received_at, items = held
+    if time_module.monotonic() - received_at > BUS_HOLD_SECONDS:
+        last_good_bus_data.pop(route_name, None)
+        return None
+    return items
 
 
 def get_latest_bus_data(route_name: str) -> Optional[List[dict]]:
-    return get_cache(route_name) if REDIS_ENABLED else latest_bus_data.get(route_name)
+    """화면에 내보낼 버스 위치. 방금 받은 값이 없으면 유지 중인 마지막 위치를 쓴다.
+
+    웹소켓과 /buses 계열 엔드포인트가 모두 이 함수로 읽는다.
+    """
+    fresh = get_cache(route_name) if REDIS_ENABLED else latest_bus_data.get(route_name)
+    return fresh if fresh else get_last_good_bus_data(route_name)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -247,6 +286,7 @@ async def fetch_bus_data_deduplicated(
 
     if not route_should_check:
         delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
         if not REDIS_ENABLED:
             latest_bus_data.pop(route_name, None)
         if log_context:
@@ -425,8 +465,9 @@ async def fetch_bus_data(
         route_should_check = should_check_route(route_name)
 
     if not route_should_check:
-        # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
+        # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴 (유지 중인 위치도 함께 지운다)
         delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
         if not REDIS_ENABLED:
             latest_bus_data.pop(route_name, None)
         # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
@@ -442,7 +483,7 @@ async def fetch_bus_data(
         response.raise_for_status()
         data = response.json()
 
-        # 데이터가 없는 경우 처리
+        # 데이터가 없는 경우 처리. 마지막 확인 위치는 BUS_HOLD_SECONDS 동안 남겨 둔다.
         if not data["response"]["body"]["items"]:
             delete_cache(route_name)
             if not REDIS_ENABLED:
@@ -457,6 +498,7 @@ async def fetch_bus_data(
 
         # Redis에 저장 (TTL BUS_CACHE_TTL 초)
         set_cache(route_name, items, BUS_CACHE_TTL)
+        remember_last_good_bus_data(route_name, items)
         if not REDIS_ENABLED:
             latest_bus_data[route_name] = items
         if log_context:
@@ -728,6 +770,7 @@ async def invalidate_bus_cache(route_name: str = None, current_admin=Depends(get
             raise HTTPException(status_code=404, detail="Route not found")
 
         success = delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
         if success:
             # 캐시 삭제 후 데이터 다시 가져오기
             await fetch_bus_data(route_name, ROUTES[route_name])
@@ -740,6 +783,7 @@ async def invalidate_bus_cache(route_name: str = None, current_admin=Depends(get
         deleted_count = 0
 
         for name in route_names:
+            forget_last_good_bus_data(name)
             if delete_cache(name):
                 deleted_count += 1
 
