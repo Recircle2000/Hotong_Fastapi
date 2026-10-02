@@ -2,11 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
+from auth_config import SupabaseAuthConfig
 from database import get_db
-from schemas.app_auth import AppAuthMeResponse, CurrentAppUser
+from schemas.app_auth import (
+    AppAuthMeResponse,
+    CurrentAppUser,
+    ReviewOtpRequest,
+    ReviewOtpResponse,
+)
 from services.account import delete_account
+from services.review_login import ReviewLoginError, issue_review_otp
 from services.taxi import TaxiServiceError
-from utils.supabase_security import get_current_app_user
+from utils.supabase_security import get_auth_config_dependency, get_current_app_user
 
 
 router = APIRouter(prefix="/api/app-auth", tags=["App Authentication"])
@@ -35,3 +42,24 @@ async def delete_me(
             detail={"code": exc.code, "message": exc.message},
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/review-otp", response_model=ReviewOtpResponse)
+async def create_review_otp(
+    payload: ReviewOtpRequest,
+    response: Response,
+    config: SupabaseAuthConfig = Depends(get_auth_config_dependency),
+) -> ReviewOtpResponse:
+    """앱 심사용 계정이 고정 코드로 일회용 인증번호를 받는다.
+
+    심사자는 메일함을 열 수 없어서, 메일 대신 이 응답으로 인증번호를 받아 평소처럼 인증한다.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        otp = await issue_review_otp(config, payload.email, payload.code)
+    except ReviewLoginError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
+    return ReviewOtpResponse(otp=otp)
