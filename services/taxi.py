@@ -371,7 +371,14 @@ def serialize_party_detail(
     summary = serialize_party_summary(db, party, user_id, now=now)
     membership = _active_membership(db, party.id, user_id)
     members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
-    return _build_party_detail(party, summary, members, user_id, is_member=membership is not None)
+    return _build_party_detail(
+        party,
+        summary,
+        members,
+        user_id,
+        is_member=membership is not None,
+        blocked=_blocked_by(db, [user_id]).get(user_id),
+    )
 
 
 def _build_party_detail(
@@ -381,7 +388,9 @@ def _build_party_detail(
     user_id: UUID,
     *,
     is_member: bool,
+    blocked: set[UUID] | None = None,
 ) -> TaxiPartyDetailResponse:
+    blocked = blocked or set()
     return TaxiPartyDetailResponse(
         **summary.model_dump(),
         member_note=party.member_note if is_member else None,
@@ -391,6 +400,7 @@ def _build_party_detail(
                 is_owner=member.user_id == party.owner_id,
                 is_me=member.user_id == user_id,
                 joined_at=as_utc(member.joined_at),
+                is_blocked=member.user_id in blocked,
             )
             for member in members
         ],
@@ -476,6 +486,19 @@ def _ensure_not_suspended(db: Session, user_id: UUID, now: datetime | None) -> N
     from services.taxi_sanction import ensure_not_suspended
 
     ensure_not_suspended(db, user_id, now)
+
+
+def _blocked_by(db: Session, viewer_ids: list[UUID]) -> dict[UUID, set[UUID]]:
+    # services.taxi_block이 이 모듈을 가져오므로 순환 참조를 피해 여기서 가져온다.
+    from services.taxi_block import blocked_by
+
+    return blocked_by(db, viewer_ids)
+
+
+def _block_related_ids(db: Session, user_id: UUID) -> set[UUID]:
+    from services.taxi_block import related_user_ids
+
+    return related_user_ids(db, user_id)
 
 
 def _lock_user(db: Session, user_id: UUID) -> None:
@@ -687,6 +710,19 @@ def list_parties(
         query = query.filter(TaxiParty.departure_location_id == departure_location_id)
     if destination_location_id is not None:
         query = query.filter(TaxiParty.destination_location_id == destination_location_id)
+    # 차단 관계(어느 쪽이 차단했든)인 사람이 있는 팟은 보여주지 않는다. 내가 이미 참여한 팟은 남긴다.
+    related = _block_related_ids(db, user_id)
+    if related:
+        active_member = db.query(TaxiPartyMember.id).filter(
+            TaxiPartyMember.party_id == TaxiParty.id,
+            TaxiPartyMember.left_at.is_(None),
+        )
+        query = query.filter(
+            or_(
+                ~active_member.filter(TaxiPartyMember.user_id.in_(related)).exists(),
+                active_member.filter(TaxiPartyMember.user_id == user_id).exists(),
+            )
+        )
     items: list[TaxiPartySummaryResponse] = []
     scan_cursor = _decode_cursor(cursor) if cursor else None
     batch_size = max(limit * 2, 50)
@@ -871,6 +907,13 @@ def join_party(
     count = _active_member_count(db, party.id)
     if party_display_status(party, count, now=current) != "recruiting":
         raise TaxiServiceError(409, "PARTY_NOT_JOINABLE", "현재 참여할 수 없는 택시팟입니다.")
+    # 차단 관계인 사람이 있는 팟에는 참여할 수 없다. 차단 사실이 드러나지 않게 같은 문구를 쓴다.
+    related = _block_related_ids(db, user_id)
+    if related and (
+        _active_member_query(db, party.id).filter(TaxiPartyMember.user_id.in_(related)).first()
+        is not None
+    ):
+        raise TaxiServiceError(409, "PARTY_NOT_JOINABLE", "현재 참여할 수 없는 택시팟입니다.")
     _lock_user(db, user_id)
     _ensure_no_active_party(db, user_id, now=current)
     if count >= party.max_members:
@@ -995,6 +1038,7 @@ def serialize_messages(
         if sender_ids
         else {}
     )
+    blocked = _blocked_by(db, [viewer_id]).get(viewer_id, set()) if viewer_id is not None else set()
     responses = []
     for message in messages:
         sender_label = None
@@ -1015,6 +1059,7 @@ def serialize_messages(
                     if viewer_id is not None and message.sender_id == viewer_id
                     else None
                 ),
+                sender_blocked=message.sender_id in blocked,
             )
         )
     return responses
@@ -1038,8 +1083,19 @@ def party_member_details(
     if not summaries:
         return []
     members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
+    blocks = _blocked_by(db, [user_id for user_id, _ in summaries])
     return [
-        (user_id, _build_party_detail(party, summary, members, user_id, is_member=True))
+        (
+            user_id,
+            _build_party_detail(
+                party,
+                summary,
+                members,
+                user_id,
+                is_member=True,
+                blocked=blocks.get(user_id),
+            ),
+        )
         for user_id, summary in summaries
     ]
 
@@ -1053,10 +1109,13 @@ def list_my_active_party_details(
     """출발 전인 내 팟을 상세 형태로. 한 번에 하나만 참여할 수 있어 대개 0~1건이다."""
     current = as_utc(now or utc_now())
     details = []
+    blocked = _blocked_by(db, [user_id]).get(user_id)
     for summary in list_my_parties(db, user_id, scope="active", now=current):
         party = _load_party(db, summary.id)
         members = _active_member_query(db, party.id).order_by(TaxiPartyMember.joined_at.asc()).all()
-        details.append(_build_party_detail(party, summary, members, user_id, is_member=True))
+        details.append(
+            _build_party_detail(party, summary, members, user_id, is_member=True, blocked=blocked)
+        )
     return details
 
 
@@ -1066,10 +1125,16 @@ def message_fanout(
 ) -> list[tuple[UUID, TaxiMessageResponse, TaxiPartySummaryResponse]]:
     """Message and party summary for each active member, with shared lookups.
 
-    Only ``is_mine`` differs per viewer, so the message is serialized once.
+    Only ``is_mine`` and ``sender_blocked`` differ per viewer, so the message is serialized once.
     """
     party = _load_party(db, message.party_id)
     base = serialize_messages(db, party, [message], None)[0]
+    summaries = serialize_party_summaries_for_members(db, party)
+    blocks = (
+        _blocked_by(db, [member_id for member_id, _ in summaries])
+        if message.sender_id is not None
+        else {}
+    )
     return [
         (
             member_id,
@@ -1079,11 +1144,12 @@ def message_fanout(
                     "client_message_id": (
                         message.client_message_id if message.sender_id == member_id else None
                     ),
+                    "sender_blocked": message.sender_id in blocks.get(member_id, ()),
                 }
             ),
             summary,
         )
-        for member_id, summary in serialize_party_summaries_for_members(db, party)
+        for member_id, summary in summaries
     ]
 
 

@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models import TaxiMessage, TaxiPushToken
+from models import TaxiBlock, TaxiMessage, TaxiPushToken
 from services.taxi import _active_member_query, _load_party, _member_label, _membership, as_utc, utc_now
 
 
@@ -89,6 +89,16 @@ def build_push(
         for member in _active_member_query(db, party.id).all()
         if member.user_id not in skipped
     ]
+    if message.message_type == "chat" and message.sender_id is not None and recipients:
+        # 보낸 사람을 차단한 참여자에게는 채팅 알림을 보내지 않는다.
+        blockers = {
+            blocker_id
+            for (blocker_id,) in db.query(TaxiBlock.blocker_id).filter(
+                TaxiBlock.blocked_id == message.sender_id,
+                TaxiBlock.blocker_id.in_(recipients),
+            )
+        }
+        recipients = [user_id for user_id in recipients if user_id not in blockers]
     if not recipients:
         return None
     tokens = [

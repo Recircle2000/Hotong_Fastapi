@@ -91,6 +91,8 @@ class TaxiMemberResponse(BaseModel):
     is_owner: bool
     is_me: bool
     joined_at: datetime
+    # 보는 사람이 차단한 참여자인지
+    is_blocked: bool = False
 
 
 class TaxiPartySummaryResponse(BaseModel):
@@ -136,6 +138,8 @@ class TaxiMessageResponse(BaseModel):
     created_at: datetime
     # 보낸 사람 본인에게만 채워 준다. 앱이 전송 중인 메시지와 짝짓는 데 쓴다.
     client_message_id: UUID | None = None
+    # 보는 사람이 차단한 참여자의 메시지. 앱이 접어서 보여준다.
+    sender_blocked: bool = False
 
 
 class TaxiMessageListResponse(BaseModel):
@@ -224,6 +228,31 @@ class TaxiRestrictionResponse(BaseModel):
     suspension: TaxiSanctionResponse | None = None
     # 아직 확인하지 않은 제재 안내(경고 포함)
     notice: TaxiSanctionResponse | None = None
+    # 이용약관에 아직 동의하지 않았거나 약관이 바뀌어 다시 동의해야 하는지
+    terms_required: bool = False
+
+
+class TaxiTermsAgreeRequest(BaseModel):
+    version: int = Field(..., ge=1)
+
+
+class TaxiBlockCreateRequest(BaseModel):
+    target_label: str = Field(..., min_length=1, max_length=20)
+
+    @field_validator("target_label")
+    @classmethod
+    def normalize_label(cls, value: str) -> str:
+        return value.strip()
+
+
+class TaxiBlockResponse(BaseModel):
+    id: int
+    # 차단 당시 앱에 보이던 익명 라벨과 팟 정보
+    target_label: str
+    departure_location: str
+    destination_location: str
+    departure_at: datetime
+    created_at: datetime
 
 
 class TaxiHomeResponse(BaseModel):
