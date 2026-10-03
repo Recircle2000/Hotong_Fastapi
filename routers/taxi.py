@@ -19,6 +19,8 @@ from database import SessionLocal, get_db
 from schemas.app_auth import CurrentAppUser
 from schemas.taxi import (
     TaxiActionResponse,
+    TaxiBlockCreateRequest,
+    TaxiBlockResponse,
     TaxiHomeResponse,
     TaxiLocationResponse,
     TaxiMessageListResponse,
@@ -38,6 +40,7 @@ from schemas.taxi import (
     TaxiReportResponse,
     TaxiRestrictionResponse,
     TaxiSanctionResponse,
+    TaxiTermsAgreeRequest,
 )
 from services.taxi import (
     TaxiServiceError,
@@ -60,6 +63,7 @@ from services.taxi import (
     set_recruitment,
     update_party,
 )
+from services.taxi_block import block_member, list_blocks, unblock
 from services.taxi_push import register_token, remove_token
 from services.taxi_report import create_report
 from services.taxi_sanction import (
@@ -69,6 +73,7 @@ from services.taxi_sanction import (
     claim_sanction_hold,
     pending_notice,
 )
+from services.taxi_terms import agree_terms, ensure_terms_agreed, terms_required
 from utils.supabase_security import get_current_app_user, get_jwk_resolver, verify_supabase_access_token
 from utils.taxi_realtime import (
     TAXI_PARTIES_CHANNEL,
@@ -199,6 +204,7 @@ async def create_taxi_party(
 ):
     _no_store(response)
     try:
+        await run_in_threadpool(ensure_terms_agreed, db, current_user.user_id)
         party = await run_in_threadpool(create_party, db, current_user.user_id, payload)
         await publish_party_updated(db, party.id)
         return await run_in_threadpool(serialize_party_detail, db, party, current_user.user_id)
@@ -250,6 +256,7 @@ async def join_taxi_party(
 ):
     _no_store(response)
     try:
+        await run_in_threadpool(ensure_terms_agreed, db, current_user.user_id)
         party, message = await run_in_threadpool(join_party, db, party_id, current_user.user_id)
         if message is not None:
             await publish_message(db, message, push_exclude=current_user.user_id)
@@ -376,6 +383,7 @@ def _restriction(db: Session, user_id: UUID) -> TaxiRestrictionResponse:
         user_key=anonymous_user_key(user_id),
         suspension=_sanction_response(active_suspension(db, user_id)),
         notice=_sanction_response(pending_notice(db, user_id)),
+        terms_required=terms_required(db, user_id),
     )
 
 
@@ -398,6 +406,73 @@ def acknowledge_my_taxi_sanction(
     try:
         acknowledge_sanction(db, current_user.user_id, sanction_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
+
+
+@router.put("/me/terms", status_code=status.HTTP_204_NO_CONTENT)
+def agree_my_taxi_terms(
+    payload: TaxiTermsAgreeRequest,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        agree_terms(db, current_user.user_id, payload.version)
+        return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
+
+
+def _block_response(block) -> TaxiBlockResponse:
+    return TaxiBlockResponse(
+        id=block.id,
+        target_label=block.target_label,
+        departure_location=block.departure_name,
+        destination_location=block.destination_name,
+        departure_at=as_utc(block.departure_at),
+        created_at=as_utc(block.created_at),
+    )
+
+
+@router.get("/me/blocks", response_model=list[TaxiBlockResponse])
+def list_my_taxi_blocks(
+    response: Response,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    _no_store(response)
+    return [_block_response(block) for block in list_blocks(db, current_user.user_id)]
+
+
+@router.delete("/me/blocks/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_my_taxi_block(
+    block_id: int,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        unblock(db, current_user.user_id, block_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+    except TaxiServiceError as exc:
+        _raise_service_error(exc)
+
+
+@router.post(
+    "/parties/{party_id}/blocks",
+    response_model=TaxiBlockResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def block_taxi_member(
+    party_id: UUID,
+    payload: TaxiBlockCreateRequest,
+    response: Response,
+    current_user: CurrentAppUser = Depends(get_current_app_user),
+    db: Session = Depends(get_db),
+):
+    # 보복을 막기 위해 차단당한 사람에게는 알리지 않는다.
+    _no_store(response)
+    try:
+        return _block_response(block_member(db, party_id, current_user.user_id, payload.target_label))
     except TaxiServiceError as exc:
         _raise_service_error(exc)
 
@@ -467,6 +542,7 @@ def _save_socket_message(user_id: UUID, event: TaxiMessageSendEvent):
                 if member_id == user_id
             ]
             return own_events, existing.id, False
+        ensure_terms_agreed(db, user_id)
         message = create_chat_message(
             db,
             event.party_id,

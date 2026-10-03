@@ -54,13 +54,17 @@ class TaxiApiTests(unittest.TestCase):
         cls.publish_updated = patch(
             "routers.taxi.publish_party_updated", new=AsyncMock()
         )
+        # 약관 동의는 test_taxi_terms.py에서 따로 확인한다. 여기서는 모든 사용자가 동의한 것으로 둔다.
+        cls.terms_agreed = patch("routers.taxi.ensure_terms_agreed", new=lambda db, user_id: None)
         cls.publish_message.start()
         cls.publish_updated.start()
+        cls.terms_agreed.start()
 
     @classmethod
     def tearDownClass(cls):
         cls.publish_message.stop()
         cls.publish_updated.stop()
+        cls.terms_agreed.stop()
         Base.metadata.drop_all(cls.engine)
         cls.engine.dispose()
         os.close(cls.db_fd)

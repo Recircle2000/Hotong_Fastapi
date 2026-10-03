@@ -15,3 +15,5 @@ from .app_setting import AppSetting
 from .taxi_sanction import TaxiSanction, TaxiSanctionHold
 from .taxi_report import TaxiReport
 from .taxi_push import TaxiPushToken
+from .taxi_terms import TaxiTermsAgreement
+from .taxi_block import TaxiBlock
