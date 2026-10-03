@@ -7,7 +7,7 @@ import json
 from typing import List, Dict, Set, Optional
 from dotenv import load_dotenv
 import logging
-from utils.redis_client import get_cache, set_cache
+from utils.redis_client import REDIS_ENABLED, get_cache, set_cache
 from models.subway import SubwayArrivalResponse, SubwayArrivalInfo, StationScheduleResponse, TrainScheduleInfo
 from models.subway_schedule import SubwaySchedule
 from database import SessionLocal, get_db
@@ -27,6 +27,28 @@ SUBWAY_CACHE_TTL = 10  # 30초마다 업데이트
 active_connections: Set[WebSocket] = set()
 subway_clients_event = asyncio.Event()
 http_client: Optional[httpx.AsyncClient] = None
+latest_subway_data: Dict[str, List[dict]] = {}
+
+
+def get_latest_subway_data(station: str) -> Optional[List[dict]]:
+    return get_cache(f"subway:{station}") if REDIS_ENABLED else latest_subway_data.get(station)
+
+
+def get_cheonan_starting_ids(db: Session) -> List[str]:
+    now = datetime.now()
+    current_day_type = "주말" if now.weekday() >= 5 else "평일"
+    target_trains = db.query(SubwaySchedule.train_no).filter(
+        SubwaySchedule.departure_station == "천안",
+        SubwaySchedule.up_down_type == "상행",
+        SubwaySchedule.day_type == current_day_type,
+        (SubwaySchedule.arrival_time == None) | (SubwaySchedule.arrival_time == "")
+    ).all()
+    starting_ids = []
+    for (train_no,) in target_trains:
+        clean_no = re.sub(r'[^0-9]', '', train_no).lstrip('0')
+        if clean_no:
+            starting_ids.append(f"k{clean_no}")
+    return starting_ids
 
 
 def get_http_client() -> httpx.AsyncClient:
@@ -82,7 +104,7 @@ async def broadcast_subway_data(websocket: WebSocket = None):
     targets = ["천안", "아산"]
     result = {}
     for station in targets:
-        cached_data = get_cache(f"subway:{station}")
+        cached_data = get_latest_subway_data(station)
         if cached_data:
              safe_items = []
              for item in cached_data:
@@ -127,7 +149,14 @@ async def update_subway_cache():
         try:
             # 접속자가 있는 동안 반복
             # [User Request]: 캐시된 기점 차량 정보 로드 (매 루프마다 갱신된 정보 확인)
-            starting_trains = set(get_cache("subway:cheonan_starting_trains") or [])
+            if REDIS_ENABLED:
+                starting_trains = set(get_cache("subway:cheonan_starting_trains") or [])
+            else:
+                db = SessionLocal()
+                try:
+                    starting_trains = set(get_cheonan_starting_ids(db))
+                finally:
+                    db.close()
 
             for station in target_stations:
                 data = await fetch_station_data(station)
@@ -176,8 +205,12 @@ async def update_subway_cache():
                         parsed_data.append(info.dict())
                     
                     set_cache(f"subway:{station}", parsed_data, SUBWAY_CACHE_TTL)
+                    if not REDIS_ENABLED:
+                        latest_subway_data[station] = parsed_data
                     logging.info(f"Updated cache for subway station: {station}")
                 else:
+                    if not REDIS_ENABLED:
+                        latest_subway_data.pop(station, None)
                     logging.info(f"No data received for {station}")
             
             # 업데이트 후 브로드캐스트
@@ -309,22 +342,7 @@ async def update_schedule_cache_daily():
                     # [User Request]: 천안 출발/신창 기점 차량 Redis 캐싱
                     # arrival_time이 없고(None or ""), 상행, departure_station이 "천안"
                     # [User Request]: 현재 요일에 맞춰 평일/주말 필터링 추가
-                    now = datetime.now()
-                    current_day_type = "주말" if now.weekday() >= 5 else "평일"
-
-                    target_trains = db.query(SubwaySchedule.train_no).filter(
-                        SubwaySchedule.departure_station == "천안",
-                        SubwaySchedule.up_down_type == "상행",
-                        SubwaySchedule.day_type == current_day_type,
-                        (SubwaySchedule.arrival_time == None) | (SubwaySchedule.arrival_time == "")
-                    ).all()
-
-                    cheonan_starting_ids = []
-                    for (t_no,) in target_trains:
-                        # 포맷팅: k + 숫자 (leading zero 제거)
-                        clean_no = re.sub(r'[^0-9]', '', t_no).lstrip('0')
-                        if clean_no:
-                            cheonan_starting_ids.append(f"k{clean_no}")
+                    cheonan_starting_ids = get_cheonan_starting_ids(db)
 
                     set_cache("subway:cheonan_starting_trains", cheonan_starting_ids, 86400) # 24시간 유지
                     logging.info(f"Cached {len(cheonan_starting_ids)} Cheonan starting trains.")
@@ -468,7 +486,7 @@ async def get_subway_arrival(station_name: str):
         raise HTTPException(status_code=404, detail=f"Invalid station name: {station_name}")
 
     # 캐시 먼저 확인
-    cached_data = get_cache(f"subway:{station_name}")
+    cached_data = get_latest_subway_data(station_name)
     
     if cached_data:
         items = [SubwayArrivalInfo(**item) for item in cached_data]
@@ -515,7 +533,7 @@ async def get_all_target_stations():
     targets = ["천안", "아산"]
     result = {}
     for station in targets:
-        cached_data = get_cache(f"subway:{station}")
+        cached_data = get_latest_subway_data(station)
         if cached_data:
              result[station] = [SubwayArrivalInfo(**item) for item in cached_data]
         else:

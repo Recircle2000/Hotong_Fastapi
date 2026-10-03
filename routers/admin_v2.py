@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import User
 from schemas.admin_v2 import (
+    AdminAppSettingsResponse,
+    AdminAppSettingsUpdateRequest,
     AdminEmergencyNoticePayload,
     AdminEmergencyNoticeResponse,
     AdminLoginRequest,
@@ -15,7 +19,34 @@ from schemas.admin_v2 import (
     AdminSessionUser,
     AdminShuttleStationPayload,
     AdminShuttleStationResponse,
+    AdminTaxiLocationPayload,
+    AdminTaxiLocationResponse,
+    AdminTaxiPartyCancelRequest,
+    AdminTaxiPartyListResponse,
+    AdminTaxiReportDetailResponse,
+    AdminTaxiReportListResponse,
+    AdminTaxiReportUpdateRequest,
+    AdminTaxiSanctionCreateRequest,
+    AdminTaxiSanctionListResponse,
+    AdminTaxiSanctionResponse,
+    AdminTaxiSanctionRevokeRequest,
+    AdminShuttleTimetableSection,
 )
+from services.admin_taxi import (
+    create_admin_taxi_location,
+    delete_admin_taxi_location,
+    list_admin_taxi_locations,
+    list_admin_taxi_parties,
+    update_admin_taxi_location,
+)
+from services.admin_taxi_report import (
+    get_admin_taxi_report,
+    list_admin_taxi_reports,
+    list_admin_taxi_sanctions,
+    serialize_admin_sanctions,
+    update_admin_taxi_report,
+)
+from services.taxi_sanction import issue_sanction, revoke_sanction
 from services.admin_auth import (
     AUTH_REQUIRED_MESSAGE,
     AdminAuthError,
@@ -46,7 +77,11 @@ from services.admin_shuttle_station import (
     serialize_shuttle_station,
     update_admin_shuttle_station,
 )
+from services.shuttle_timetable import build_admin_shuttle_timetable
 from utils.redis_client import delete_pattern
+from services.app_settings import get_taxi_setting_updated_at, is_taxi_enabled, set_taxi_enabled
+from services.taxi import TaxiServiceError, cancel_party
+from utils.taxi_realtime import publish_message, publish_party_updated
 
 
 router = APIRouter(prefix="/api/admin-v2", tags=["Admin V2"])
@@ -244,6 +279,18 @@ async def get_admin_v2_shuttle_stations(
     ]
 
 
+@router.get(
+    "/shuttle-timetable",
+    response_model=list[AdminShuttleTimetableSection],
+)
+async def get_admin_v2_shuttle_timetable(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return build_admin_shuttle_timetable(db)
+
+
 @router.post(
     "/shuttle-stations",
     response_model=AdminShuttleStationResponse,
@@ -309,3 +356,252 @@ async def delete_admin_v2_shuttle_station(
         )
     invalidate_shuttle_station_cache()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def serialize_app_settings(db: Session) -> AdminAppSettingsResponse:
+    return AdminAppSettingsResponse(
+        taxi_enabled=is_taxi_enabled(db),
+        taxi_updated_at=get_taxi_setting_updated_at(db),
+    )
+
+
+@router.get("/app-settings", response_model=AdminAppSettingsResponse)
+def get_admin_app_settings(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return serialize_app_settings(db)
+
+
+@router.put("/app-settings", response_model=AdminAppSettingsResponse)
+def update_admin_app_settings(
+    payload: AdminAppSettingsUpdateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    set_taxi_enabled(db, payload.taxi_enabled, admin_id=current_admin.id)
+    return serialize_app_settings(db)
+
+
+def raise_taxi_admin_error(exc: TaxiServiceError) -> None:
+    raise HTTPException(
+        status_code=exc.status_code,
+        detail={"code": exc.code, "message": exc.message},
+    ) from exc
+
+
+@router.get("/taxi-locations", response_model=list[AdminTaxiLocationResponse])
+async def get_admin_taxi_locations(
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    return list_admin_taxi_locations(db)
+
+
+@router.post(
+    "/taxi-locations",
+    response_model=AdminTaxiLocationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_admin_taxi_location_endpoint(
+    payload: AdminTaxiLocationPayload,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        return create_admin_taxi_location(db, **payload.model_dump())
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.put("/taxi-locations/{location_id}", response_model=AdminTaxiLocationResponse)
+async def update_admin_taxi_location_endpoint(
+    location_id: int,
+    payload: AdminTaxiLocationPayload,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        return update_admin_taxi_location(db, location_id, **payload.model_dump())
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.delete("/taxi-locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_admin_taxi_location_endpoint(
+    location_id: int,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        delete_admin_taxi_location(db, location_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-parties", response_model=AdminTaxiPartyListResponse)
+async def get_admin_taxi_parties(
+    status_filter: str | None = Query(
+        default=None,
+        pattern="^(recruiting|full|closed|ended|cancelled)$",
+    ),
+    departure_location_id: int | None = None,
+    destination_location_id: int | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=422, detail="limit은 1 이상 100 이하여야 합니다.")
+    try:
+        items, next_cursor = list_admin_taxi_parties(
+            db,
+            status_filter=status_filter,
+            departure_location_id=departure_location_id,
+            destination_location_id=destination_location_id,
+            cursor=cursor,
+            limit=limit,
+        )
+        return AdminTaxiPartyListResponse(items=items, next_cursor=next_cursor)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.post("/taxi-parties/{party_id}/cancel")
+async def cancel_admin_taxi_party(
+    party_id: UUID,
+    payload: AdminTaxiPartyCancelRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        message = cancel_party(
+            db,
+            party_id,
+            user_id=None,
+            reason=payload.reason,
+            admin_id=current_admin.id,
+        )
+        if message is not None:
+            await publish_message(db, message)
+        await publish_party_updated(db, party_id)
+        return {"success": True}
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-reports", response_model=AdminTaxiReportListResponse)
+def get_admin_taxi_reports(
+    status_filter: str | None = Query(default=None, alias="status", pattern="^(pending|resolved|dismissed)$"),
+    target: str | None = Query(default=None, pattern="^[0-9a-f]{6}$"),
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        items, next_cursor = list_admin_taxi_reports(
+            db,
+            status_filter=status_filter,
+            target_key=target,
+            cursor=cursor,
+            limit=limit,
+        )
+        return AdminTaxiReportListResponse(items=items, next_cursor=next_cursor)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-reports/{report_id}", response_model=AdminTaxiReportDetailResponse)
+def get_admin_taxi_report_detail(
+    report_id: int,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        return get_admin_taxi_report(db, report_id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.patch("/taxi-reports/{report_id}", response_model=AdminTaxiReportDetailResponse)
+def update_admin_taxi_report_status(
+    report_id: int,
+    payload: AdminTaxiReportUpdateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return update_admin_taxi_report(db, report_id, payload, admin_id=current_admin.id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.post("/taxi-reports/{report_id}/sanction", response_model=AdminTaxiReportDetailResponse)
+def create_admin_taxi_sanction(
+    report_id: int,
+    payload: AdminTaxiSanctionCreateRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    # 관리자는 user_id를 모르므로 신고를 통해 대상을 지정한다.
+    try:
+        issue_sanction(
+            db,
+            report_id,
+            level=payload.level,
+            reason=payload.reason,
+            admin_note=payload.admin_note,
+            resolve_pending_reports=payload.resolve_pending_reports,
+            admin_id=current_admin.id,
+        )
+        return get_admin_taxi_report(db, report_id)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.get("/taxi-sanctions", response_model=AdminTaxiSanctionListResponse)
+def get_admin_taxi_sanctions(
+    active: bool = False,
+    target: str | None = Query(default=None, pattern="^[0-9a-f]{6}$"),
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    del current_admin
+    try:
+        items, next_cursor = list_admin_taxi_sanctions(
+            db,
+            active_only=active,
+            target_key=target,
+            cursor=cursor,
+            limit=limit,
+        )
+        return AdminTaxiSanctionListResponse(items=items, next_cursor=next_cursor)
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)
+
+
+@router.post("/taxi-sanctions/{sanction_id}/revoke", response_model=AdminTaxiSanctionResponse)
+def revoke_admin_taxi_sanction(
+    sanction_id: int,
+    payload: AdminTaxiSanctionRevokeRequest,
+    current_admin: User = Depends(get_admin_api_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        sanction = revoke_sanction(db, sanction_id, reason=payload.reason, admin_id=current_admin.id)
+        return serialize_admin_sanctions(db, [sanction])[0]
+    except TaxiServiceError as exc:
+        raise_taxi_admin_error(exc)

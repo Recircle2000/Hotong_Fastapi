@@ -72,3 +72,113 @@ export interface AdminShuttleStationPayload {
   image_url: string | null;
   is_active: boolean;
 }
+
+export interface AdminAppSettings {
+  taxi_enabled: boolean;
+  taxi_updated_at: string | null;
+}
+
+export type TaxiLocationCategory = "campus" | "station" | "terminal" | "other";
+
+export interface AdminTaxiLocation {
+  id: number;
+  name: string;
+  category: TaxiLocationCategory;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface AdminTaxiLocationPayload {
+  name: string;
+  category: TaxiLocationCategory;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface AdminTaxiParty {
+  id: string;
+  departure_location_name: string;
+  destination_location_name: string;
+  departure_summary: string;
+  destination_summary: string | null;
+  departure_at: string;
+  current_members: number;
+  max_members: number;
+  status: string;
+  cancellation_reason: string | null;
+  created_at: string;
+}
+
+export interface AdminTaxiPartyList {
+  items: AdminTaxiParty[];
+  next_cursor: string | null;
+}
+
+export type TaxiReportReason = "no_show" | "abuse" | "payment" | "other";
+export type TaxiReportStatus = "pending" | "resolved" | "dismissed";
+
+export interface AdminTaxiReport {
+  id: number;
+  reason: TaxiReportReason;
+  status: TaxiReportStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  party_id: string | null;
+  departure_location_name: string | null;
+  destination_location_name: string | null;
+  departure_at: string | null;
+  target_key: string;
+  target_label: string;
+  target_stats: { total_reports: number; distinct_reporters: number };
+}
+
+export interface AdminTaxiReportList {
+  items: AdminTaxiReport[];
+  next_cursor: string | null;
+}
+
+export interface AdminTaxiReportMessage {
+  id: number;
+  type: "chat" | "system";
+  label: string | null;
+  content: string;
+  created_at: string;
+  is_target: boolean;
+}
+
+export type TaxiSanctionLevel = "warning" | "suspend_3d" | "suspend_7d" | "permanent";
+
+export interface AdminTaxiSanction {
+  id: number;
+  level: TaxiSanctionLevel;
+  reason: string;
+  admin_note: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  created_at: string;
+  acknowledged_at: string | null;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  is_active: boolean;
+  target_key: string;
+  report_count: number;
+}
+
+export interface AdminTaxiSanctionList {
+  items: AdminTaxiSanction[];
+  next_cursor: string | null;
+}
+
+export interface AdminTaxiReportDetail extends AdminTaxiReport {
+  detail: string | null;
+  admin_note: string | null;
+  reporter_key: string;
+  reported_message_id: number | null;
+  departure_summary: string | null;
+  messages: AdminTaxiReportMessage[];
+  evidence_purged: boolean;
+  other_reports: AdminTaxiReport[];
+  sanction_id: number | null;
+  target_sanctions: AdminTaxiSanction[];
+  suggested_level: TaxiSanctionLevel;
+}

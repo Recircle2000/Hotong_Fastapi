@@ -7,7 +7,7 @@ import os
 import json
 from dotenv import load_dotenv
 import redis
-from utils.redis_client import redis_client, set_cache, get_cache, delete_cache, delete_pattern
+from utils.redis_client import REDIS_ENABLED, set_cache, get_cache, delete_cache, delete_pattern
 from utils.security import get_current_admin
 from datetime import datetime, timedelta, time
 import logging
@@ -92,6 +92,11 @@ SCHEDULED_ROUTES = ["810_DOWN", "810_UP", "820_DOWN", "820_UP", "821_DOWN", "821
 # 버스 데이터 캐시 TTL (초)
 BUS_CACHE_TTL = 5
 
+# 외부 API가 잠깐 비거나 실패해도 마지막으로 확인된 위치를 유지하는 시간 (초).
+# 이 시간 동안 새 위치를 한 번도 못 받으면 운행 없음으로 본다.
+BUS_HOLD_SECONDS = 30
+BUS_LAST_GOOD_PREFIX = "bus:last_good:"
+
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
 MAIN_ROUTES_END_TIME = time(23, 50)  # 오후 10시 15분
@@ -112,6 +117,45 @@ last_timetable_update = 0
 # 재사용 HTTP 클라이언트
 bus_http_client: Optional[httpx.AsyncClient] = None
 route_fetch_tasks: Dict[str, asyncio.Task] = {}
+latest_bus_data: Dict[str, List[dict]] = {}
+# Redis를 쓰지 않을 때의 마지막 확인 위치: 노선 -> (받은 시각, 버스 목록)
+last_good_bus_data: Dict[str, Tuple[float, List[dict]]] = {}
+
+
+def remember_last_good_bus_data(route_name: str, items: List[dict]) -> None:
+    if REDIS_ENABLED:
+        set_cache(BUS_LAST_GOOD_PREFIX + route_name, items, BUS_HOLD_SECONDS)
+    else:
+        last_good_bus_data[route_name] = (time_module.monotonic(), items)
+
+
+def forget_last_good_bus_data(route_name: str) -> None:
+    if REDIS_ENABLED:
+        delete_cache(BUS_LAST_GOOD_PREFIX + route_name)
+    else:
+        last_good_bus_data.pop(route_name, None)
+
+
+def get_last_good_bus_data(route_name: str) -> Optional[List[dict]]:
+    if REDIS_ENABLED:
+        return get_cache(BUS_LAST_GOOD_PREFIX + route_name)
+    held = last_good_bus_data.get(route_name)
+    if held is None:
+        return None
+    received_at, items = held
+    if time_module.monotonic() - received_at > BUS_HOLD_SECONDS:
+        last_good_bus_data.pop(route_name, None)
+        return None
+    return items
+
+
+def get_latest_bus_data(route_name: str) -> Optional[List[dict]]:
+    """화면에 내보낼 버스 위치. 방금 받은 값이 없으면 유지 중인 마지막 위치를 쓴다.
+
+    웹소켓과 /buses 계열 엔드포인트가 모두 이 함수로 읽는다.
+    """
+    fresh = get_cache(route_name) if REDIS_ENABLED else latest_bus_data.get(route_name)
+    return fresh if fresh else get_last_good_bus_data(route_name)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -207,7 +251,7 @@ def build_bus_message(route_names: Optional[Tuple[str, ...]] = None) -> str:
     target_routes = route_names or WS_ROUTE_GROUPS["all"]
 
     for route_name in target_routes:
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
         if cached_data:
             filtered_data = []
             for bus in cached_data:
@@ -242,11 +286,14 @@ async def fetch_bus_data_deduplicated(
 
     if not route_should_check:
         delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         if log_context:
             log_context.skipped.add(route_name)
         return None
 
-    if use_cache:
+    if use_cache and REDIS_ENABLED:
         cached_data = get_cache(route_name)
         if cached_data is not None:
             if log_context:
@@ -418,8 +465,11 @@ async def fetch_bus_data(
         route_should_check = should_check_route(route_name)
 
     if not route_should_check:
-        # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴
+        # 체크할 필요 없는 노선은 캐시에서 삭제하고 리턴 (유지 중인 위치도 함께 지운다)
         delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         # print(f"[{route_name}] 운행 중이 아니므로 캐시 삭제")
         return None
 
@@ -433,9 +483,11 @@ async def fetch_bus_data(
         response.raise_for_status()
         data = response.json()
 
-        # 데이터가 없는 경우 처리
+        # 데이터가 없는 경우 처리. 마지막 확인 위치는 BUS_HOLD_SECONDS 동안 남겨 둔다.
         if not data["response"]["body"]["items"]:
             delete_cache(route_name)
+            if not REDIS_ENABLED:
+                latest_bus_data.pop(route_name, None)
             if log_context:
                 log_context.external_empty.add(route_name)
             return None
@@ -446,12 +498,17 @@ async def fetch_bus_data(
 
         # Redis에 저장 (TTL BUS_CACHE_TTL 초)
         set_cache(route_name, items, BUS_CACHE_TTL)
+        remember_last_good_bus_data(route_name, items)
+        if not REDIS_ENABLED:
+            latest_bus_data[route_name] = items
         if log_context:
             log_context.external_success.add(route_name)
         # print(f"[{route_name}] 버스 위치 데이터 업데이트 ({len(items)}대)")
         return items
     except Exception as e:
         logger.error(f"[BUS_WS][api_error] route={route_name} error={e}")
+        if not REDIS_ENABLED:
+            latest_bus_data.pop(route_name, None)
         return None
 
 
@@ -485,7 +542,7 @@ async def broadcast_bus_data(websocket: WebSocket = None):
     available_routes = []
 
     for route_name in ROUTES.keys():
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
             filtered_data = []
@@ -658,7 +715,7 @@ async def get_all_buses():
         if route_name not in ROUTES:
             continue
 
-        cached_data = get_cache(route_name)
+        cached_data = get_latest_bus_data(route_name)
 
         if cached_data:
             # 각 버스 데이터에서 불필요한 필드 제거
@@ -683,7 +740,7 @@ async def get_bus_by_route(route_name: str):
         raise HTTPException(status_code=404, detail="Route not found")
 
     await ensure_route_data((route_name,))
-    cached_data = get_cache(route_name)
+    cached_data = get_latest_bus_data(route_name)
 
     if not cached_data:
         # 그래도 없으면 데이터 없음 처리
@@ -713,6 +770,7 @@ async def invalidate_bus_cache(route_name: str = None, current_admin=Depends(get
             raise HTTPException(status_code=404, detail="Route not found")
 
         success = delete_cache(route_name)
+        forget_last_good_bus_data(route_name)
         if success:
             # 캐시 삭제 후 데이터 다시 가져오기
             await fetch_bus_data(route_name, ROUTES[route_name])
@@ -725,6 +783,7 @@ async def invalidate_bus_cache(route_name: str = None, current_admin=Depends(get
         deleted_count = 0
 
         for name in route_names:
+            forget_last_good_bus_data(name)
             if delete_cache(name):
                 deleted_count += 1
 

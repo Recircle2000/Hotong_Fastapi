@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function AdminModal({
   children,
@@ -11,7 +12,8 @@ export function AdminModal({
   title: string;
   wide?: boolean;
 }) {
-  return (
+  // 페이지 본문(main)은 등장 애니메이션의 transform이 남아 fixed 기준이 되므로 body에 띄운다.
+  return createPortal(
     <div
       className="modal-backdrop-motion fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
       onClick={onClose}
@@ -34,6 +36,7 @@ export function AdminModal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

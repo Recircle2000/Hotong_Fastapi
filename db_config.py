@@ -54,15 +54,25 @@ def get_engine_kwargs(database_url: str, env: Mapping[str, str] | None = None) -
     if database_url.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}}
 
+    if env is None:
+        env = os.environ
     database_schema = get_database_schema(database_url, env)
     connect_args: dict[str, Any] = {}
     if database_schema:
         connect_args["options"] = f"-csearch_path={database_schema}"
 
+    pool_size = int(env.get("DATABASE_POOL_SIZE", "5"))
+    max_overflow = int(env.get("DATABASE_MAX_OVERFLOW", "0"))
+    pool_timeout = int(env.get("DATABASE_POOL_TIMEOUT", "10"))
+    if pool_size < 1 or max_overflow < 0 or pool_timeout < 1:
+        raise RuntimeError("Database pool settings are out of range.")
+
     return {
         "connect_args": connect_args,
-        "pool_size": 10,
-        "max_overflow": 20,
+        "pool_size": pool_size,
+        "max_overflow": max_overflow,
+        "pool_timeout": pool_timeout,
+        "pool_use_lifo": True,
         "pool_recycle": 3600,
         "pool_pre_ping": True,
     }

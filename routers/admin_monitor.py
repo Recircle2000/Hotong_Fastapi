@@ -5,7 +5,7 @@ import psutil
 import time
 import json
 from datetime import datetime, timedelta
-from utils.redis_client import redis_client
+from utils.redis_client import REDIS_ENABLED, redis_client
 from db_config import get_database_schema
 from database import engine, get_db
 from sqlalchemy import text
@@ -164,6 +164,8 @@ async def get_database_info(_: bool = Depends(get_admin_session)):
 @router.get("/admin/monitor/api/redis-info")
 async def get_redis_info(_: bool = Depends(get_admin_session)):
     """Redis 정보 API"""
+    if not REDIS_ENABLED:
+        return {"timestamp": datetime.now().isoformat(), "error": "Redis 사용이 비활성화되었습니다."}
     try:
         info = redis_client.info()
         
