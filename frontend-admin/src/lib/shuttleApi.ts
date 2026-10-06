@@ -12,6 +12,7 @@ import type {
   ShuttleScheduleTypePayload,
   ShuttleScheduleTypeUpdatePayload,
   ShuttleStation,
+  ShuttleTimetableStation,
 } from "./shuttleTypes";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
@@ -117,6 +118,10 @@ export function getShuttleRoutes() {
 
 export function getShuttleStations() {
   return shuttleRequest<ShuttleStation[]>("/stations");
+}
+
+export function getShuttleRouteStations(routeId: number) {
+  return shuttleRequest<ShuttleTimetableStation[]>(`/routes/${routeId}/stations`);
 }
 
 export function getShuttleScheduleTypes() {
