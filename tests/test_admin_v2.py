@@ -17,8 +17,9 @@ os.environ["FIREBASE_CREDENTIALS_B64"] = ""
 
 from database import get_db
 from models import Base, TaxiLocation, User
-from routers import admin_v2, app_config
+from routers import admin_v2, app_config, auth
 from schemas.taxi import TaxiPartyCreateRequest, TaxiReportCreateRequest
+from services.admin_auth import clear_login_failures
 from services.app_settings import clear_app_settings_cache
 from services.taxi import create_chat_message, create_party, join_party
 from services.taxi_report import create_report
@@ -40,6 +41,7 @@ class AdminV2ApiTests(unittest.TestCase):
         cls.app.add_middleware(SessionMiddleware, secret_key="test-session-secret")
         cls.app.include_router(admin_v2.router)
         cls.app.include_router(app_config.router)
+        cls.app.include_router(auth.router)
 
         def override_get_db():
             db = cls.SessionLocal()
@@ -58,6 +60,7 @@ class AdminV2ApiTests(unittest.TestCase):
         os.unlink(cls.db_path)
 
     def setUp(self):
+        clear_login_failures()
         self.client = TestClient(self.app)
         with self.SessionLocal() as db:
             for table in reversed(Base.metadata.sorted_tables):
@@ -96,6 +99,31 @@ class AdminV2ApiTests(unittest.TestCase):
             json={"email": "admin@example.com", "password": "wrong-password"},
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_login_locks_after_repeated_failures_from_one_address(self):
+        wrong = {"email": "admin@example.com", "password": "wrong-password"}
+        right = {"email": "admin@example.com", "password": "secret123"}
+        for _ in range(5):
+            self.assertEqual(self.client.post("/api/admin-v2/auth/login", json=wrong).status_code, 401)
+
+        # 잠긴 뒤에는 맞는 비밀번호도 받지 않는다. 구 로그인 주소도 같이 잠긴다.
+        self.assertEqual(self.client.post("/api/admin-v2/auth/login", json=right).status_code, 429)
+        self.assertEqual(
+            self.client.post("/login", json={"username": "admin@example.com", "password": "secret123"}).status_code,
+            429,
+        )
+        # 다른 주소에서는 로그인할 수 있다.
+        other = self.client.post("/api/admin-v2/auth/login", json=right, headers={"X-Real-IP": "203.0.113.7"})
+        self.assertEqual(other.status_code, 200)
+
+    def test_login_success_resets_the_failure_count(self):
+        wrong = {"email": "admin@example.com", "password": "wrong-password"}
+        right = {"email": "admin@example.com", "password": "secret123"}
+        for _ in range(4):
+            self.client.post("/api/admin-v2/auth/login", json=wrong)
+        self.assertEqual(self.client.post("/api/admin-v2/auth/login", json=right).status_code, 200)
+        for _ in range(4):
+            self.assertEqual(self.client.post("/api/admin-v2/auth/login", json=wrong).status_code, 401)
 
     def test_login_rejects_non_admin_user(self):
         response = self.client.post(
