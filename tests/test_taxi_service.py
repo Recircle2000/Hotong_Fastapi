@@ -180,6 +180,22 @@ class TaxiServiceTests(unittest.TestCase):
         self.assertEqual(party.meeting_code, "D234")
         self.assertIsNone(summary.meeting_code)
 
+    def test_meeting_code_is_only_shown_to_members(self):
+        with patch("services.taxi.generate_meeting_code", return_value="F234"):
+            party = self._create()
+
+        outsider = serialize_party_summary(self.db, party, self.user_id, now=self.now)
+        self.assertIsNone(outsider.meeting_code)
+        self.assertIsNone(get_party_detail(self.db, party.id, self.user_id).meeting_code)
+
+        join_party(self.db, party.id, self.user_id, now=self.now)
+        member = serialize_party_summary(self.db, party, self.user_id, now=self.now)
+        self.assertEqual(member.meeting_code, "F234")
+
+        leave_party(self.db, party.id, self.user_id, now=self.now)
+        left = serialize_party_summary(self.db, party, self.user_id, now=self.now)
+        self.assertIsNone(left.meeting_code)
+
     def test_departure_update_keeps_the_meeting_code(self):
         with patch("services.taxi.generate_meeting_code", return_value="E234"):
             party = self._create()

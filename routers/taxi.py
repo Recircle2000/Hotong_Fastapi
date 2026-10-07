@@ -120,7 +120,8 @@ def get_taxi_home(
     destination_location_id: int | None = None,
     include_unavailable: bool = False,
     include: str = Query(default="", pattern="^[a-z,]*$"),
-    limit: int = Query(default=20, ge=1, le=50),
+    # 앱 1.3.0은 개수를 지정하지 않고 다음 쪽도 요청하지 않아 기본값이 곧 보이는 최대 개수다.
+    limit: int = Query(default=50, ge=1, le=50),
     current_user: CurrentAppUser = Depends(get_current_app_user),
     db: Session = Depends(get_db),
 ):
@@ -163,7 +164,8 @@ def get_taxi_parties(
     destination_location_id: int | None = None,
     include_unavailable: bool = False,
     cursor: str | None = None,
-    limit: int = Query(default=20, ge=1, le=50),
+    # 앱 1.3.0은 개수를 지정하지 않고 다음 쪽도 요청하지 않아 기본값이 곧 보이는 최대 개수다.
+    limit: int = Query(default=50, ge=1, le=50),
     current_user: CurrentAppUser = Depends(get_current_app_user),
     db: Session = Depends(get_db),
 ):
