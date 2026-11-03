@@ -35,7 +35,7 @@ export class ApiError extends Error {
   }
 }
 
-async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const { body, ...rest } = options;
   const requestInit: RequestInit = {

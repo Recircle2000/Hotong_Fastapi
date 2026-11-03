@@ -17,3 +17,4 @@ from .taxi_report import TaxiReport
 from .taxi_push import TaxiPushToken
 from .taxi_terms import TaxiTermsAgreement
 from .taxi_block import TaxiBlock
+from .city_bus import CityBusRoute, CityBusRelease
