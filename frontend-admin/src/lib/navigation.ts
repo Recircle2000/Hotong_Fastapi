@@ -16,6 +16,14 @@ export const navGroups = [
     ],
   },
   {
+    label: "시내버스",
+    items: [
+      { path: "/city-bus", label: "시간표" },
+      { path: "/city-bus/map", label: "노선도" },
+      { path: "/city-bus/releases", label: "배포" },
+    ],
+  },
+  {
     label: "택시팟",
     items: [
       { path: "/taxi-parties", label: "팟 현황" },

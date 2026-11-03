@@ -1,4 +1,5 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request, Response
+from fastapi.responses import JSONResponse
 import asyncio
 from typing import List, Dict, Set, Optional, Tuple
 from dataclasses import dataclass, field
@@ -9,6 +10,8 @@ from dotenv import load_dotenv
 import redis
 from utils.redis_client import REDIS_ENABLED, set_cache, get_cache, delete_cache, delete_pattern
 from utils.security import get_current_admin
+from database import SessionLocal
+from services.city_bus_data import KIND_TIMETABLE, get_effective_release
 from datetime import datetime, timedelta, time
 import logging
 import time as time_module
@@ -112,8 +115,10 @@ bus_clients_event = asyncio.Event()
 bus_timetable: Dict[str, dict] = {}
 # 파싱된 시간표 캐시 (문자열 파싱 비용 절감)
 parsed_bus_timetable: Dict[str, List[Tuple[int, int]]] = {}
-# 시간표 파일의 마지막 수정 시간
-last_timetable_update = 0
+# 마지막으로 읽어 들인 시간표 버전 (바뀌었을 때만 다시 파싱)
+loaded_timetable_version: Optional[str] = None
+# 대시보드 게시본이 아직 없을 때 쓰는 예전 시간표 파일
+TIMETABLE_FILE_PATH = 'bus_times.json'
 # 재사용 HTTP 클라이언트
 bus_http_client: Optional[httpx.AsyncClient] = None
 route_fetch_tasks: Dict[str, asyncio.Task] = {}
@@ -357,30 +362,46 @@ async def ensure_route_data(
         log_bus_sync_summary(log_context)
 
 
-def load_bus_timetable():
-    global last_timetable_update, bus_timetable, parsed_bus_timetable
+def read_current_timetable() -> Optional[dict]:
+    """대시보드에서 게시한 시간표를 우선 쓰고, 아직 없으면 예전 bus_times.json을 쓴다."""
+    with SessionLocal() as db:
+        release = get_effective_release(db, KIND_TIMETABLE)
+    if release is not None and release.payload:
+        return release.payload
     try:
-        file_path = 'bus_times.json'
-        current_mtime = os.path.getmtime(file_path)
-        if current_mtime > last_timetable_update:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                bus_timetable.clear()
-                bus_timetable.update(json.load(f))
-                parsed_bus_timetable.clear()
-                for route_name in SCHEDULED_ROUTES:
-                    if route_name not in bus_timetable:
-                        continue
-                    timetable = bus_timetable[route_name].get("시간표", [])
-                    parsed_times: List[Tuple[int, int]] = []
-                    for departure_time in timetable:
-                        try:
-                            departure_hour, departure_minute = map(int, departure_time.split(":"))
-                            parsed_times.append((departure_hour, departure_minute))
-                        except Exception:
-                            continue
-                    parsed_bus_timetable[route_name] = parsed_times
-                last_timetable_update = current_mtime
-                logging.debug(f"버스 시간표가 업데이트되었습니다: {datetime.fromtimestamp(current_mtime)}")
+        with open(TIMETABLE_FILE_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+
+def load_bus_timetable():
+    global loaded_timetable_version
+    try:
+        data = read_current_timetable()
+        if not data:
+            logging.warning("시간표 데이터가 없습니다")
+            return
+        version = str(data.get("version"))
+        if version == loaded_timetable_version and bus_timetable:
+            return
+        bus_timetable.clear()
+        bus_timetable.update(data)
+        parsed_bus_timetable.clear()
+        for route_name in SCHEDULED_ROUTES:
+            if route_name not in bus_timetable:
+                continue
+            timetable = bus_timetable[route_name].get("시간표", [])
+            parsed_times: List[Tuple[int, int]] = []
+            for departure_time in timetable:
+                try:
+                    departure_hour, departure_minute = map(int, departure_time.split(":"))
+                    parsed_times.append((departure_hour, departure_minute))
+                except Exception:
+                    continue
+            parsed_bus_timetable[route_name] = parsed_times
+        loaded_timetable_version = version
+        logging.info(f"버스 시간표를 불러왔습니다: {version}")
     except Exception as e:
         logging.error(f"시간표 로딩 오류: {e}")
 
@@ -513,12 +534,12 @@ async def fetch_bus_data(
 
 
 async def update_bus_cache():
-    load_bus_timetable()
+    await asyncio.to_thread(load_bus_timetable)
     while True:
         # 접속자 생길 때까지 대기
         await bus_clients_event.wait()
 
-        load_bus_timetable()
+        await asyncio.to_thread(load_bus_timetable)
         requested_route_names = get_requested_route_names()
 
         if requested_route_names:
@@ -817,20 +838,30 @@ def invalidate_cache(pattern: str = "*", current_admin=Depends(get_current_admin
     return {"message": f"{deleted_count}개의 캐시가 무효화되었습니다."}
 
 
+@router.get("/bus-timetable")
+def get_bus_timetable(request: Request):
+    """
+    앱이 내려받는 시내버스 시간표. 대시보드 게시본(없으면 bus_times.json)을 그대로 준다.
+    """
+    data = read_current_timetable()
+    if not data or not data.get("version"):
+        raise HTTPException(status_code=404, detail="Bus timetable not found")
+    etag = f'"{data["version"]}"'
+    headers = {"ETag": etag, "Cache-Control": "no-cache"}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return JSONResponse(content=data, headers=headers)
+
+
 @router.get("/bus-timetable/version")
 def get_bus_timetable_version():
     """
-    bus_times.json의 version 필드만 반환하는 엔드포인트
+    지금 적용 중인 시간표 버전만 반환하는 엔드포인트 (구버전 앱이 사용)
     """
-    try:
-        with open('bus_times.json', 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            version = data.get('version')
-            if version:
-                return {"version": version}
-            else:
-                raise HTTPException(status_code=404, detail="Version field not found")
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="bus_times.json not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    data = read_current_timetable()
+    if not data:
+        raise HTTPException(status_code=404, detail="Bus timetable not found")
+    version = data.get("version")
+    if not version:
+        raise HTTPException(status_code=404, detail="Version field not found")
+    return {"version": version}

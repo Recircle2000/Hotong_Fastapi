@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -287,3 +287,92 @@ class AdminShuttleTimetableSection(BaseModel):
     routes: list[AdminShuttleTimetableRoute]
     route_count: int
     schedule_count: int
+
+
+class AdminCityBusRoutePayload(BaseModel):
+    # 노선도만 있는 노선은 출발지·종점·시각을 비워 둔다. 게시할 때 시간표에서 빠진다.
+    origin: str = Field(default="", max_length=100)
+    terminus: str = Field(default="", max_length=100)
+    times: list[str] = Field(default_factory=list, max_length=300)
+
+
+class AdminCityBusRouteCreateRequest(AdminCityBusRoutePayload):
+    route_key: str = Field(..., min_length=1, max_length=32)
+
+
+class AdminCityBusReorderRequest(BaseModel):
+    route_keys: list[str]
+
+
+class AdminCityBusRouteResponse(BaseModel):
+    route_key: str
+    sort_order: int
+    origin: str
+    terminus: str
+    times: list[str]
+    geojson_feature_count: int
+    stop_count: int
+    updated_at: datetime | None = None
+
+
+class AdminCityBusPublishRequest(BaseModel):
+    # 비우면 즉시 적용, 미래 시각이면 그때부터 앱에 내려간다.
+    effective_from: datetime | None = None
+    # 앱 설정의 변경이력에 자동 요약과 함께 나가는 한 줄 메모
+    note: str | None = Field(default=None, max_length=200)
+
+
+class AdminCityBusReleaseResponse(BaseModel):
+    id: int
+    kind: Literal["timetable", "static"]
+    version: str
+    effective_from: datetime | None = None
+    published_at: datetime
+    download_url: str | None = None
+    sha256: str | None = None
+    size_bytes: int | None = None
+    # 지금 앱에 내려가는 게시본
+    is_current: bool = False
+    # 아직 적용 시각이 오지 않은 예약 게시본
+    is_scheduled: bool = False
+    note: str | None = None
+    # 이전 게시본과 비교한 자동 요약. 비교할 게시본이 없었으면 null
+    changes: list[str] | None = None
+
+
+class AdminCityBusBisTimetableResponse(BaseModel):
+    # 아산·천안 BIS 홈페이지에서 받아온 평일 시간표. 비교용이라 DB에는 쓰지 않는다.
+    source: Literal["asan", "cheonan"]
+    source_url: str
+    times: list[str]
+    fetched_at: datetime
+
+
+class AdminCityBusStopRef(BaseModel):
+    nodeid: str
+    nodeord: int | None = None
+    nodenm: str
+
+
+class AdminCityBusStopRename(AdminCityBusStopRef):
+    before: str
+
+
+class AdminCityBusStopMove(AdminCityBusStopRef):
+    meters: int
+
+
+class AdminCityBusStopsCompareResponse(BaseModel):
+    # 공공데이터 경유정류소 목록과 저장된 정류장 JSON의 차이. 비교만 하고 DB에는 쓰지 않는다.
+    route_id: str
+    city_code: str
+    fetched_at: datetime
+    current_count: int
+    fetched_count: int
+    added: list[AdminCityBusStopRef]
+    removed: list[AdminCityBusStopRef]
+    renamed: list[AdminCityBusStopRename]
+    moved: list[AdminCityBusStopMove]
+    reordered: bool
+    # 교체할 때 PUT /routes/{key}/stops로 그대로 올리는 응답 원문
+    fetched: dict[str, Any]
