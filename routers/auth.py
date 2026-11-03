@@ -7,6 +7,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas.auth import UserCreate
+from services.admin_auth import (
+    LOGIN_RATE_LIMITED_MESSAGE,
+    AdminAuthError,
+    clear_login_failures,
+    ensure_login_allowed,
+    record_login_failure,
+)
 from utils.security import create_access_token, hash_password, verify_password
 
 router = APIRouter()
@@ -83,9 +90,23 @@ async def login(
                 detail="이메일(아이디)와 비밀번호를 입력해주세요",
             )
 
+    try:
+        ensure_login_allowed(request)
+    except AdminAuthError:
+        if is_browser_form:
+            return RedirectResponse(
+                url=f"/admin/login?error={LOGIN_RATE_LIMITED_MESSAGE}",
+                status_code=status.HTTP_303_SEE_OTHER
+            )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=LOGIN_RATE_LIMITED_MESSAGE,
+        )
+
     # 사용자 인증
     user_record = db.query(User).filter(User.email == username).first()
     if not user_record or not verify_password(password, user_record.hashed_password):
+        record_login_failure(request)
         if is_browser_form:
             # 브라우저 로그인 실패 시 로그인 페이지로 리디렉션
             return RedirectResponse(
@@ -102,6 +123,7 @@ async def login(
 
     # 관리자 권한 체크
     if not getattr(user_record, "is_admin", False):
+        record_login_failure(request)
         if is_browser_form:
             return RedirectResponse(
                 url="/admin/login?error=관리자 권한이 없습니다",
@@ -111,6 +133,8 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="관리자 권한이 필요합니다",
         )
+
+    clear_login_failures(request)
 
     # JWT 토큰 생성
     access_token = create_access_token(data={"sub": user_record.email}, expires_delta=timedelta(hours=2))

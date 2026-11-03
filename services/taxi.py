@@ -248,7 +248,8 @@ def _build_party_summary(
     writable_until, visible_until = chat_deadlines(party)
     return TaxiPartySummaryResponse(
         id=party.id,
-        meeting_code=visible_meeting_code(party, now=now),
+        # 만남 코드는 만났을 때 서로 확인하는 용도라 참여자에게만 준다.
+        meeting_code=visible_meeting_code(party, now=now) if membership is not None else None,
         departure_location=serialize_location(party.departure_location),
         destination_location=serialize_location(party.destination_location),
         departure_summary=party.departure_summary,

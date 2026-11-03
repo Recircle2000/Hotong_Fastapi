@@ -52,7 +52,10 @@ from services.admin_auth import (
     AdminAuthError,
     authenticate_admin_credentials,
     clear_admin_session,
+    clear_login_failures,
+    ensure_login_allowed,
     login_admin_session,
+    record_login_failure,
     resolve_admin_user,
 )
 from services.admin_emergency_notice import (
@@ -120,10 +123,14 @@ async def login_admin_v2(
     db: Session = Depends(get_db),
 ):
     try:
+        ensure_login_allowed(request)
         user = authenticate_admin_credentials(db, payload.email, payload.password)
     except AdminAuthError as exc:
+        if exc.status_code != status.HTTP_429_TOO_MANY_REQUESTS:
+            record_login_failure(request)
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
+    clear_login_failures(request)
     login_admin_session(request, user)
     return AdminSessionResponse(authenticated=True, user=serialize_session_user(user))
 

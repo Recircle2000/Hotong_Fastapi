@@ -12,6 +12,9 @@ import { TaxiPartiesPage } from "./pages/TaxiPartiesPage";
 import { TaxiReportsPage } from "./pages/TaxiReportsPage";
 import { TaxiSanctionsPage } from "./pages/TaxiSanctionsPage";
 import { ShuttleTimetablePage } from "./pages/ShuttleTimetablePage";
+import { CityBusMapPage } from "./pages/CityBusMapPage";
+import { CityBusReleasesPage } from "./pages/CityBusReleasesPage";
+import { CityBusTimetablePage } from "./pages/CityBusTimetablePage";
 
 export function App() {
   return (
@@ -26,6 +29,9 @@ export function App() {
             <Route path="/shuttle" element={<ShuttlePage />} />
             <Route path="/shuttle/timetable" element={<ShuttleTimetablePage />} />
             <Route path="/shuttle-stations" element={<ShuttleStationsPage />} />
+            <Route path="/city-bus" element={<CityBusTimetablePage />} />
+            <Route path="/city-bus/map" element={<CityBusMapPage />} />
+            <Route path="/city-bus/releases" element={<CityBusReleasesPage />} />
             <Route path="/taxi-locations" element={<TaxiLocationsPage />} />
             <Route path="/taxi-parties" element={<TaxiPartiesPage />} />
             <Route path="/taxi-reports" element={<TaxiReportsPage />} />

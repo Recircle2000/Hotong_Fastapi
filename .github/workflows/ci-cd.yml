@@ -22,13 +22,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.13"
 
       - name: Install backend dependencies
         run: pip install --no-cache-dir -r requirements.txt
 
       - name: Run backend tests
-        run: python -m unittest discover -s tests -p "test_admin_v2.py"
+        run: python -m unittest discover -s tests
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

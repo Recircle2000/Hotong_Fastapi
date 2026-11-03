@@ -35,6 +35,7 @@ import type {
   ShuttleStation,
 } from "../lib/shuttleTypes";
 import { useToast } from "../toast/ToastProvider";
+import { ShuttlePasteImport } from "./ShuttlePasteImport";
 import {
   ExceptionForm,
   ExceptionTable,
@@ -719,6 +720,22 @@ export function ShuttlePage() {
                 {isClearingCache ? "비우는 중..." : "셔틀 캐시 비우기"}
               </button>
             </AdminPanel>
+          </div>
+
+          <div className="mt-6">
+            <ShuttlePasteImport
+              routes={routes}
+              scheduleTypes={scheduleTypes}
+              stations={stations}
+              getScheduleTypeLabel={getScheduleTypeLabel}
+              onError={handleError}
+              onNotify={(tone, message) => setBanner({ tone, message })}
+              onImported={async (routeId, scheduleType) => {
+                setSelectedRouteId(String(routeId));
+                setSelectedScheduleType(scheduleType);
+                await searchSchedules(routeId, scheduleType);
+              }}
+            />
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.9fr)]">
