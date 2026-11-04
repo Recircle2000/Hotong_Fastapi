@@ -11,8 +11,13 @@ import redis
 from utils.redis_client import REDIS_ENABLED, set_cache, get_cache, delete_cache, delete_pattern
 from utils.security import get_current_admin
 from database import SessionLocal
-from services.city_bus_data import KIND_TIMETABLE, get_effective_release
-from datetime import datetime, timedelta, time
+from services.city_bus_data import (
+    KIND_TIMETABLE,
+    check_effective_timetable,
+    get_effective_release,
+    release_generation,
+)
+from datetime import datetime, timedelta, time, timezone
 import logging
 import time as time_module
 
@@ -97,8 +102,23 @@ BUS_CACHE_TTL = 5
 
 # 외부 API가 잠깐 비거나 실패해도 마지막으로 확인된 위치를 유지하는 시간 (초).
 # 이 시간 동안 새 위치를 한 번도 못 받으면 운행 없음으로 본다.
-BUS_HOLD_SECONDS = 30
+# 보는 사람이 없을 때 주기(30초) 두 번 + 타임아웃 여유보다 길어야 평소에도 위치가 끊기지 않는다.
+BUS_HOLD_SECONDS = 75
 BUS_LAST_GOOD_PREFIX = "bus:last_good:"
+
+# 백그라운드 갱신 주기 (초). 보는 사람(웹소켓 연결, 최근 /buses 요청)이 있으면 짧게 돈다.
+BUS_IDLE_INTERVAL = 30
+BUS_ACTIVE_INTERVAL = 5
+# 마지막 /buses 요청 뒤 이 시간 동안은 보는 사람이 있다고 본다 (초).
+BUS_HTTP_DEMAND_SECONDS = 30
+# 시간표는 게시·예약 적용 때만 바뀌므로 평소에는 DB를 읽지 않는다.
+# 서버 밖(가져오기 도구, 직접 SQL)에서 바꾼 경우에 대비해 이 간격으로만 버전을 확인한다 (초).
+BUS_TIMETABLE_RECHECK_SECONDS = 3600
+# DB를 못 읽었을 때 다시 시도하는 간격 (초)
+BUS_TIMETABLE_RETRY_SECONDS = 60
+
+# 외부 API는 매분 초반에 2~5초씩 늦어질 때가 있어 기본값(5초)보다 넉넉히 기다린다.
+BUS_API_TIMEOUT = httpx.Timeout(8.0, connect=3.0)
 
 # 주요 노선 운행 시간
 MAIN_ROUTES_START_TIME = time(6, 5)  # 오전 6시 15분
@@ -109,7 +129,14 @@ active_connections: Set[WebSocket] = set()
 filtered_connections: Dict[str, Set[WebSocket]] = {
     group_name: set() for group_name in WS_ROUTE_GROUPS if group_name != "all"
 }
-bus_clients_event = asyncio.Event()
+# 쉬는 중인 백그라운드 루프를 바로 한 바퀴 돌리고 싶을 때 세운다.
+bus_loop_wake = asyncio.Event()
+# 루프가 지금 기다리는 주기. 이미 짧은 주기로 돌고 있으면 깨우지 않는다.
+bus_loop_interval: float = BUS_IDLE_INTERVAL
+# 마지막 /buses 요청 시각 (monotonic)
+last_http_demand_at: Optional[float] = None
+# 노선별로 외부 API 조회를 마지막으로 끝낸 시각 (monotonic). 성공·빈 응답·오류 모두 포함.
+route_checked_at: Dict[str, float] = {}
 
 # 시간표 데이터 저장
 bus_timetable: Dict[str, dict] = {}
@@ -117,6 +144,10 @@ bus_timetable: Dict[str, dict] = {}
 parsed_bus_timetable: Dict[str, List[Tuple[int, int]]] = {}
 # 마지막으로 읽어 들인 시간표 버전 (바뀌었을 때만 다시 파싱)
 loaded_timetable_version: Optional[str] = None
+# 시간표를 다시 확인할 시점: 다음 정기 확인 (monotonic), 마지막으로 반영한 게시 횟수, 다음 예약 적용 시각 (UTC)
+timetable_next_check_at: Optional[float] = None
+timetable_seen_generation: Optional[int] = None
+timetable_next_effective_at: Optional[datetime] = None
 # 대시보드 게시본이 아직 없을 때 쓰는 예전 시간표 파일
 TIMETABLE_FILE_PATH = 'bus_times.json'
 # 재사용 HTTP 클라이언트
@@ -267,16 +298,49 @@ def build_bus_message(route_names: Optional[Tuple[str, ...]] = None) -> str:
     return json.dumps(result)
 
 
-def get_requested_route_names() -> Tuple[str, ...]:
-    if active_connections:
-        return WS_ROUTE_GROUPS["all"]
+def select_loop_interval(ws_connections: int, last_demand_at: Optional[float], now: float) -> int:
+    """보는 사람이 있으면 짧은 주기, 없으면 긴 주기."""
+    if ws_connections > 0:
+        return BUS_ACTIVE_INTERVAL
+    if last_demand_at is not None and now - last_demand_at <= BUS_HTTP_DEMAND_SECONDS:
+        return BUS_ACTIVE_INTERVAL
+    return BUS_IDLE_INTERVAL
 
-    requested_routes = set()
-    for group_name, connections in filtered_connections.items():
-        if connections:
-            requested_routes.update(WS_ROUTE_GROUPS[group_name])
 
-    return tuple(route_name for route_name in ROUTES if route_name in requested_routes)
+def current_loop_interval() -> int:
+    return select_loop_interval(get_total_active_connections(), last_http_demand_at, time_module.monotonic())
+
+
+def wake_bus_loop() -> None:
+    """긴 주기로 쉬고 있는 루프를 바로 돌린다. 이미 짧은 주기면 다음 바퀴를 기다린다."""
+    if bus_loop_interval > BUS_ACTIVE_INTERVAL:
+        bus_loop_wake.set()
+
+
+def record_http_demand() -> None:
+    global last_http_demand_at
+    last_http_demand_at = time_module.monotonic()
+    wake_bus_loop()
+
+
+def route_recently_checked(route_name: str) -> bool:
+    checked_at = route_checked_at.get(route_name)
+    return checked_at is not None and time_module.monotonic() - checked_at <= BUS_HOLD_SECONDS
+
+
+async def ensure_unchecked_route_data(route_names: Tuple[str, ...]) -> None:
+    """캐시에 값이 없고 최근에 조회한 적도 없는 운행 노선만 바로 받아 온다.
+
+    서버가 막 시작해 루프가 아직 한 바퀴도 못 돈 경우처럼 드문 상황에만 외부 API를 기다린다.
+    """
+    missing = tuple(
+        route_name for route_name in route_names
+        if get_latest_bus_data(route_name) is None
+        and not route_recently_checked(route_name)
+        and should_check_route(route_name)
+    )
+    if missing:
+        await ensure_route_data(missing)
 
 
 async def fetch_bus_data_deduplicated(
@@ -375,35 +439,83 @@ def read_current_timetable() -> Optional[dict]:
         return None
 
 
-def load_bus_timetable():
+def apply_bus_timetable(data: dict, version: str) -> None:
     global loaded_timetable_version
-    try:
-        data = read_current_timetable()
-        if not data:
-            logging.warning("시간표 데이터가 없습니다")
-            return
-        version = str(data.get("version"))
-        if version == loaded_timetable_version and bus_timetable:
-            return
-        bus_timetable.clear()
-        bus_timetable.update(data)
-        parsed_bus_timetable.clear()
-        for route_name in SCHEDULED_ROUTES:
-            if route_name not in bus_timetable:
+    bus_timetable.clear()
+    bus_timetable.update(data)
+    parsed_bus_timetable.clear()
+    for route_name in SCHEDULED_ROUTES:
+        if route_name not in bus_timetable:
+            continue
+        timetable = bus_timetable[route_name].get("시간표", [])
+        parsed_times: List[Tuple[int, int]] = []
+        for departure_time in timetable:
+            try:
+                departure_hour, departure_minute = map(int, departure_time.split(":"))
+                parsed_times.append((departure_hour, departure_minute))
+            except Exception:
                 continue
-            timetable = bus_timetable[route_name].get("시간표", [])
-            parsed_times: List[Tuple[int, int]] = []
-            for departure_time in timetable:
-                try:
-                    departure_hour, departure_minute = map(int, departure_time.split(":"))
-                    parsed_times.append((departure_hour, departure_minute))
-                except Exception:
-                    continue
-            parsed_bus_timetable[route_name] = parsed_times
-        loaded_timetable_version = version
-        logging.info(f"버스 시간표를 불러왔습니다: {version}")
+        parsed_bus_timetable[route_name] = parsed_times
+    loaded_timetable_version = version
+    logging.info(f"버스 시간표를 불러왔습니다: {version}")
+
+
+def load_timetable_file() -> None:
+    try:
+        with open(TIMETABLE_FILE_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        logging.warning("시간표 데이터가 없습니다")
+        return
+    version = str(data.get("version"))
+    if version != loaded_timetable_version or not bus_timetable:
+        apply_bus_timetable(data, version)
+
+
+def load_bus_timetable() -> bool:
+    """적용 중인 시간표 버전을 확인하고, 바뀌었을 때만 내용을 받아 반영한다. DB를 읽었으면 True."""
+    global timetable_next_effective_at
+    try:
+        with SessionLocal() as db:
+            check = check_effective_timetable(db, loaded_timetable_version if bus_timetable else None)
+    except Exception as e:
+        logging.error(f"시간표 확인 오류: {e}")
+        timetable_next_effective_at = None
+        if not bus_timetable:
+            # 배포 순서가 어긋나 테이블이 아직 없는 경우 등. 예전 파일이라도 쓴다.
+            load_timetable_file()
+        return False
+
+    timetable_next_effective_at = check.next_effective_at
+    try:
+        if check.version is None:
+            load_timetable_file()
+        elif check.payload is not None:
+            apply_bus_timetable(check.payload, check.version)
     except Exception as e:
         logging.error(f"시간표 로딩 오류: {e}")
+    return True
+
+
+def timetable_reload_due(now_monotonic: float, now_utc: datetime, generation: int) -> bool:
+    """처음, 대시보드에서 게시했을 때, 예약 게시가 적용될 때, 정기 확인 때만 DB를 읽는다."""
+    if timetable_next_check_at is None or now_monotonic >= timetable_next_check_at:
+        return True
+    if generation != timetable_seen_generation:
+        return True
+    return timetable_next_effective_at is not None and now_utc >= timetable_next_effective_at
+
+
+async def refresh_timetable_if_due() -> None:
+    global timetable_next_check_at, timetable_seen_generation
+    now = time_module.monotonic()
+    # 읽는 도중 게시가 일어나도 놓치지 않도록 읽기 전에 게시 횟수를 잡아 둔다.
+    generation = release_generation()
+    if not timetable_reload_due(now, datetime.now(timezone.utc), generation):
+        return
+    ok = await asyncio.to_thread(load_bus_timetable)
+    timetable_seen_generation = generation
+    timetable_next_check_at = now + (BUS_TIMETABLE_RECHECK_SECONDS if ok else BUS_TIMETABLE_RETRY_SECONDS)
 
 
 def build_api_url(route_id, route_name=None):
@@ -495,8 +607,19 @@ async def fetch_bus_data(
         return None
 
     if bus_http_client is None or bus_http_client.is_closed:
-        bus_http_client = httpx.AsyncClient()
+        bus_http_client = httpx.AsyncClient(timeout=BUS_API_TIMEOUT)
 
+    try:
+        return await _request_bus_data(route_name, route_id, log_context)
+    finally:
+        route_checked_at[route_name] = time_module.monotonic()
+
+
+async def _request_bus_data(
+        route_name: str,
+        route_id: str,
+        log_context: Optional[BusSyncLogContext],
+) -> Optional[List[dict]]:
     try:
         api_url = build_api_url(route_id, route_name)
         logger.debug(f"[BUS_API][request] route={route_name} url={api_url}")
@@ -534,28 +657,35 @@ async def fetch_bus_data(
 
 
 async def update_bus_cache():
-    await asyncio.to_thread(load_bus_timetable)
+    """전체 노선 위치를 항상 데워 둔다.
+
+    보는 사람이 없으면 BUS_IDLE_INTERVAL, 있으면 BUS_ACTIVE_INTERVAL마다 돈다.
+    웹소켓 첫 메시지와 /buses는 이 캐시를 바로 내보내므로 외부 API 지연을 기다리지 않는다.
+    """
+    global bus_loop_interval
     while True:
-        # 접속자 생길 때까지 대기
-        await bus_clients_event.wait()
+        try:
+            await refresh_timetable_if_due()
 
-        await asyncio.to_thread(load_bus_timetable)
-        requested_route_names = get_requested_route_names()
-
-        if requested_route_names:
             await ensure_route_data(
-                requested_route_names,
-                log_context=BusSyncLogContext(group=get_active_ws_group_name()),
+                WS_ROUTE_GROUPS["all"],
+                log_context=BusSyncLogContext(group=f"{get_active_ws_group_name()}/{current_loop_interval()}s"),
             )
-        else:
-            logging.debug("현재 요청된 노선이 없습니다")
 
-        # 데이터가 있든 없든 브로드캐스트 (빈 상태 전송)
-        await broadcast_bus_data()
-        await broadcast_filtered_bus_data()
+            # 접속자가 있을 때만 실제로 보낸다 (데이터가 없어도 빈 상태를 보냄)
+            await broadcast_bus_data()
+            await broadcast_filtered_bus_data()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"[BUS_WS][loop_error] error={e}")
 
-        # logging.debug(f"===== 버스 데이터 업데이트 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} =====\n")
-        await asyncio.sleep(5)
+        bus_loop_interval = current_loop_interval()
+        bus_loop_wake.clear()
+        try:
+            await asyncio.wait_for(bus_loop_wake.wait(), bus_loop_interval)
+        except asyncio.TimeoutError:
+            pass
 
 
 async def broadcast_bus_data(websocket: WebSocket = None):
@@ -623,17 +753,12 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     await websocket.accept()
     active_connections.add(websocket)
-    bus_clients_event.set()
     logger.info(f"[BUS_WS][connect] group=all total_clients={get_total_active_connections()}")
 
     try:
-        await ensure_route_data(
-            WS_ROUTE_GROUPS["all"],
-            log_context=BusSyncLogContext(group="all"),
-        )
-
-        # 데이터가 있든 없든 최초 1회는 상태를 알려줌 (빈 객체라도 전송)
+        # 외부 API를 기다리지 않고 데워 둔 캐시를 바로 보낸다 (빈 객체라도 전송)
         await broadcast_bus_data(websocket)
+        wake_bus_loop()
 
         while True:
             # 클라이언트로부터 메시지 대기
@@ -650,24 +775,18 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         active_connections.discard(websocket)
         logger.info(f"[BUS_WS][removed] group=all total_clients={get_total_active_connections()}")
-        if get_total_active_connections() == 0:
-            bus_clients_event.clear()
-            logger.info("[BUS_WS][idle] total_clients=0 background_paused=true")
 
 async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
     route_names = WS_ROUTE_GROUPS[group_name]
 
     await websocket.accept()
     filtered_connections[group_name].add(websocket)
-    bus_clients_event.set()
     logger.info(f"[BUS_WS][connect] group={group_name} total_clients={get_total_active_connections()}")
 
     try:
-        await ensure_route_data(
-            route_names,
-            log_context=BusSyncLogContext(group=group_name),
-        )
+        # 외부 API를 기다리지 않고 데워 둔 캐시를 바로 보낸다
         await websocket.send_text(build_bus_message(route_names))
+        wake_bus_loop()
 
         while True:
             data = await websocket.receive_text()
@@ -683,9 +802,6 @@ async def handle_filtered_bus_websocket(websocket: WebSocket, group_name: str):
     finally:
         filtered_connections[group_name].discard(websocket)
         logger.info(f"[BUS_WS][removed] group={group_name} total_clients={get_total_active_connections()}")
-        if get_total_active_connections() == 0:
-            bus_clients_event.clear()
-            logger.info("[BUS_WS][idle] total_clients=0 background_paused=true")
 
 
 @router.websocket("/ws/bus/asan/down")
@@ -724,13 +840,14 @@ async def startup_event():
 @router.get("/buses")
 async def get_all_buses():
     """
-    운행 중인 24번, 81번 버스 노선의 위치 정보를 조회합니다.
-    캐시에 없으면 실시간으로 조회합니다.
+    운행 중인 24번, 81번 버스 노선의 위치 정보를 조회합니다. (구버전 앱 홈 천캠용)
+    데워 둔 캐시를 바로 돌려주고, 요청이 이어지는 동안 백그라운드 갱신을 짧은 주기로 돌립니다.
     """
     target_routes = ["24_DOWN", "81_DOWN"]
     result = {}
 
-    await ensure_route_data(tuple(target_routes))
+    record_http_demand()
+    await ensure_unchecked_route_data(tuple(target_routes))
 
     for route_name in target_routes:
         if route_name not in ROUTES:
@@ -754,13 +871,14 @@ async def get_all_buses():
 async def get_bus_by_route(route_name: str):
     """
     특정 노선의 운행 중인 버스 위치 정보를 조회합니다.
-    캐시에 없으면 실시간으로 조회합니다.
+    데워 둔 캐시를 바로 돌려줍니다.
     """
     # 경로 이름 검증
     if route_name not in ROUTES:
         raise HTTPException(status_code=404, detail="Route not found")
 
-    await ensure_route_data((route_name,))
+    record_http_demand()
+    await ensure_unchecked_route_data((route_name,))
     cached_data = get_latest_bus_data(route_name)
 
     if not cached_data:
