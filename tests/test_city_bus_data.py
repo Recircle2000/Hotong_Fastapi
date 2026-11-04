@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import tempfile
@@ -84,6 +85,17 @@ class CityBusDataTests(unittest.TestCase):
         missing_file = mock.patch.object(bus, "TIMETABLE_FILE_PATH", "does-not-exist.json")
         missing_file.start()
         self.addCleanup(missing_file.stop)
+        # 버스 위치 루프가 들고 있는 시간표 상태도 테스트마다 비운다.
+        for state in (
+            mock.patch.dict(bus.bus_timetable, clear=True),
+            mock.patch.dict(bus.parsed_bus_timetable, clear=True),
+            mock.patch.object(bus, "loaded_timetable_version", None),
+            mock.patch.object(bus, "timetable_next_check_at", None),
+            mock.patch.object(bus, "timetable_seen_generation", None),
+            mock.patch.object(bus, "timetable_next_effective_at", None),
+        ):
+            state.start()
+            self.addCleanup(state.stop)
 
         self.client = TestClient(self.app)
         with self.SessionLocal() as db:
@@ -275,6 +287,101 @@ class CityBusDataTests(unittest.TestCase):
             city_bus_data.publish_timetable(db, admin_id=None)
         bus.loaded_timetable_version = None
         bus.load_bus_timetable()
+        self.assertEqual(bus.parsed_bus_timetable["810_UP"], [(7, 10), (8, 20)])
+
+    def _release_selects(self, action):
+        selects: list[str] = []
+
+        def record(conn, cursor, statement, parameters, context, executemany):
+            if statement.lstrip().upper().startswith("SELECT") and "city_bus_releases" in statement:
+                selects.append(statement)
+
+        event.listen(self.engine, "before_cursor_execute", record)
+        try:
+            result = action()
+        finally:
+            event.remove(self.engine, "before_cursor_execute", record)
+        return result, selects
+
+    def test_timetable_check_skips_payload_when_version_unchanged(self):
+        with self.SessionLocal() as db:
+            version = city_bus_data.publish_timetable(db, admin_id=None).version
+
+        with self.SessionLocal() as db:
+            first = city_bus_data.check_effective_timetable(db, None)
+        self.assertEqual(first.version, version)
+        self.assertEqual(first.payload["810_UP"]["시간표"], ["07:10", "08:20"])
+
+        with self.SessionLocal() as db:
+            same, selects = self._release_selects(lambda: city_bus_data.check_effective_timetable(db, version))
+        self.assertEqual(same.version, version)
+        self.assertIsNone(same.payload)
+        self.assertEqual(len(selects), 1)
+        self.assertNotIn("city_bus_releases.payload", selects[0])
+
+    def test_timetable_check_reports_next_scheduled_time(self):
+        now = datetime(2026, 11, 4, 3, 0, tzinfo=timezone.utc)
+        with self.SessionLocal() as db:
+            current = city_bus_data.publish_timetable(db, admin_id=None, now=now)
+            db.get(CityBusRoute, "810_UP").times = ["07:30"]
+            db.commit()
+            city_bus_data.publish_timetable(db, admin_id=None, effective_from=now + timedelta(days=3), now=now)
+
+            check = city_bus_data.check_effective_timetable(db, current.version, now=now + timedelta(days=1))
+            self.assertEqual(check.version, current.version)
+            self.assertEqual(check.next_effective_at, now + timedelta(days=3))
+
+            later = city_bus_data.check_effective_timetable(db, current.version, now=now + timedelta(days=3, seconds=1))
+            self.assertEqual(later.version, "2026.11.07")
+            self.assertEqual(later.payload["810_UP"]["시간표"], ["07:30"])
+            self.assertIsNone(later.next_effective_at)
+
+    def test_bus_timetable_reload_rules(self):
+        now = datetime(2026, 11, 4, 3, 0, tzinfo=timezone.utc)
+        # 처음에는 무조건 읽는다.
+        self.assertTrue(bus.timetable_reload_due(100.0, now, 5))
+
+        bus.timetable_next_check_at = 100.0 + bus.BUS_TIMETABLE_RECHECK_SECONDS
+        bus.timetable_seen_generation = 5
+        self.assertFalse(bus.timetable_reload_due(200.0, now, 5))
+        # 대시보드에서 게시했다.
+        self.assertTrue(bus.timetable_reload_due(200.0, now, 6))
+        # 정기 확인 시각이 됐다.
+        self.assertTrue(bus.timetable_reload_due(100.0 + bus.BUS_TIMETABLE_RECHECK_SECONDS, now, 5))
+
+        bus.timetable_next_effective_at = now + timedelta(hours=1)
+        self.assertFalse(bus.timetable_reload_due(200.0, now + timedelta(minutes=59), 5))
+        # 예약 게시가 적용되는 시각이 지났다.
+        self.assertTrue(bus.timetable_reload_due(200.0, now + timedelta(hours=1), 5))
+
+    def test_bus_loop_reads_db_only_after_publish(self):
+        with self.SessionLocal() as db:
+            first = city_bus_data.publish_timetable(db, admin_id=None).version
+
+        asyncio.run(bus.refresh_timetable_if_due())
+        self.assertEqual(bus.loaded_timetable_version, first)
+
+        # 바뀐 게 없으면 DB를 읽지 않는다.
+        _, selects = self._release_selects(lambda: asyncio.run(bus.refresh_timetable_if_due()))
+        self.assertEqual(selects, [])
+
+        with self.SessionLocal() as db:
+            db.get(CityBusRoute, "810_UP").times = ["06:40"]
+            db.commit()
+            second = city_bus_data.publish_timetable(db, admin_id=None).version
+
+        asyncio.run(bus.refresh_timetable_if_due())
+        self.assertEqual(bus.loaded_timetable_version, second)
+        self.assertEqual(bus.parsed_bus_timetable["810_UP"], [(6, 40)])
+
+    def test_bus_loop_keeps_timetable_when_db_check_fails(self):
+        with self.SessionLocal() as db:
+            version = city_bus_data.publish_timetable(db, admin_id=None).version
+        self.assertTrue(bus.load_bus_timetable())
+
+        with mock.patch.object(bus, "check_effective_timetable", side_effect=RuntimeError("db down")):
+            self.assertFalse(bus.load_bus_timetable())
+        self.assertEqual(bus.loaded_timetable_version, version)
         self.assertEqual(bus.parsed_bus_timetable["810_UP"], [(7, 10), (8, 20)])
 
     def test_missing_release_falls_back_to_file(self):

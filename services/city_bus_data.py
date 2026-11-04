@@ -75,9 +75,26 @@ class ReleaseSnapshot:
     size_bytes: int | None
 
 
+# 게시할 때마다 1씩 오른다. 같은 프로세스의 버스 위치 루프는 이 값이 바뀌었을 때만 시간표를 다시 확인한다.
+_release_generation = 0
+
+
+@dataclass(frozen=True)
+class TimetableCheck:
+    version: str | None  # 지금 적용 중인 게시본 버전. 게시본이 없으면 None
+    payload: dict[str, Any] | None  # known_version과 다를 때만 채운다
+    next_effective_at: datetime | None  # 아직 적용 전인 예약 게시본 중 가장 이른 시각
+
+
 def clear_city_bus_cache() -> None:
+    global _release_generation
     _release_cache.clear()
     _history_cache.clear()
+    _release_generation += 1
+
+
+def release_generation() -> int:
+    return _release_generation
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -480,6 +497,14 @@ def get_release(db: Session, release_id: int) -> CityBusRelease:
     return release
 
 
+def _pick_effective_release(releases: list[CityBusRelease], now: datetime) -> CityBusRelease | None:
+    effective = [release for release in releases if _effective_at(release) <= now]
+    if not effective:
+        return None
+    # 예약 게시가 섞여 있어도 가장 늦게 적용되기 시작한 게시본이 지금 버전이다.
+    return max(effective, key=lambda release: (_effective_at(release), release.id))
+
+
 def _find_effective_release(db: Session, kind: str, now: datetime) -> CityBusRelease | None:
     releases = (
         db.query(CityBusRelease)
@@ -487,11 +512,38 @@ def _find_effective_release(db: Session, kind: str, now: datetime) -> CityBusRel
         .filter(CityBusRelease.kind == kind)
         .all()
     )
-    effective = [release for release in releases if _effective_at(release) <= now]
-    if not effective:
-        return None
-    # 예약 게시가 섞여 있어도 가장 늦게 적용되기 시작한 게시본이 지금 버전이다.
-    return max(effective, key=lambda release: (_effective_at(release), release.id))
+    return _pick_effective_release(releases, now)
+
+
+def check_effective_timetable(
+        db: Session,
+        known_version: str | None,
+        *,
+        now: datetime | None = None,
+) -> TimetableCheck:
+    """버스 위치 루프용. 적용 중인 버전이 known_version과 같으면 시간표 내용은 읽지 않는다.
+
+    DB 오류는 그대로 올린다 (호출하는 쪽이 지금 시간표를 계속 쓴다).
+    """
+    current = _as_utc(now) or datetime.now(timezone.utc)
+    releases = (
+        db.query(CityBusRelease)
+        .options(defer(CityBusRelease.payload), defer(CityBusRelease.route_hashes))
+        .filter(CityBusRelease.kind == KIND_TIMETABLE)
+        .all()
+    )
+    next_effective_at = min(
+        (_effective_at(release) for release in releases if _effective_at(release) > current),
+        default=None,
+    )
+    release = _pick_effective_release(releases, current)
+    if release is None:
+        return TimetableCheck(version=None, payload=None, next_effective_at=next_effective_at)
+    payload = None
+    if release.version != known_version:
+        db.refresh(release, attribute_names=["payload"])
+        payload = release.payload
+    return TimetableCheck(version=release.version, payload=payload, next_effective_at=next_effective_at)
 
 
 def get_effective_release(db: Session, kind: str, *, now: datetime | None = None) -> ReleaseSnapshot | None:
